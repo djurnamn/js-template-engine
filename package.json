@@ -1,6 +1,6 @@
 {
   "name": "js-template-engine",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A dynamic templating engine that translates JavaScript or JSON data into structured templates across multiple languages.",
   "main": "index.js",
   "bin": {
