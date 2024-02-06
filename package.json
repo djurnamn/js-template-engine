@@ -1,0 +1,42 @@
+{
+  "name": "js-template-engine",
+  "version": "1.0.0",
+  "description": "A dynamic templating engine that translates JavaScript or JSON data into structured templates across multiple languages.",
+  "main": "index.js",
+  "bin": {
+    "js-template-engine": "./bin/cli.js"
+  },
+  "scripts": {
+    "example:react": "node examples/react.js",
+    "example:bem": "node examples/bem.js",
+    "example:slots": "node examples/slots.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djurnamn/js-template-engine.git"
+  },
+  "keywords": [
+    "javascript",
+    "js",
+    "template",
+    "templating",
+    "engine",
+    "json",
+    "react",
+    "bem"
+  ],
+  "author": "Björn Djurnamn <bjorn@djurnamn.co>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/djurnamn/js-template-engine/issues"
+  },
+  "homepage": "https://github.com/djurnamn/js-template-engine",
+  "dependencies": {
+    "signale": "^1.4.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.1",
+    "prettier": "^3.2.5"
+  }
+}
