@@ -33,10 +33,10 @@
   "homepage": "https://github.com/djurnamn/js-template-engine",
   "dependencies": {
     "signale": "^1.4.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "prettier": "^3.2.5"
   },
   "devDependencies": {
-    "eslint": "^8.0.1",
-    "prettier": "^3.2.5"
+    "eslint": "^8.0.1"
   }
 }
