@@ -41,7 +41,9 @@ export class TemplateEngine {
       prettierParser: 'html',
       writeOutputFile: false,
       verbose: false,
-      outputFormat: 'css', // Default style output format
+      styles: {
+        outputFormat: 'css'
+      }
     };
 
     if (options.extensions) {
@@ -79,6 +81,10 @@ export class TemplateEngine {
     }
   }
 
+  private isAttributeValue(value: unknown): value is string | number | boolean {
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+  }
+
   async render(
     nodes: TemplateNode[],
     options: TemplateOptions = {},
@@ -94,8 +100,6 @@ export class TemplateEngine {
 
     if (isRoot) {
       logger.info('Starting template rendering process...');
-      // Process styles for the entire template
-      nodes.forEach(node => this.processStyles(node));
     }
 
     for (let node of nodes) {
@@ -149,11 +153,15 @@ export class TemplateEngine {
 
           if (node.attributes) {
             for (const attribute in node.attributes) {
-              template += attributeFormatter(
-                attribute,
-                node.attributes[attribute],
-                false
-              );
+              const value = node.attributes[attribute];
+              if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
+                const inlineStyles = this.styleProcessor.getInlineStyles(node);
+                if (inlineStyles) {
+                  template += attributeFormatter('style', inlineStyles, false);
+                }
+              } else if (this.isAttributeValue(value)) {
+                template += attributeFormatter(attribute, value, false);
+              }
             }
           }
           if (node.expressionAttributes) {
@@ -170,11 +178,15 @@ export class TemplateEngine {
           template += `<${node.tag}`;
           if (node.attributes) {
             for (const attribute in node.attributes) {
-              template += attributeFormatter(
-                attribute,
-                node.attributes[attribute],
-                false
-              );
+              const value = node.attributes[attribute];
+              if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
+                const inlineStyles = this.styleProcessor.getInlineStyles(node);
+                if (inlineStyles) {
+                  template += attributeFormatter('style', inlineStyles, false);
+                }
+              } else if (this.isAttributeValue(value)) {
+                template += attributeFormatter(attribute, value, false);
+              }
             }
           }
           if (node.expressionAttributes) {
@@ -220,32 +232,13 @@ export class TemplateEngine {
     }
 
     if (isRoot) {
-      // Generate style output
-      const styleOutput = this.styleProcessor.generateOutput(options);
+      // Process styles for the entire template
+      nodes.forEach(node => this.processStyles(node));
+
+      // Generate style output if there are any styles
+      const hasStyles = this.styleProcessor.hasStyles();
+      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options) : '';
       
-      // Write output files if requested
-      if (options.writeOutputFile) {
-        const outputDir = options.outputDir ?? 'dist';
-        const filename = options.filename ?? 'untitled';
-        const fileExtension = options.fileExtension ?? '.html';
-
-        // Write template
-        await writeOutputFile(
-          path.join(outputDir, `${filename}${fileExtension}`),
-          template
-        );
-
-        // Write styles if not using inline styles
-        if (options.outputFormat !== 'inline') {
-          const styleExtension = options.outputFormat === 'css-in-js' ? '.js' : 
-                               options.outputFormat === 'scss' ? '.scss' : '.css';
-          await writeOutputFile(
-            path.join(outputDir, `${filename}${styleExtension}`),
-            styleOutput
-          );
-        }
-      }
-
       // Apply root handlers from extensions
       if (options.extensions) {
         for (const extension of options.extensions) {
@@ -255,15 +248,43 @@ export class TemplateEngine {
         }
       }
 
-      // Format the output if prettier parser is specified
-      if (options.prettierParser) {
-        template = await prettier.format(template, {
-          parser: options.prettierParser,
-        });
+      // Write output files if requested
+      if (options.writeOutputFile) {
+        const outputDir = options.outputDir ?? 'dist';
+        const filename = options.filename ?? 'untitled';
+        const fileExtension = options.fileExtension ?? '.html';
+
+        // Write template with styles if using inline format
+        if (hasStyles && options.styles?.outputFormat === 'inline') {
+          template = `${template}\n${styleOutput}`;
+        }
+
+        // Format the output if prettier parser is specified
+        if (options.prettierParser) {
+          template = await prettier.format(template, {
+            parser: options.prettierParser,
+          });
+        }
+
+        // Write template
+        await writeOutputFile(
+          template,
+          path.join(outputDir, `${filename}${fileExtension}`),
+          options.verbose
+        );
+
+        // Write styles if not using inline styles and styles exist
+        if (hasStyles && options.styles?.outputFormat !== 'inline') {
+          const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
+          await writeOutputFile(
+            styleOutput,
+            path.join(outputDir, `${filename}${styleExtension}`),
+            options.verbose
+          );
+        }
       }
     }
 
     return template;
   }
-} 
 } 

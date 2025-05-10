@@ -1,9 +1,13 @@
+import { StyleDefinition, StyleOutputFormat } from './styles';
+
 export interface TemplateNode {
   tag?: string;
   type?: 'text' | 'slot';
   content?: string;
   name?: string;
-  attributes?: Record<string, string | number | boolean>;
+  attributes?: {
+    [key: string]: string | number | boolean | StyleDefinition | undefined;
+  };
   expressionAttributes?: Record<string, string>;
   children?: TemplateNode[];
   selfClosing?: boolean;
@@ -23,6 +27,11 @@ export interface TemplateOptions {
   verbose?: boolean;
   extensions?: TemplateExtension[];
   slots?: Record<string, TemplateNode[]>;
+  styles?: {
+    outputFormat: StyleOutputFormat;
+    generateSourceMap?: boolean;
+    minify?: boolean;
+  };
 }
 
 export interface TemplateExtension {
