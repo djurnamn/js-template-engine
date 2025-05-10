@@ -2,14 +2,19 @@
   "name": "js-template-engine",
   "version": "1.0.1",
   "description": "A dynamic templating engine that translates JavaScript or JSON data into structured templates across multiple languages.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "js-template-engine": "./bin/cli.js"
+    "js-template-engine": "./dist/bin/cli.js"
   },
   "scripts": {
-    "example:react": "node examples/react.js",
-    "example:bem": "node examples/bem.js",
-    "example:slots": "node examples/slots.js"
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "example:react": "npm run build && node dist/examples/react.js",
+    "example:bem": "npm run build && node dist/examples/bem.js",
+    "example:slots": "npm run build && node dist/examples/slots.js"
   },
   "repository": {
     "type": "git",
@@ -32,11 +37,17 @@
   },
   "homepage": "https://github.com/djurnamn/js-template-engine",
   "dependencies": {
+    "prettier": "^3.2.5",
     "signale": "^1.4.0",
-    "yargs": "^17.7.2",
-    "prettier": "^3.2.5"
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "eslint": "^8.0.1"
+    "@types/node": "^22.15.16",
+    "@types/signale": "^1.4.7",
+    "@types/yargs": "^17.0.33",
+    "eslint": "^8.0.1",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2"
   }
 }
