@@ -1,8 +1,7 @@
 import { TemplateEngine } from '../src/engine/TemplateEngine';
 import { BemExtension } from '../src/extensions/bem';
-import { ExtendedTemplateNode } from '../src/types/extensions';
+import { ExtendedTemplateNode, BemExtension as BemTypes } from '../src/types/extensions';
 import { TemplateOptions } from '../src/types';
-import { BemExtensionOptions } from '../src/types/extensions';
 
 const verbose = true;
 
@@ -91,5 +90,5 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
     extensions: [bemExtension],
     writeOutputFile: true,
     verbose,
-  } as TemplateOptions & BemExtensionOptions);
+  } as TemplateOptions & BemTypes.Options);
 })(); 

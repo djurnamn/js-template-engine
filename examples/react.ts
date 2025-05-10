@@ -1,8 +1,7 @@
 import { TemplateEngine } from '../src/engine/TemplateEngine';
 import { ReactExtension } from '../src/extensions/react';
-import { ExtendedTemplateNode } from '../src/types/extensions';
+import { ExtendedTemplateNode, ReactExtension as ReactTypes } from '../src/types/extensions';
 import { TemplateOptions } from '../src/types';
-import { ReactExtensionOptions } from '../src/types/extensions';
 
 const verbose = true;
 
@@ -65,7 +64,7 @@ const todoAppTemplate: ExtendedTemplateNode[] = [
             react: {
               tag: 'TodoCard',
               expressionAttributes: {
-                onClick: '() => handleRemoveTodo()',
+                onClick: `() => handleRemoveTodo(${todo.id})`,
               },
             },
           },
@@ -104,8 +103,8 @@ const todoAppTemplate: ExtendedTemplateNode[] = [
 const propsInterface = `
 interface TodoProps {
   initialTodos: Todo[];
-  onAddTodo: (text: string) => void;
-  onRemoveTodo: (id: number) => void;
+  handleAddTodo: (text: string) => void;
+  handleRemoveTodo: (id: number) => void;
 }
 `;
 
@@ -132,6 +131,7 @@ interface TodoProps {
       "import { Todo } from './types';",
     ],
     propsInterface,
+    props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
     fileExtension: '.tsx',
-  } as TemplateOptions & ReactExtensionOptions);
+  } as TemplateOptions & ReactTypes.Options);
 })(); 
