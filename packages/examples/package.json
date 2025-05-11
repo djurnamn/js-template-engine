@@ -7,6 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "clean": "rimraf dist",
     "start": "pnpm start:bem && pnpm start:react && pnpm start:slots && pnpm start:styles",
     "start:bem": "ts-node src/bem.ts",
     "start:react": "ts-node src/react.ts",
@@ -16,12 +17,13 @@
   },
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
-    "@js-template-engine/types": "workspace:*",
     "@js-template-engine/extension-bem": "workspace:*",
     "@js-template-engine/extension-react": "workspace:*",
+    "@js-template-engine/types": "workspace:*",
     "ts-node": "^10.0.0"
   },
   "devDependencies": {
+    "rimraf": "^5.0.10",
     "typescript": "^5.0.0"
   }
-} 
+}

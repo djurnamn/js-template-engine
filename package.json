@@ -2,16 +2,18 @@
   "name": "js-template-engine",
   "version": "1.0.1",
   "private": true,
+  "packageManager": "pnpm@10.9.0",
   "description": "A dynamic templating engine that translates Typescript/JavaScript or JSON data into structured templates across multiple languages.",
   "scripts": {
-    "build": "pnpm --filter @js-template-engine/core build && pnpm --filter \"@js-template-engine/extension-*\" build && pnpm --filter @js-template-engine/cli build",
-    "build:watch": "pnpm -r build:watch",
-    "clean": "pnpm -r clean",
-    "test": "pnpm -r test",
-    "test:watch": "pnpm -r test:watch",
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint:fix",
-    "type-check": "pnpm -r type-check",
+    "build": "turbo run build",
+    "build:watch": "turbo run build:watch",
+    "clean": "turbo run clean",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "dev": "turbo run dev",
     "prepublishOnly": "pnpm test"
   },
   "repository": {
@@ -38,5 +40,8 @@
   "engines": {
     "node": ">=14.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.3"
   }
 }
