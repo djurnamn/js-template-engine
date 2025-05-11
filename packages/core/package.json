@@ -1,0 +1,32 @@
+{
+  "name": "@js-template-engine/core",
+  "version": "1.0.0",
+  "description": "Core functionality for js-template-engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "dependencies": {
+    "prettier": "^3.2.5",
+    "signale": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.16",
+    "@types/prettier": "^3.0.0",
+    "@types/signale": "^1.4.4",
+    "@types/jest": "^29.5.12",
+    "eslint": "^8.0.1",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.8.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2"
+  }
+} 

@@ -1,0 +1,36 @@
+{
+  "name": "@js-template-engine/cli",
+  "version": "1.0.0",
+  "description": "CLI interface for js-template-engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "js-template-engine": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "dependencies": {
+    "@js-template-engine/core": "workspace:*",
+    "@js-template-engine/extension-bem": "workspace:*",
+    "@js-template-engine/extension-react": "workspace:*",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.16",
+    "@types/yargs": "^17.0.33",
+    "@types/jest": "^29.5.12",
+    "eslint": "^8.0.1",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.8.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2"
+  }
+} 

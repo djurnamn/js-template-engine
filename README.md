@@ -67,14 +67,14 @@ yarn example:slots
 
 ### API
 
-You can also use JS Template Engine programmatically in your TypeScript/Node.js projects. This is how you could define and process your template using the BEM extension:
+You can also use JS Template Engine programmatically in your TypeScript/Node.js projects. This is how you could define and process your template using the BEM extension with styles:
 
 ```typescript
 import { TemplateEngine, BemExtension } from 'js-template-engine';
 import { ExtendedTemplateNode } from 'js-template-engine/types';
 
-const templateEngine = new TemplateEngine();
-const bemExtension = new BemExtension();
+// Initialize the engine with extensions - they'll be used for all renders
+const templateEngine = new TemplateEngine([new BemExtension(true)]); // Enable verbose logging
 
 const breadcrumbsTemplate: ExtendedTemplateNode[] = [
   {
@@ -84,6 +84,16 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
         block: 'breadcrumbs',
       },
     },
+    attributes: {
+      styles: {
+        padding: '1rem',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '4px',
+        '@media (max-width: 768px)': {
+          padding: '0.5rem'
+        }
+      }
+    },
     children: [
       {
         tag: 'ul',
@@ -92,6 +102,15 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
             element: 'list',
           },
         },
+        attributes: {
+          styles: {
+            margin: 0,
+            padding: 0,
+            listStyle: 'none',
+            display: 'flex',
+            gap: '1rem'
+          }
+        },
         children: [
           {
             tag: 'li',
@@ -99,6 +118,16 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
               bem: {
                 element: 'item',
               },
+            },
+            attributes: {
+              styles: {
+                position: 'relative',
+                ':last-child': {
+                  '&::after': {
+                    display: 'none'
+                  }
+                }
+              }
             },
             children: [
               {
@@ -110,36 +139,18 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
                 },
                 attributes: {
                   href: '/',
+                  styles: {
+                    color: '#333',
+                    textDecoration: 'none',
+                    ':hover': {
+                      color: '#666'
+                    }
+                  }
                 },
                 children: [
                   {
                     type: 'text',
                     content: 'Home',
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            tag: 'li',
-            extensions: {
-              bem: {
-                element: 'item',
-                modifier: 'current',
-              },
-            },
-            children: [
-              {
-                tag: 'span',
-                extensions: {
-                  bem: {
-                    element: 'text',
-                  },
-                },
-                children: [
-                  {
-                    type: 'text',
-                    content: 'About',
                   },
                 ],
               },
@@ -151,27 +162,143 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
   },
 ];
 
+// No need to pass extensions again - they're inherited from the constructor
 await templateEngine.render(breadcrumbsTemplate, {
   name: 'breadcrumbs',
-  extensions: [bemExtension],
   writeOutputFile: true,
+  styles: {
+    outputFormat: 'scss'  // Generate SCSS output
+  }
 });
 ```
 
-This is what it would result in:
+You can also override or add extensions per-render if needed:
 
-```html
-<nav class="breadcrumbs">
-  <ul class="breadcrumbs__list">
-    <li class="breadcrumbs__item">
-      <a href="/" class="breadcrumbs__text">Home</a>
-    </li>
-    <li class="breadcrumbs__item breadcrumbs__item--current">
-      <span class="breadcrumbs__text">About</span>
-    </li>
-  </ul>
-</nav>
+```typescript
+// Add a new extension just for this render
+await templateEngine.render(template, {
+  extensions: [new MyCustomExtension()],
+  // ... other options
+});
 ```
+
+## Creating Custom Extensions
+
+The JS Template Engine is designed to be extensible. You can create your own extensions by implementing the `Extension` interface. Here's a guide to creating custom extensions:
+
+### 1. Define Extension Types
+
+First, define your extension's types in a new file:
+
+```typescript
+import { BaseExtensionOptions, ExtensionKey } from 'js-template-engine/types';
+
+export namespace MyExtension {
+  export interface Options extends BaseExtensionOptions {
+    // Add your extension-specific options here
+    customOption?: string;
+  }
+
+  export interface NodeExtensions {
+    // Define node-specific extension properties
+    customProperty?: string;
+  }
+}
+```
+
+### 2. Create the Extension Class
+
+Implement your extension class:
+
+```typescript
+import { Extension, DeepPartial } from 'js-template-engine/types';
+import { MyExtension } from './types';
+
+export class MyCustomExtension implements Extension<MyExtension.Options, MyExtension.NodeExtensions> {
+  public readonly key = 'myExtension' as const;
+  private logger: ReturnType<typeof createLogger>;
+
+  constructor(verbose = false) {
+    this.logger = createLogger(verbose, 'MyExtension');
+  }
+
+  // Handle extension options
+  public optionsHandler(
+    defaultOptions: MyExtension.Options,
+    options: DeepPartial<MyExtension.Options>
+  ): MyExtension.Options {
+    return {
+      ...defaultOptions,
+      ...options,
+    };
+  }
+
+  // Process individual nodes
+  public nodeHandler(
+    node: TemplateNode & { extensions?: { myExtension?: MyExtension.NodeExtensions } },
+    ancestorNodesContext: TemplateNode[] = []
+  ): TemplateNode {
+    // Implement your node processing logic here
+    return node;
+  }
+
+  // Optional: Add style processing capabilities
+  public readonly stylePlugin: StyleProcessorPlugin = {
+    onProcessNode: (node) => {
+      // Process node styles
+    },
+    generateStyles: (styles, options, templateTree) => {
+      // Generate custom style output
+      return null;
+    }
+  };
+}
+```
+
+### 3. Using Your Extension
+
+Register and use your extension:
+
+```typescript
+// Option 1: Register at engine creation (recommended for most cases)
+const templateEngine = new TemplateEngine([new MyCustomExtension()]);
+
+await templateEngine.render(template, {
+  // Your extension options
+  myExtension: {
+    customOption: 'value'
+  }
+});
+
+// Option 2: Register per-render (for one-off usage)
+const templateEngine = new TemplateEngine();
+
+await templateEngine.render(template, {
+  extensions: [new MyCustomExtension()],
+  // Your extension options
+  myExtension: {
+    customOption: 'value'
+  }
+});
+```
+
+### Extension Features
+
+Extensions can provide several types of functionality:
+
+1. **Node Processing**: Transform nodes during template rendering
+2. **Style Processing**: Generate custom style output (CSS, SCSS, etc.)
+3. **Options Handling**: Process and validate extension-specific options
+4. **Root Template Processing**: Modify the entire template output
+
+### Best Practices
+
+- Use TypeScript for type safety and better IDE support
+- Implement proper logging for debugging
+- Handle edge cases and provide meaningful error messages
+- Document your extension's API and usage
+- Add unit tests for your extension
+- Follow the existing extension patterns for consistency
 
 ## TypeScript Support
 
@@ -193,3 +320,37 @@ Found a bug or have a suggestion? Please use the GitHub Issues page to report is
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Monorepo Structure
+
+This project is organized as a monorepo using `pnpm` workspaces. The main packages are:
+
+- `@js-template-engine/core`: Core functionality for the templating engine.
+- `@js-template-engine/extension-bem`: BEM extension for generating BEM-style CSS classes.
+- `@js-template-engine/extension-react`: React extension for generating React components.
+- `@js-template-engine/cli`: Command-line interface for rendering templates.
+- `@js-template-engine/examples`: Example usage of the templating engine.
+
+## Running Examples
+
+To run all examples:
+
+```bash
+pnpm --filter @js-template-engine/examples start
+```
+
+To run individual examples:
+
+```bash
+pnpm --filter @js-template-engine/examples start:bem
+pnpm --filter @js-template-engine/examples start:react
+pnpm --filter @js-template-engine/examples start:slots
+pnpm --filter @js-template-engine/examples start:styles
+```
+
+## Development
+
+- `pnpm build`: Build all packages.
+- `pnpm test`: Run tests for all packages.
+- `pnpm lint`: Lint all packages.
+- `pnpm type-check`: Type-check all packages.

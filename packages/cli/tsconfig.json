@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": "./src",
+    "paths": {
+      "@js-template-engine/core": ["../../core/dist"],
+      "@js-template-engine/extension-bem": ["../../extension-bem/dist"],
+      "@js-template-engine/extension-react": ["../../extension-react/dist"]
+    }
+  },
+  "include": ["src/**/*"]
+} 
