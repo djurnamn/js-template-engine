@@ -50,7 +50,8 @@ async function renderTemplates() {
   await engine.render(template, {
     name: 'card-css',
     writeOutputFile: true,
-    verbose: true
+    verbose: true,
+    outputDir: 'output'
   });
 
   // SCSS output
@@ -60,7 +61,8 @@ async function renderTemplates() {
       outputFormat: 'scss'
     },
     writeOutputFile: true,
-    verbose: true
+    verbose: true,
+    outputDir: 'output'
   });
 
   // Inline styles output
@@ -70,7 +72,8 @@ async function renderTemplates() {
       outputFormat: 'inline'
     },
     writeOutputFile: true,
-    verbose: true
+    verbose: true,
+    outputDir: 'output'
   });
 }
 

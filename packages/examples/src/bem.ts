@@ -134,6 +134,7 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
     name: 'breadcrumbs',
     writeOutputFile: true,
     verbose,
+    outputDir: 'output',
     styles: {
       outputFormat: 'scss'
     }

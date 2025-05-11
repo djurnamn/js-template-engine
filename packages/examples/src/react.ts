@@ -113,6 +113,7 @@ interface TodoProps {
   await templateEngine.render(todoAppTemplate, {
     name: 'html-todo-app',
     writeOutputFile: true,
+    outputDir: 'output'
   } as TemplateOptions);
 
   // Render React version with TypeScript support
@@ -120,7 +121,7 @@ interface TodoProps {
     name: 'react-todo-app',
     componentName: 'TodoApp',
     extensions: [reactExtension],
-    outputDir: 'dist/react',
+    outputDir: 'output/react',
     writeOutputFile: true,
     verbose,
     importStatements: [

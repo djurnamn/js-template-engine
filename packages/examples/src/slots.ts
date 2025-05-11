@@ -100,5 +100,6 @@ const slots: CardSlots = {
     slots,
     writeOutputFile: true,
     verbose,
+    outputDir: 'output'
   } as TemplateOptions);
 })(); 
