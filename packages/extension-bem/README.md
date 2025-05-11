@@ -1,80 +1,91 @@
 # @js-template-engine/extension-bem
 
-A BEM (Block Element Modifier) extension for the JS Template Engine that helps generate consistent and maintainable CSS class names following the BEM methodology.
+A BEM (Block Element Modifier) extension for JS Template Engine that generates BEM-style class names for your templates.
 
-## Features
-
-- Automatic BEM class name generation
-- Support for blocks, elements, and modifiers
-- Configurable naming conventions
-- Integration with style processing
-
-## Installation
+## 📦 Installation
 
 ```bash
 pnpm add @js-template-engine/extension-bem
 ```
 
-## Usage
+## 🚀 Usage
 
 ```typescript
 import { TemplateEngine } from '@js-template-engine/core';
 import { BemExtension } from '@js-template-engine/extension-bem';
+import { TemplateNode } from '@js-template-engine/types';
 
-const templateEngine = new TemplateEngine([new BemExtension()]);
+// Initialize the engine with BEM extension
+const engine = new TemplateEngine([new BemExtension()]);
 
-const template = [
+// Define your template with BEM extensions
+const template: TemplateNode[] = [
   {
-    tag: 'div',
+    type: 'element',
+    tagName: 'div',
     extensions: {
       bem: {
-        block: 'card',
-        modifiers: ['featured']
+        block: 'card'
       }
     },
     children: [
       {
-        tag: 'h2',
+        type: 'element',
+        tagName: 'div',
         extensions: {
           bem: {
-            element: 'title'
+            element: 'header'
           }
-        },
-        children: [
-          {
-            type: 'text',
-            content: 'Card Title'
-          }
-        ]
+        }
       }
     ]
   }
 ];
 
-await templateEngine.render(template, {
-  name: 'card',
-  writeOutputFile: true
+// Render the template
+await engine.render(template, {
+  name: 'my-component',
+  outputDir: './dist'
 });
 ```
 
-## API
+## 🔌 Features
 
-### BemExtension
+- Automatic BEM class name generation
+- Support for blocks, elements, and modifiers
+- Nested BEM structures
+- Customizable naming conventions
+
+## 📚 API
+
+### `BemExtension`
 
 ```typescript
-class BemExtension implements Extension<BemOptions, BemNodeExtensions> {
+class BemExtension {
   constructor(verbose?: boolean);
+  
+  readonly key = 'bem';
+  
+  nodeHandler(node: TemplateNode): TemplateNode;
 }
 ```
 
-### Types
+### BEM Node Extension
 
-- `BemOptions`: Configuration options for BEM naming
-- `BemNodeExtensions`: BEM-specific node properties
+```typescript
+interface BemNodeExtension {
+  block?: string;
+  element?: string;
+  modifiers?: string[];
+}
+```
 
-## Development
+## 🔧 Development
 
 ```bash
+# Install dependencies
+pnpm install
+
 # Build the package
 pnpm build
 
@@ -83,4 +94,8 @@ pnpm test
 
 # Type check
 pnpm type-check
-``` 
+```
+
+## 📝 License
+
+MIT 

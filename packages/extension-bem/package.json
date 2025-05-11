@@ -1,29 +1,23 @@
 {
   "name": "@js-template-engine/extension-bem",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BEM extension for js-template-engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "build:watch": "tsc -w",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@js-template-engine/core": "workspace:*"
+    "@js-template-engine/core": "workspace:*",
+    "@js-template-engine/types": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.15.16",
-    "@types/jest": "^29.5.12",
-    "eslint": "^8.0.1",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.8.3",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.2"
+    "typescript": "^5.0.0",
+    "rimraf": "^5.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0"
   }
 } 

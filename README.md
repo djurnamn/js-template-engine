@@ -354,3 +354,111 @@ pnpm --filter @js-template-engine/examples start:styles
 - `pnpm test`: Run tests for all packages.
 - `pnpm lint`: Lint all packages.
 - `pnpm type-check`: Type-check all packages.
+
+## 🔌 Using Extensions
+
+JS Template Engine supports a powerful, modular extension system. You can dynamically load only the extensions you need by defining them in a simple config file.
+
+### 📁 Step 1: Create a `template.config.ts` File
+
+At the root of your project (or where you run the CLI), create a file:
+
+```ts
+// template.config.ts
+export default {
+  extensions: [
+    '@js-template-engine/extension-bem',
+    '@js-template-engine/extension-react'
+  ]
+};
+```
+
+Each entry should be the name of a package that exports an extension class as its default export.
+
+### 🚀 Step 2: Run the CLI
+
+From your project root or the `examples` folder:
+
+```bash
+pnpm cli render path/to/template.json
+```
+
+The CLI will:
+
+1. Read your `template.config.ts`
+2. Dynamically load each listed extension
+3. Inject them into the engine before rendering
+
+### 🧩 Writing Your Own Extensions
+
+You can create a custom extension by following this pattern:
+
+```ts
+import { Extension, TemplateNode } from '@js-template-engine/types';
+
+export default class MyCustomExtension implements Extension {
+  key = 'custom';
+
+  nodeHandler(node: TemplateNode) {
+    if (node.tag === 'button') {
+      node.attributes = node.attributes || {};
+      node.attributes['data-custom'] = 'true';
+    }
+    return node;
+  }
+}
+```
+
+Then either:
+
+* **Publish it** as an npm package: `@your-scope/js-template-engine-extension-myfeature`
+* Or use a relative path in your config:
+
+```ts
+export default {
+  extensions: [
+    './my-local-extension.ts'
+  ]
+};
+```
+
+> ✅ All extensions must export a default class implementing the `Extension` interface.
+
+### ⚠️ Troubleshooting
+
+* **Extension not found?** Make sure it's installed and listed in your dependencies.
+* **No default export?** Your extension must export a class by default.
+* **No `nodeHandler` method?** The CLI will skip any extension that doesn't handle nodes.
+
+## 📦 Packages
+
+This is a monorepo containing the following packages:
+
+- `@js-template-engine/core` - Core template engine functionality
+- `@js-template-engine/extension-bem` - BEM class name generation
+- `@js-template-engine/extension-react` - React component generation
+- `@js-template-engine/examples` - Example usage and templates
+- `@js-template-engine/cli` - Command-line interface
+- `@js-template-engine/types` - Shared TypeScript types
+
+## 🚀 Getting Started
+
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+2. Build all packages:
+   ```bash
+   pnpm build
+   ```
+
+3. Run examples:
+   ```bash
+   cd packages/examples
+   pnpm start
+   ```
+
+## 📝 License
+
+MIT

@@ -1,59 +1,67 @@
 # @js-template-engine/cli
 
-A command-line interface for the JS Template Engine that provides a convenient way to render templates from JSON files or directories.
+Command-line interface for JS Template Engine, providing a convenient way to render templates from JSON files.
 
-## Features
-
-- Process single JSON files or entire directories
-- Support for multiple extensions (React, BEM)
-- Configurable output options
-- Verbose logging for debugging
-- File extension customization
-
-## Installation
+## 📦 Installation
 
 ```bash
-pnpm add -g @js-template-engine/cli
+pnpm add @js-template-engine/cli
 ```
 
-## Usage
-
-### Basic Usage
+## 🚀 Usage
 
 ```bash
-js-template-engine render <sourcePath> [options]
+# Basic usage
+pnpm cli render path/to/template.json
+
+# With options
+pnpm cli render path/to/template.json --outputDir ./dist --name MyComponent --fileExtension .tsx
 ```
 
-### Options
+### Command Options
 
-- `--outputDir`, `-o`: Specify the output directory for rendered templates
-- `--extensions`, `-e`: Choose extensions to use (e.g., react, bem)
-- `--name`, `-n`: Set a base name for output files
-- `--componentName`, `-c`: Define a component name for framework-specific templates
+- `--config`: Path to template config file (default: './template.config')
+- `--outputDir`, `-o`: Output directory for rendered templates
+- `--name`, `-n`: Base name for output files
+- `--fileExtension`: Output file extension ('.html', '.jsx', '.tsx', '.css')
 - `--verbose`, `-v`: Enable verbose logging
-- `--extension`: Choose the extension type ('react', 'bem', or 'none')
-- `--fileExtension`: Specify the output file extension ('.html', '.jsx', '.tsx', or '.css')
 
-### Examples
+## 🔌 Extension Configuration
 
-Render a single template with React extension:
-```bash
-js-template-engine render template.json --extension react --fileExtension .tsx
+Create a `template.config.ts` file in your project:
+
+```typescript
+export default {
+  extensions: [
+    '@js-template-engine/extension-bem',
+    '@js-template-engine/extension-react'
+  ]
+};
 ```
 
-Process a directory with BEM extension:
-```bash
-js-template-engine render templates/ --extension bem --outputDir dist/
+See the [extension documentation](../../README.md#-using-extensions) for more details.
+
+## 📚 API
+
+### CLI Command
+
+```typescript
+interface CliOptions {
+  sourcePath: string;
+  config?: string;
+  outputDir?: string;
+  name?: string;
+  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  verbose?: boolean;
+}
 ```
 
-Use multiple extensions:
-```bash
-js-template-engine render template.json --extensions react,bem --fileExtension .tsx
-```
-
-## Development
+## 🔧 Development
 
 ```bash
+# Install dependencies
+pnpm install
+
 # Build the package
 pnpm build
 
@@ -62,4 +70,8 @@ pnpm test
 
 # Type check
 pnpm type-check
-``` 
+```
+
+## 📝 License
+
+MIT 

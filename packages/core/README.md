@@ -1,31 +1,27 @@
 # @js-template-engine/core
 
-The core package provides the fundamental functionality for the JS Template Engine. It includes the base template engine, type definitions, and essential utilities for template processing.
+The core functionality of JS Template Engine, providing the base template engine and extension system.
 
-## Features
-
-- Template rendering engine
-- Type definitions for templates and extensions
-- Style processing utilities
-- Logging and debugging tools
-- Extension system for custom template processing
-
-## Installation
+## 📦 Installation
 
 ```bash
 pnpm add @js-template-engine/core
 ```
 
-## Usage
+## 🚀 Usage
 
 ```typescript
 import { TemplateEngine } from '@js-template-engine/core';
+import { TemplateNode } from '@js-template-engine/types';
 
-const templateEngine = new TemplateEngine();
+// Initialize the engine
+const engine = new TemplateEngine();
 
-const template = [
+// Define your template
+const template: TemplateNode[] = [
   {
-    tag: 'div',
+    type: 'element',
+    tagName: 'div',
     attributes: {
       class: 'container'
     },
@@ -38,35 +34,57 @@ const template = [
   }
 ];
 
-await templateEngine.render(template, {
-  name: 'example',
-  writeOutputFile: true
+// Render the template
+await engine.render(template, {
+  name: 'my-template',
+  outputDir: './dist'
 });
 ```
 
-## API
+## 🔌 Extensions
 
-### TemplateEngine
+The core engine supports extensions that can modify templates during rendering. Extensions can:
 
-The main class for template processing.
+- Transform nodes
+- Generate styles
+- Add custom attributes
+- Modify the output format
+
+See the [extension documentation](../../README.md#-using-extensions) for more details.
+
+## 📚 API
+
+### `TemplateEngine`
+
+The main class for rendering templates.
 
 ```typescript
 class TemplateEngine {
-  constructor(extensions?: Extension[]);
+  constructor(extensions?: Extension[], verbose?: boolean);
   
-  render(template: TemplateNode[], options: RenderOptions): Promise<void>;
+  async render(template: TemplateNode[], options: RenderOptions): Promise<void>;
 }
 ```
 
-### Types
+### `RenderOptions`
 
-- `TemplateNode`: Base type for template nodes
-- `RenderOptions`: Options for template rendering
-- `Extension`: Interface for custom extensions
+Options for template rendering:
 
-## Development
+```typescript
+interface RenderOptions {
+  name?: string;
+  outputDir?: string;
+  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  verbose?: boolean;
+}
+```
+
+## 🔧 Development
 
 ```bash
+# Install dependencies
+pnpm install
+
 # Build the package
 pnpm build
 
@@ -75,4 +93,8 @@ pnpm test
 
 # Type check
 pnpm type-check
-``` 
+```
+
+## 📝 License
+
+MIT 

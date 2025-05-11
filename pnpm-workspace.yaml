@@ -1,6 +1,2 @@
 packages:
-  - packages/core
-  - packages/extension-bem
-  - packages/extension-react
-  - packages/cli
-  - packages/examples 
+  - 'packages/*' 

@@ -14,7 +14,7 @@ import { createLogger } from '@js-template-engine/core';
 import { TemplateExtension } from '@js-template-engine/core';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { ReactExtension } from '@js-template-engine/extension-react';
-import { CliCommandOptions, CliCommand } from './types/cli';
+import { CliOptions, CliCommand } from './types/cli';
 
 function loadExtensions(): Record<string, new (verbose?: boolean) => TemplateExtension> {
   return {
@@ -92,7 +92,7 @@ const renderCommand: CliCommand = {
         default: '.html',
       }) as any; // Type assertion needed due to yargs type limitations
   },
-  handler: async (argv: CliCommandOptions) => {
+  handler: async (argv: CliOptions) => {
     const { verbose } = argv;
     const logger = createLogger(verbose, 'cli');
     logger.info('Starting template rendering process...');
@@ -108,7 +108,7 @@ const renderCommand: CliCommand = {
       (extension: string) => new availableExtensions[extension](verbose)
     );
 
-    const { name, componentName } = argv;
+    const { name } = argv;
     const sourcePath = path.join(process.cwd(), argv.sourcePath);
     const outputDir = argv.outputDir ?? '';
     const sourcePathType = await getSourcePathType(sourcePath);
@@ -129,7 +129,7 @@ const renderCommand: CliCommand = {
         extensions,
         templateEngine,
         name,
-        componentName,
+        undefined, // TODO: componentName is kind of React specific, probably shouldn't be an argument to processFile
         verbose
       );
     }

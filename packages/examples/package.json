@@ -1,6 +1,7 @@
 {
   "name": "@js-template-engine/examples",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Example usage of js-template-engine",
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,15 +11,17 @@
     "start:bem": "ts-node src/bem.ts",
     "start:react": "ts-node src/react.ts",
     "start:slots": "ts-node src/slots.ts",
-    "start:styles": "ts-node src/styles.ts"
+    "start:styles": "ts-node src/styles.ts",
+    "render": "ts-node ../cli/src/index.ts"
   },
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
+    "@js-template-engine/types": "workspace:*",
     "@js-template-engine/extension-bem": "workspace:*",
-    "@js-template-engine/extension-react": "workspace:*"
+    "@js-template-engine/extension-react": "workspace:*",
+    "ts-node": "^10.0.0"
   },
   "devDependencies": {
-    "ts-node": "^10.9.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.0.0"
   }
 } 

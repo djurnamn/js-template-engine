@@ -2,40 +2,15 @@ import { CommandModule } from 'yargs';
 
 export interface CliOptions {
   sourcePath: string;
+  config?: string;
   outputDir?: string;
-  verbose?: boolean;
-  extension?: 'react' | 'bem' | 'none';
-  componentName?: string;
-  fileExtension?: string;
-  extensions?: string[];
   name?: string;
+  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  verbose?: boolean;
+  extensions?: string[];
+  _: string[];
+  $0: string;
 }
 
-export interface ReactCliOptions extends CliOptions {
-  extension: 'react';
-  componentName: string;
-  fileExtension: '.jsx' | '.tsx';
-  importStatements?: string[];
-  exportType?: 'default' | 'named';
-  propsInterface?: string;
-  props?: string;
-}
+export type CliCommand = CommandModule<{}, CliOptions>;
 
-export interface BemCliOptions extends CliOptions {
-  extension: 'bem';
-  fileExtension: '.html' | '.css';
-  prefix?: string;
-  separator?: {
-    element?: string;
-    modifier?: string;
-  };
-}
-
-export interface BaseCliOptions extends CliOptions {
-  extension: 'none';
-  fileExtension: '.html';
-}
-
-export type CliCommandOptions = ReactCliOptions | BemCliOptions | BaseCliOptions;
-
-export type CliCommand = CommandModule<{}, CliCommandOptions>; 
