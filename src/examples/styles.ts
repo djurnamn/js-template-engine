@@ -1,5 +1,5 @@
-import { TemplateEngine } from '../src/engine/TemplateEngine';
-import { TemplateNode } from '../src/types';
+import { TemplateEngine } from '../engine/TemplateEngine';
+import { TemplateNode } from '../types';
 
 // Create a template with nested styles
 const template: TemplateNode[] = [

@@ -1,6 +1,6 @@
-import { TemplateEngine } from '../src/engine/TemplateEngine';
-import { ExtendedTemplateNode } from '../src/types/extensions';
-import { TemplateOptions } from '../src/types';
+import { TemplateEngine } from '../engine/TemplateEngine';
+import { ExtendedTemplateNode } from '../types/extensions';
+import { TemplateOptions } from '../types';
 
 const verbose = true;
 

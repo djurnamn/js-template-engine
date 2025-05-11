@@ -1,7 +1,7 @@
-import { TemplateEngine } from '../src/engine/TemplateEngine';
-import { TemplateNode } from '../src/types';
-import { BemExtension } from '../src/extensions/bem';
-import { BemExtension as BemTypes } from '../src/types/extensions';
+import { TemplateEngine } from '../engine/TemplateEngine';
+import { TemplateNode } from '../types';
+import { BemExtension } from '../extensions/bem';
+import { BemExtension as BemTypes } from '../types/extensions';
 
 // Create a template with BEM structure and styles
 const template: TemplateNode[] = [

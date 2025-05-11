@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processDirectory = exports.processFile = exports.ReactExtension = exports.BemExtension = exports.TemplateEngine = void 0;
+const TemplateEngine_1 = require("./engine/TemplateEngine");
+Object.defineProperty(exports, "TemplateEngine", { enumerable: true, get: function () { return TemplateEngine_1.TemplateEngine; } });
+const bem_1 = require("./extensions/bem");
+Object.defineProperty(exports, "BemExtension", { enumerable: true, get: function () { return bem_1.BemExtension; } });
+const react_1 = require("./extensions/react");
+Object.defineProperty(exports, "ReactExtension", { enumerable: true, get: function () { return react_1.ReactExtension; } });
+const FileHandler_1 = require("./handlers/FileHandler");
+Object.defineProperty(exports, "processFile", { enumerable: true, get: function () { return FileHandler_1.processFile; } });
+Object.defineProperty(exports, "processDirectory", { enumerable: true, get: function () { return FileHandler_1.processDirectory; } });

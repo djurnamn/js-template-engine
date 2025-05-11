@@ -1,9 +1,6 @@
 import { CommandModule } from 'yargs';
-import { TemplateOptions } from './index';
-import { ReactExtensionOptions } from './extensions';
-import { BemExtensionOptions } from './extensions';
 
-export interface CliOptions extends Omit<TemplateOptions, 'extensions'> {
+export interface CliOptions {
   sourcePath: string;
   outputDir?: string;
   verbose?: boolean;
@@ -14,15 +11,24 @@ export interface CliOptions extends Omit<TemplateOptions, 'extensions'> {
   name?: string;
 }
 
-export interface ReactCliOptions extends CliOptions, ReactExtensionOptions {
+export interface ReactCliOptions extends CliOptions {
   extension: 'react';
   componentName: string;
   fileExtension: '.jsx' | '.tsx';
+  importStatements?: string[];
+  exportType?: 'default' | 'named';
+  propsInterface?: string;
+  props?: string;
 }
 
-export interface BemCliOptions extends CliOptions, BemExtensionOptions {
+export interface BemCliOptions extends CliOptions {
   extension: 'bem';
   fileExtension: '.html' | '.css';
+  prefix?: string;
+  separator?: {
+    element?: string;
+    modifier?: string;
+  };
 }
 
 export interface BaseCliOptions extends CliOptions {

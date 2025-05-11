@@ -1,7 +1,7 @@
-import { TemplateEngine } from '../src/engine/TemplateEngine';
-import { BemExtension } from '../src/extensions/bem';
-import { ExtendedTemplateNode, BemExtension as BemTypes } from '../src/types/extensions';
-import { TemplateOptions } from '../src/types';
+import { TemplateEngine } from '../engine/TemplateEngine';
+import { BemExtension } from '../extensions/bem';
+import { ExtendedTemplateNode, BemExtension as BemTypes } from '../types/extensions';
+import { TemplateOptions } from '../types';
 
 const verbose = true;
 

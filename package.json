@@ -1,7 +1,7 @@
 {
   "name": "js-template-engine",
   "version": "1.0.1",
-  "description": "A dynamic templating engine that translates JavaScript or JSON data into structured templates across multiple languages.",
+  "description": "A dynamic templating engine that translates Typescript/JavaScript or JSON data into structured templates across multiple languages.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -12,9 +12,17 @@
     "build:watch": "tsc -w",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "example:react": "npm run build && node dist/examples/react.js",
-    "example:bem": "npm run build && node dist/examples/bem.js",
-    "example:slots": "npm run build && node dist/examples/slots.js"
+    "dev": "ts-node",
+    "start": "node dist/bin/cli.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "example:react": "ts-node src/examples/react.ts",
+    "example:bem": "ts-node src/examples/bem.ts",
+    "example:slots": "ts-node src/examples/slots.ts",
+    "prepublishOnly": "npm run build && npm run test"
   },
   "repository": {
     "type": "git",
@@ -28,7 +36,8 @@
     "engine",
     "json",
     "react",
-    "bem"
+    "bem",
+    "typescript"
   ],
   "author": "Björn Djurnamn <bjorn@djurnamn.co>",
   "license": "MIT",
@@ -45,9 +54,15 @@
     "@types/node": "^22.15.16",
     "@types/signale": "^1.4.7",
     "@types/yargs": "^17.0.33",
+    "@types/jest": "^29.5.12",
     "eslint": "^8.0.1",
     "rimraf": "^5.0.5",
     "typescript": "^5.8.3",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

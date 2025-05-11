@@ -1,7 +1,7 @@
-import { TemplateEngine } from '../src/engine/TemplateEngine';
-import { ReactExtension } from '../src/extensions/react';
-import { ExtendedTemplateNode, ReactExtension as ReactTypes } from '../src/types/extensions';
-import { TemplateOptions } from '../src/types';
+import { TemplateEngine } from '../engine/TemplateEngine';
+import { ReactExtension } from '../extensions/react';
+import { ExtendedTemplateNode, ReactExtension as ReactTypes } from '../types/extensions';
+import { TemplateOptions } from '../types';
 
 const verbose = true;
 
