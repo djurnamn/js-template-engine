@@ -1,4 +1,5 @@
 import { TemplateNode, TemplateOptions } from './index';
+import { StyleDefinition } from './styles';
 
 // Utility types
 export type DeepPartial<T> = {
@@ -87,4 +88,13 @@ export function isExtensionOptions<T extends BaseExtensionOptions>(value: unknow
 // Type guard for node extensions
 export function hasNodeExtensions<T extends Record<string, any>>(node: TemplateNode, key: ExtensionKey): node is TemplateNode & { extensions: { [K in typeof key]: T } } {
   return node.extensions !== undefined && key in node.extensions;
+}
+
+export interface StyleProcessorPlugin {
+  onProcessNode?: (node: TemplateNode, selector: string) => string | void;
+  generateStyles?: (
+    styles: Map<string, StyleDefinition>,
+    options: TemplateOptions,
+    originalTemplateTree?: TemplateNode[]
+  ) => string | null;
 } 

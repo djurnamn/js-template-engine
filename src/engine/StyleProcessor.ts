@@ -1,13 +1,16 @@
 import { StyleDefinition } from '../types/styles';
 import { TemplateNode, TemplateOptions } from '../types';
+import { StyleProcessorPlugin } from '../types/extensions';
 import createLogger from '../helpers/createLogger';
 
 export class StyleProcessor {
   private logger: ReturnType<typeof createLogger>;
   private processedStyles: Map<string, StyleDefinition> = new Map();
+  private plugins: StyleProcessorPlugin[] = [];
 
-  constructor(verbose = false) {
+  constructor(verbose = false, plugins: StyleProcessorPlugin[] = []) {
     this.logger = createLogger(verbose, 'StyleProcessor');
+    this.plugins = plugins;
   }
 
   processNode(node: TemplateNode): void {
@@ -15,14 +18,53 @@ export class StyleProcessor {
       return;
     }
 
-    const selector = this.getSelector(node);
+    let selector = this.getSelector(node);
     if (!selector) {
       this.logger.warn('Node has styles but no selector found');
       return;
     }
 
-    this.processedStyles.set(selector, node.attributes.styles as StyleDefinition);
+    // Allow plugins to transform the selector
+    this.plugins.forEach(plugin => {
+      if (selector) {  // Type guard to ensure selector is string
+        const newSelector = plugin.onProcessNode?.(node, selector);
+        if (typeof newSelector === 'string') {
+          this.logger.info(`Selector transformed by plugin: ${selector} -> ${newSelector}`);
+          selector = newSelector;
+        }
+      }
+    });
+
+    // Merge with existing styles if any
+    const existing = this.processedStyles.get(selector) || {};
+    const newStyles = node.attributes.styles as StyleDefinition;
+    
+    // Deep merge styles, handling media queries and pseudo-selectors
+    const mergedStyles = this.mergeStyleDefinitions(existing, newStyles);
+    
+    this.processedStyles.set(selector, mergedStyles);
     this.logger.info(`Processed styles for selector: ${selector}`);
+  }
+
+  private mergeStyleDefinitions(existing: StyleDefinition, newStyles: StyleDefinition): StyleDefinition {
+    const merged: StyleDefinition = { ...existing };
+
+    Object.entries(newStyles).forEach(([key, value]) => {
+      if (key.startsWith('@media')) {
+        // Merge media query styles
+        const existingMedia = existing[key] as Record<string, string | number> || {};
+        merged[key] = { ...existingMedia, ...value as Record<string, string | number> };
+      } else if (key.startsWith(':')) {
+        // Merge pseudo-selector styles
+        const existingPseudo = existing[key] as Record<string, string | number> || {};
+        merged[key] = { ...existingPseudo, ...value as Record<string, string | number> };
+      } else {
+        // Merge base styles
+        merged[key] = value;
+      }
+    });
+
+    return merged;
   }
 
   hasStyles(): boolean {
@@ -31,7 +73,12 @@ export class StyleProcessor {
 
   private getSelector(node: TemplateNode): string | null {
     if (node.attributes?.class) {
-      return `.${node.attributes.class}`;
+      // Use the first class name as the primary selector
+      const classValue = node.attributes.class;
+      if (typeof classValue === 'string') {
+        const classes = classValue.split(/\s+/);
+        return `.${classes[0]}`;
+      }
     }
     if (node.tag) {
       return node.tag;
@@ -39,11 +86,21 @@ export class StyleProcessor {
     return null;
   }
 
-  generateOutput(options: TemplateOptions): string {
+  generateOutput(options: TemplateOptions, originalTemplateTree?: TemplateNode[]): string {
     if (!options.styles) {
       return '';
     }
 
+    for (const plugin of this.plugins) {
+      this.logger.info('Checking plugin for style generation...');
+      const pluginOutput = plugin.generateStyles?.(this.processedStyles, options, originalTemplateTree);
+      if (pluginOutput) {
+        this.logger.info('Using style output from plugin');
+        return pluginOutput;
+      }
+    }
+
+    this.logger.info('No plugin generated output, using default formatter');
     switch (options.styles.outputFormat) {
       case 'inline':
         return this.generateInlineStyles();
@@ -65,12 +122,12 @@ export class StyleProcessor {
         if (key.startsWith('@media')) {
           const query = key.replace('@media', '').trim();
           const mediaStyles = Object.entries(value as Record<string, string | number>)
-            .map(([k, v]) => `    ${this.camelToKebab(k)}: ${v};`)
+            .map(([k, v]) => `${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           styleTagRules.push(`@media (${query}) {\n  ${selector} {\n${mediaStyles}\n  }\n}`);
         } else if (key.startsWith(':')) {
           const pseudoStyles = Object.entries(value as Record<string, string | number>)
-            .map(([k, v]) => `    ${this.camelToKebab(k)}: ${v};`)
+            .map(([k, v]) => `${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           styleTagRules.push(`${selector}${key} {\n${pseudoStyles}\n}`);
         }
@@ -140,12 +197,12 @@ export class StyleProcessor {
       // Process all style rules
       Object.entries(styleDef).forEach(([key, value]) => {
         if (key.startsWith('@media')) {
-          // Handle media queries
+          // Handle media queries with proper nesting
           const query = key.replace('@media', '').trim();
           const mediaStyles = Object.entries(value as Record<string, string | number>)
-            .map(([k, v]) => `    ${this.camelToKebab(k)}: ${v};`)
+            .map(([k, v]) => `      ${this.camelToKebab(k)}: ${v};`)
             .join('\n');
-          rules.push(`  @media (${query}) {\n${mediaStyles}\n  }`);
+          rules.push(`  @media (${query}) {\n    & {\n${mediaStyles}\n    }\n  }`);
         } else if (key.startsWith(':')) {
           // Handle pseudo selectors
           const pseudoStyles = Object.entries(value as Record<string, string | number>)

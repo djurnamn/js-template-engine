@@ -4,6 +4,7 @@ import { writeOutputFile } from '../handlers/FileHandler';
 import createLogger from '../helpers/createLogger';
 import { TemplateNode, TemplateOptions, TemplateExtension, Logger } from '../types';
 import { StyleProcessor } from './StyleProcessor';
+import { StyleProcessorPlugin } from '../types/extensions';
 
 const selfClosingTags = [
   'area',
@@ -26,9 +27,19 @@ const selfClosingTags = [
 
 export class TemplateEngine {
   private styleProcessor: StyleProcessor;
+  private extensions: TemplateExtension[];
 
-  constructor() {
-    this.styleProcessor = new StyleProcessor();
+  constructor(extensions: TemplateExtension[] = []) {
+    this.extensions = extensions;
+
+    const stylePlugins = extensions
+      .map(ext => 'stylePlugin' in ext ? (ext as any).stylePlugin : null)
+      .filter(Boolean) as StyleProcessorPlugin[];
+
+    this.styleProcessor = new StyleProcessor(
+      extensions.some(e => (e as any).verbose), // verbosity flag
+      stylePlugins
+    );
   }
 
   private mergeOptions(options: TemplateOptions): TemplateOptions {
@@ -46,27 +57,38 @@ export class TemplateEngine {
       }
     };
 
+    // Merge constructor extensions with options extensions
+    const mergedExtensions = [...this.extensions];
     if (options.extensions) {
-      options.extensions.forEach((extension: TemplateExtension) => {
-        if (extension.optionsHandler) {
-          defaultOptions = extension.optionsHandler(defaultOptions as TemplateOptions, options);
+      // Add any new extensions from options that aren't already in constructor extensions
+      options.extensions.forEach(ext => {
+        if (!mergedExtensions.some(e => e.key === ext.key)) {
+          mergedExtensions.push(ext);
         }
       });
     }
 
-    return { ...defaultOptions, ...options } as TemplateOptions;
+    // Apply extension options handlers
+    mergedExtensions.forEach((extension: TemplateExtension) => {
+      if (extension.optionsHandler) {
+        defaultOptions = extension.optionsHandler(defaultOptions as TemplateOptions, options);
+      }
+    });
+
+    return { 
+      ...defaultOptions, 
+      ...options,
+      extensions: mergedExtensions // Use merged extensions
+    } as TemplateOptions;
   }
 
   private applyExtensionOverrides(node: TemplateNode, currentExtensionKey: string): TemplateNode {
     if (node.extensions && node.extensions[currentExtensionKey]) {
       const extensionOverrides = node.extensions[currentExtensionKey];
 
-      Object.keys(extensionOverrides).forEach((key) => {
-        if (key === 'ignore') {
-          // special handling for 'ignore' or other meta properties if necessary
-        } else if (key in node) {
-          // Only override if the property exists on the node
-          (node as Record<string, unknown>)[key] = extensionOverrides[key];
+      Object.entries(extensionOverrides).forEach(([key, value]) => {
+        if (key !== 'ignore') {
+          (node as any)[key] = value;
         }
       });
     }
@@ -83,6 +105,35 @@ export class TemplateEngine {
 
   private isAttributeValue(value: unknown): value is string | number | boolean {
     return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+  }
+
+  private renderAttributes(
+    node: TemplateNode,
+    formatter: (attribute: string, value: string | number | boolean, isExpression: boolean) => string,
+    options: TemplateOptions
+  ): string {
+    let attributes = '';
+
+    if (node.attributes) {
+      for (const [attribute, value] of Object.entries(node.attributes)) {
+        if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
+          const inlineStyles = this.styleProcessor.getInlineStyles(node);
+          if (inlineStyles) {
+            attributes += formatter('style', inlineStyles, false);
+          }
+        } else if (this.isAttributeValue(value)) {
+          attributes += formatter(attribute, value, false);
+        }
+      }
+    }
+
+    if (node.expressionAttributes) {
+      for (const [attribute, value] of Object.entries(node.expressionAttributes)) {
+        attributes += formatter(attribute, value, true);
+      }
+    }
+
+    return attributes;
   }
 
   async render(
@@ -145,60 +196,9 @@ export class TemplateEngine {
           !node.children;
 
         if (isSelfClosing) {
-          template += `<${node.tag}`;
-
-          if (node.attributes || node.expressionAttributes) {
-            logger.info(`Processing attributes for node: ${node.tag}`);
-          }
-
-          if (node.attributes) {
-            for (const attribute in node.attributes) {
-              const value = node.attributes[attribute];
-              if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
-                const inlineStyles = this.styleProcessor.getInlineStyles(node);
-                if (inlineStyles) {
-                  template += attributeFormatter('style', inlineStyles, false);
-                }
-              } else if (this.isAttributeValue(value)) {
-                template += attributeFormatter(attribute, value, false);
-              }
-            }
-          }
-          if (node.expressionAttributes) {
-            for (const attribute in node.expressionAttributes) {
-              template += attributeFormatter(
-                attribute,
-                node.expressionAttributes[attribute],
-                true
-              );
-            }
-          }
-          template += ' />';
+          template += `<${node.tag}${this.renderAttributes(node, attributeFormatter, options)} />`;
         } else {
-          template += `<${node.tag}`;
-          if (node.attributes) {
-            for (const attribute in node.attributes) {
-              const value = node.attributes[attribute];
-              if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
-                const inlineStyles = this.styleProcessor.getInlineStyles(node);
-                if (inlineStyles) {
-                  template += attributeFormatter('style', inlineStyles, false);
-                }
-              } else if (this.isAttributeValue(value)) {
-                template += attributeFormatter(attribute, value, false);
-              }
-            }
-          }
-          if (node.expressionAttributes) {
-            for (const attribute in node.expressionAttributes) {
-              template += attributeFormatter(
-                attribute,
-                node.expressionAttributes[attribute],
-                true
-              );
-            }
-          }
-          template += '>';
+          template += `<${node.tag}${this.renderAttributes(node, attributeFormatter, options)}>`;
 
           if (node.children) {
             logger.info(`Rendering children for node: ${node.tag}`);
@@ -237,7 +237,7 @@ export class TemplateEngine {
 
       // Generate style output if there are any styles
       const hasStyles = this.styleProcessor.hasStyles();
-      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options) : '';
+      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options, nodes) : '';
       
       // Apply root handlers from extensions
       if (options.extensions) {

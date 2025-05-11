@@ -5,8 +5,8 @@ import { TemplateOptions } from '../types';
 
 const verbose = true;
 
-const templateEngine = new TemplateEngine();
 const bemExtension = new BemExtension(verbose);
+const templateEngine = new TemplateEngine([bemExtension]);
 
 const breadcrumbsTemplate: ExtendedTemplateNode[] = [
   {
@@ -16,6 +16,16 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
         block: 'breadcrumbs',
       },
     },
+    attributes: {
+      styles: {
+        padding: '1rem',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '4px',
+        '@media (max-width: 768px)': {
+          padding: '0.5rem'
+        }
+      }
+    },
     children: [
       {
         tag: 'ul',
@@ -24,6 +34,15 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
             element: 'list',
           },
         },
+        attributes: {
+          styles: {
+            margin: 0,
+            padding: 0,
+            listStyle: 'none',
+            display: 'flex',
+            gap: '1rem'
+          }
+        },
         children: [
           {
             tag: 'li',
@@ -31,6 +50,16 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
               bem: {
                 element: 'item',
               },
+            },
+            attributes: {
+              styles: {
+                position: 'relative',
+                '&:not(:last-child)::after': {
+                  content: '"/"',
+                  marginLeft: '1rem',
+                  color: '#666'
+                }
+              }
             },
             children: [
               {
@@ -42,6 +71,13 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
                 },
                 attributes: {
                   href: '/',
+                  styles: {
+                    color: '#333',
+                    textDecoration: 'none',
+                    '&:hover': {
+                      color: '#666'
+                    }
+                  }
                 },
                 children: [
                   {
@@ -60,6 +96,11 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
                 modifier: 'current',
               },
             },
+            attributes: {
+              styles: {
+                fontWeight: 'bold'
+              }
+            },
             children: [
               {
                 tag: 'span',
@@ -67,6 +108,11 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
                   bem: {
                     element: 'text',
                   },
+                },
+                attributes: {
+                  styles: {
+                    color: '#000'
+                  }
                 },
                 children: [
                   {
@@ -87,8 +133,10 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
 (async () => {
   await templateEngine.render(breadcrumbsTemplate, {
     name: 'breadcrumbs',
-    extensions: [bemExtension],
     writeOutputFile: true,
     verbose,
+    styles: {
+      outputFormat: 'scss'
+    }
   } as TemplateOptions & BemTypes.Options);
 })(); 
