@@ -18,6 +18,10 @@ export interface Extension<T extends TemplateNode = TemplateNode> {
     onProcessNode?: (node: TemplateNode) => void;
     generateStyles?: (styles: Record<string, any>, options: RenderOptions, template: TemplateNode[]) => Record<string, any> | undefined;
   };
+  onNodeVisit?: (node: T, ancestors?: TemplateNode[]) => void;
+  beforeRender?: (template: TemplateNode[], options: RenderOptions) => void;
+  afterRender?: (template: TemplateNode[], options: RenderOptions) => void;
+  onOutputWrite?: (output: string, options: RenderOptions) => string;
 }
 
 export interface RenderOptions {

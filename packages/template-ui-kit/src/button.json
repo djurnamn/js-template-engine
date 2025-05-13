@@ -1,0 +1,25 @@
+[
+  {
+    "tag": "button",
+    "attributes": {
+      "type": "button"
+    },
+    "children": [
+      {
+        "type": "text",
+        "content": "Click me"
+      }
+    ],
+    "extensions": {
+      "react": {
+        "expressionAttributes": {
+          "onClick": "() => alert('Clicked!')"
+        }
+      },
+      "bem": {
+        "block": "button",
+        "modifiers": ["primary"]
+      }
+    }
+  }
+] 

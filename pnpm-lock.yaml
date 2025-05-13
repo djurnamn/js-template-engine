@@ -155,6 +155,31 @@ importers:
         specifier: ^5.0.0
         version: 5.8.3
 
+  packages/template-ui-kit:
+    dependencies:
+      '@js-template-engine/core':
+        specifier: workspace:*
+        version: link:../core
+      '@js-template-engine/extension-bem':
+        specifier: workspace:*
+        version: link:../extension-bem
+      '@js-template-engine/extension-react':
+        specifier: workspace:*
+        version: link:../extension-react
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.17.46
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.10
+      ts-node:
+        specifier: ^10.9.1
+        version: 10.9.2(@types/node@20.17.46)(typescript@5.8.3)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+
   packages/types:
     devDependencies:
       rimraf:
@@ -3200,7 +3225,6 @@ snapshots:
       typescript: 5.8.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-    optional: true
 
   ts-node@10.9.2(@types/node@22.15.16)(typescript@5.8.3):
     dependencies:

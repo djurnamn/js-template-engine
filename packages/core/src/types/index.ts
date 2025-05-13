@@ -15,7 +15,7 @@ export interface TemplateNode {
 }
 
 export interface TemplateOptions {
-  attributeFormatter?: (attribute: string, value: string | number | boolean, isExpression: boolean) => string;
+  attributeFormatter?: (attribute: string, value: string | number | boolean, isExpression?: boolean) => string;
   fileExtension?: string;
   filename?: string;
   name?: string;
@@ -37,8 +37,12 @@ export interface TemplateOptions {
 export interface TemplateExtension {
   key: string;
   optionsHandler?: (defaultOptions: TemplateOptions, options: TemplateOptions) => TemplateOptions;
-  nodeHandler: (node: TemplateNode, ancestorNodesContext: TemplateNode[]) => TemplateNode;
+  nodeHandler?: (node: TemplateNode, ancestorNodesContext: TemplateNode[]) => TemplateNode;
   rootHandler?: (template: string, options: TemplateOptions) => string;
+  onNodeVisit?: (node: TemplateNode, ancestors?: TemplateNode[]) => void;
+  beforeRender?: (template: TemplateNode[], options: TemplateOptions) => void;
+  afterRender?: (template: TemplateNode[], options: TemplateOptions) => void;
+  onOutputWrite?: (output: string, options: TemplateOptions) => string;
 }
 
 export interface Logger {

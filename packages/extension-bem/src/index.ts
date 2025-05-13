@@ -130,16 +130,11 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
 
   public readonly stylePlugin: StyleProcessorPlugin = {
     onProcessNode: (node) => {
-      this.logger.info(`BEM style plugin processing node <${node.tag}> with class: ${node.attributes?.class}`);
+      this.logger.info(`Processing styles for <${node.tag}>`);
     },
     generateStyles: (_styles, options, templateTree) => {
-      this.logger.info('BEM plugin generateStyles triggered');
-      if (options.styles?.outputFormat !== 'scss' || !templateTree) {
-        this.logger.info('Skipping BEM plugin - output format is not SCSS or no template tree provided');
-        return null;
-      }
-
-      this.logger.info('Generating BEM SCSS output from template tree');
+      this.logger.info('Generating SCSS from template tree');
+      if (!templateTree) return null;
       return this.generateBemScssFromTree(templateTree);
     }
   };
@@ -176,59 +171,34 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
     };
   }
 
-  public nodeHandler(node: BemNode, ancestorNodesContext: TemplateNode[] = []): TemplateNode {
-    if (node.ignoreBem) {
-      this.logger.info(
-        `Node ignored due to ignoreBem flag: ${JSON.stringify(node)}`
-      );
-      return node;
-    }
+  // ✅ Ensures BEM classes are always applied regardless of extension order
+  public onNodeVisit(node: BemNode, ancestors: TemplateNode[] = []): void {
+    if (node.ignoreBem || !node.tag) return;
 
-    this.logger.info(`Processing node: ${node.tag}`);
+    const bem = node.extensions?.bem;
+    const closestBlockNode = [...ancestors].reverse().find((ancestor) =>
+      (ancestor as BemNode).extensions?.bem?.block || (ancestor as BemNode).block
+    );
 
-    if (node.tag) {
-      const closestAncestorNode = ancestorNodesContext
-        .slice()
-        .reverse()
-        .find((ancestorNode) => (ancestorNode as BemNode).extensions?.bem?.block || (ancestorNode as BemNode).block);
+    const block = bem?.block ?? node.block;
+    const element = bem?.element ?? node.element;
+    const modifiers = [
+      ...(bem?.modifiers ?? []),
+      ...(bem?.modifier ? [bem.modifier] : []),
+      ...(node.modifiers ?? []),
+      ...(node.modifier ? [node.modifier] : []),
+    ];
 
-      const block = node.extensions?.bem?.block ?? node.block;
-      const element = node.extensions?.bem?.element ?? node.element;
-      const modifiers = [
-        ...new Set([
-          ...(node.extensions?.bem?.modifiers ?? node.modifiers ?? []),
-          ...(node.extensions?.bem?.modifier ? [node.extensions?.bem?.modifier] : []),
-        ]),
-      ];
-      const inheritedBlock = (closestAncestorNode as BemNode)?.extensions?.bem?.block ?? (closestAncestorNode as BemNode)?.block;
+    const inheritedBlock = (closestBlockNode as BemNode)?.extensions?.bem?.block ?? (closestBlockNode as BemNode)?.block;
 
-      if (inheritedBlock && !block) {
-        this.logger.info(
-          `Inheriting BEM block from ancestor: ${inheritedBlock}`
-        );
-      }
+    const classNames = this.getBemClasses(block, element, modifiers, inheritedBlock);
 
-      const bemClasses = this.getBemClasses(
-        block,
-        element,
-        modifiers,
-        inheritedBlock
-      );
+    if (!node.attributes) node.attributes = {};
+    node.attributes.class = node.attributes.class
+      ? `${classNames} ${node.attributes.class}`
+      : classNames;
 
-      this.logger.info(
-        `Generated BEM classes: ${bemClasses} for node: ${node.tag}`
-      );
-
-      if (node.attributes) {
-        node.attributes.class = node.attributes.class
-          ? `${bemClasses} ${node.attributes.class}`
-          : bemClasses;
-      } else {
-        node.attributes = { class: bemClasses };
-      }
-    }
-
-    return node;
+    this.logger.info(`Applied BEM class: ${classNames} to <${node.tag}>`);
   }
 
   private getBemClasses(
@@ -237,24 +207,22 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
     modifiers: string[] = [],
     inheritedBlock?: string
   ): string {
-    const bemClasses: string[] = [];
-    const blockToUse = block ?? inheritedBlock ?? 'untitled-block';
-    let root: string;
+    const classes: string[] = [];
+    const blockName = block ?? inheritedBlock ?? 'block';
 
-    if (element) {
-      root = `${blockToUse}__${element}`;
-    } else if (block) {
-      root = blockToUse;
-    } else {
-      root = `${blockToUse}__untitled-element`;
+    const base = element ? `${blockName}__${element}` : blockName;
+    classes.push(base);
+
+    for (const mod of modifiers) {
+      classes.push(`${base}--${mod}`);
     }
 
-    bemClasses.push(root);
+    return classes.join(' ');
+  }
 
-    modifiers.forEach((modifier) => {
-      bemClasses.push(`${root}--${modifier}`);
-    });
-
-    return bemClasses.join(' ');
+  public nodeHandler(node: BemNode, ancestorNodesContext: TemplateNode[] = []): TemplateNode {
+    // Delegate to onNodeVisit for BEM class generation
+    this.onNodeVisit(node, ancestorNodesContext);
+    return node;
   }
 } 

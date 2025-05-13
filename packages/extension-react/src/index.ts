@@ -54,6 +54,28 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
     };
   }
 
+  public onNodeVisit(node: ReactNode): void {
+    // Transform class to className
+    if (node.attributes?.class && !node.attributes.className) {
+      this.logger.info(`Converting 'class' to 'className' for <${node.tag}>`);
+      node.attributes.className = node.attributes.class;
+      delete node.attributes.class;
+    }
+
+    // Handle event attributes
+    if (node.attributes?.onclick) {
+      const reactConfig = node.extensions?.react;
+      // If we have a React onClick expression attribute, remove the native onclick
+      if (reactConfig?.expressionAttributes?.onClick) {
+        delete node.attributes.onclick;
+      } else {
+        // Otherwise convert to React onClick
+        node.attributes.onClick = node.attributes.onclick;
+        delete node.attributes.onclick;
+      }
+    }
+  }
+
   public nodeHandler(node: ReactNode): TemplateNode {
     if (hasNodeExtensions<ReactTypes.NodeExtensions>(node, 'react')) {
       const reactConfig = node.extensions.react;
@@ -61,28 +83,6 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
       this.logger.info(
         `Processing React extension for node: ${node.tag || 'text'}`
       );
-
-      if (node.attributes) {
-        if ('class' in node.attributes) {
-          this.logger.info(
-            `Transforming 'class' to 'className' for React compatibility.`
-          );
-          node.attributes.className = node.attributes.class;
-          delete node.attributes.class;
-        }
-
-        // Handle event attributes
-        if ('onclick' in node.attributes) {
-          // If we have a React onClick expression attribute, remove the native onclick
-          if (reactConfig?.expressionAttributes?.onClick) {
-            delete node.attributes.onclick;
-          } else {
-            // Otherwise convert to React onClick
-            node.attributes.onClick = node.attributes.onclick;
-            delete node.attributes.onclick;
-          }
-        }
-      }
 
       if (reactConfig.attributes) {
         node.attributes = { ...node.attributes, ...reactConfig.attributes };
@@ -131,8 +131,8 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
 
     // Use proper TypeScript syntax for the component declaration
     const componentDeclaration = isTypeScript
-      ? `const ${componentName}: React.FC<${propsType}> = (${props ?? 'props'}) => {`
-      : `function ${componentName}(${props ?? 'props'}) {`;
+      ? `const ${componentName}: React.FC<${propsType}> = (${props}) => {`
+      : `function ${componentName}(${props}) {`;
 
     // Build the final template with proper spacing
     const template = [
@@ -140,13 +140,14 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
       propsInterface,
       [
         componentDeclaration,
-        // TODO: add an option with a good name for hooks, states and other pre-return statement content etc.
         '  return (',
         formattedContent,
         '  );',
         '}',
       ].join('\n'),
-      exportType === 'default' ? `export default ${componentName};` : `export { ${componentName} };`
+      exportType === 'default'
+        ? `export default ${componentName};`
+        : `export { ${componentName} };`
     ].filter(Boolean).join('\n\n');
 
     return template;

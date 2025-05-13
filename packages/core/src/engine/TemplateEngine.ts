@@ -28,18 +28,17 @@ const selfClosingTags = [
 export class TemplateEngine {
   private styleProcessor: StyleProcessor;
   private extensions: TemplateExtension[];
+  private logger: Logger;
 
-  constructor(extensions: TemplateExtension[] = []) {
+  constructor(extensions: TemplateExtension[] = [], verbose = false) {
     this.extensions = extensions;
+    this.logger = createLogger(verbose, 'TemplateEngine');
 
     const stylePlugins = extensions
       .map(ext => 'stylePlugin' in ext ? (ext as any).stylePlugin : null)
       .filter(Boolean) as StyleProcessorPlugin[];
 
-    this.styleProcessor = new StyleProcessor(
-      extensions.some(e => (e as any).verbose), // verbosity flag
-      stylePlugins
-    );
+    this.styleProcessor = new StyleProcessor(verbose, stylePlugins);
   }
 
   private mergeOptions(options: TemplateOptions): TemplateOptions {
@@ -109,7 +108,7 @@ export class TemplateEngine {
 
   private renderAttributes(
     node: TemplateNode,
-    formatter: (attribute: string, value: string | number | boolean, isExpression: boolean) => string,
+    formatter: (attr: string, val: string | number | boolean, isExpression?: boolean) => string,
     options: TemplateOptions
   ): string {
     let attributes = '';
@@ -119,10 +118,10 @@ export class TemplateEngine {
         if (attribute === 'styles' && options.styles?.outputFormat === 'inline') {
           const inlineStyles = this.styleProcessor.getInlineStyles(node);
           if (inlineStyles) {
-            attributes += formatter('style', inlineStyles, false);
+            attributes += formatter('style', inlineStyles);
           }
         } else if (this.isAttributeValue(value)) {
-          attributes += formatter(attribute, value, false);
+          attributes += formatter(attribute, value);
         }
       }
     }
@@ -136,6 +135,24 @@ export class TemplateEngine {
     return attributes;
   }
 
+  private traverseTree(nodes: TemplateNode[], ancestors: TemplateNode[] = []): TemplateNode[] {
+    return nodes.map(node => {
+      // Call onNodeVisit hooks for each extension
+      for (const ext of this.extensions) {
+        if (ext.onNodeVisit) {
+          ext.onNodeVisit(node, ancestors);
+        }
+      }
+
+      const updatedNode = { ...node };
+      if (updatedNode.children) {
+        updatedNode.children = this.traverseTree(updatedNode.children, [...ancestors, updatedNode]);
+      }
+
+      return updatedNode;
+    });
+  }
+
   async render(
     nodes: TemplateNode[],
     options: TemplateOptions = {},
@@ -146,54 +163,37 @@ export class TemplateEngine {
     let template = '';
 
     const { verbose } = options;
-    const logger: Logger = createLogger(verbose, 'render');
-    const attributeFormatter = options.attributeFormatter ?? ((attr, val) => ` ${attr}="${val}"`);
+    const logger = createLogger(verbose, 'render');
+    const attributeFormatter = options.attributeFormatter ?? ((attr: string, val: string | number | boolean, isExpression?: boolean) => ` ${attr}="${val}"`);
 
     if (isRoot) {
       logger.info('Starting template rendering process...');
-    }
-
-    for (let node of nodes) {
-      const currentNodeContext = [...ancestorNodesContext, node];
-
-      let shouldIgnoreNode = false;
-
-      if (options.extensions && node.extensions) {
-        logger.info(`Processing extensions for node: ${node.tag || 'text'}`);
-        for (const extension of options.extensions) {
-          const currentExtensionKey = extension.key;
-
-          if (node.extensions && node.extensions[currentExtensionKey]) {
-            logger.info(`Applying overrides from extension: ${currentExtensionKey}`);
-            node = this.applyExtensionOverrides(node, currentExtensionKey);
-          }
-
-          if (node.extensions && node.extensions[currentExtensionKey]?.ignore) {
-            logger.info(`Node ignored by extension: ${currentExtensionKey}`);
-            shouldIgnoreNode = true;
-            break;
-          }
-
-          if (!shouldIgnoreNode) {
-            logger.info(`Calling nodeHandler from extension: ${currentExtensionKey}`);
-            node = extension.nodeHandler(node, ancestorNodesContext);
-          }
+      
+      // 🔹 1. Call beforeRender hooks
+      for (const ext of options.extensions || []) {
+        if (ext.beforeRender) {
+          ext.beforeRender(nodes, options);
         }
       }
+    }
 
-      if (shouldIgnoreNode) {
-        logger.info(`Node ignored: ${node.tag || 'text'}. Skipping rendering.`);
-        continue;
+    // 🔹 2. Process node handlers
+    let processedNodes = nodes;
+    if (options.extensions) {
+      for (const extension of options.extensions) {
+        processedNodes = this.processNodes(processedNodes, extension);
       }
+    }
 
-      logger.info(`Rendering node: ${node.tag || 'text'}`);
+    // 🔹 3. Apply onNodeVisit hooks
+    processedNodes = this.traverseTree(processedNodes, ancestorNodesContext);
+
+    // Render the processed nodes
+    for (const node of processedNodes) {
+      const currentNodeContext = [...ancestorNodesContext, node];
 
       if (node.tag) {
-        const isSelfClosing =
-          (node.selfClosing ||
-            options.preferSelfClosingTags ||
-            selfClosingTags.includes(node.tag)) &&
-          !node.children;
+        const isSelfClosing = (node.selfClosing || options.preferSelfClosingTags || selfClosingTags.includes(node.tag)) && !node.children;
 
         if (isSelfClosing) {
           template += `<${node.tag}${this.renderAttributes(node, attributeFormatter, options)} />`;
@@ -202,12 +202,7 @@ export class TemplateEngine {
 
           if (node.children) {
             logger.info(`Rendering children for node: ${node.tag}`);
-            template += await this.render(
-              node.children,
-              options,
-              false,
-              currentNodeContext
-            );
+            template += await this.render(node.children, options, false, currentNodeContext);
           }
 
           template += `</${node.tag}>`;
@@ -215,36 +210,31 @@ export class TemplateEngine {
       } else if (node.type === 'text') {
         logger.info(`Adding text content: "${node.content}"`);
         template += node.content;
-      } else if (
-        node.type === 'slot' &&
-        node.name &&
-        options.slots &&
-        options.slots[node.name]
-      ) {
+      } else if (node.type === 'slot' && node.name && options.slots?.[node.name]) {
         logger.info(`Processing slot: ${node.name}`);
-        template += await this.render(
-          options.slots[node.name],
-          options,
-          false,
-          currentNodeContext
-        );
+        template += await this.render(options.slots[node.name], options, false, currentNodeContext);
       }
     }
 
     if (isRoot) {
-      // Process styles for the entire template
-      nodes.forEach(node => this.processStyles(node));
-
-      // Generate style output if there are any styles
+      // 🔹 4. Process styles
+      processedNodes.forEach(node => this.styleProcessor.processNode(node));
       const hasStyles = this.styleProcessor.hasStyles();
-      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options, nodes) : '';
-      
-      // Apply root handlers from extensions
+      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options, processedNodes) : '';
+
+      // 🔹 5. Apply root handlers
       if (options.extensions) {
         for (const extension of options.extensions) {
           if (extension.rootHandler) {
             template = extension.rootHandler(template, options);
           }
+        }
+      }
+
+      // 🔹 6. Call afterRender hooks
+      for (const ext of options.extensions || []) {
+        if (ext.afterRender) {
+          ext.afterRender(processedNodes, options);
         }
       }
 
@@ -264,6 +254,13 @@ export class TemplateEngine {
           template = await prettier.format(template, {
             parser: options.prettierParser,
           });
+        }
+
+        // Call onOutputWrite hooks
+        for (const ext of options.extensions || []) {
+          if (ext.onOutputWrite) {
+            template = ext.onOutputWrite(template, options);
+          }
         }
 
         // Write template
@@ -286,5 +283,15 @@ export class TemplateEngine {
     }
 
     return template;
+  }
+
+  private processNodes(nodes: TemplateNode[], ext: TemplateExtension): TemplateNode[] {
+    return nodes.map(node => {
+      const newNode = ext.nodeHandler ? ext.nodeHandler(node, []) : node;
+      if (newNode.children) {
+        newNode.children = this.processNodes(newNode.children, ext);
+      }
+      return newNode;
+    });
   }
 } 
