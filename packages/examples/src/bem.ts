@@ -1,13 +1,14 @@
-import { TemplateEngine, TemplateOptions } from '@js-template-engine/core';
+import { TemplateEngine } from '@js-template-engine/core';
+import type { RenderOptions, TemplateNode } from '@js-template-engine/types';
 import { BemExtension } from '@js-template-engine/extension-bem';
-import { ExtendedTemplateNode, BemExtension as BemTypes } from '@js-template-engine/core';
+import type { BemExtension as BemTypes } from '@js-template-engine/extension-bem/src/types';
 
 const verbose = true;
 
 const bemExtension = new BemExtension(verbose);
 const templateEngine = new TemplateEngine([bemExtension]);
 
-const breadcrumbsTemplate: ExtendedTemplateNode[] = [
+const breadcrumbsTemplate: TemplateNode[] = [
   {
     tag: 'nav',
     extensions: {
@@ -138,5 +139,5 @@ const breadcrumbsTemplate: ExtendedTemplateNode[] = [
     styles: {
       outputFormat: 'scss'
     }
-  } as TemplateOptions & BemTypes.Options);
+  } as RenderOptions & BemTypes.Options);
 })(); 

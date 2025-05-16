@@ -1,16 +1,11 @@
-import { TemplateEngine, TemplateOptions, ExtendedTemplateNode } from '@js-template-engine/core';
+import { TemplateEngine } from '@js-template-engine/core';
+import type { RenderOptions, TemplateNode } from '@js-template-engine/types';
 
 const verbose = true;
 
 const templateEngine = new TemplateEngine();
 
-type CardSlots = Record<string, ExtendedTemplateNode[]> & {
-  header?: ExtendedTemplateNode[];
-  content: ExtendedTemplateNode[];
-  footer?: ExtendedTemplateNode[];
-};
-
-const cardTemplate: ExtendedTemplateNode[] = [
+const slotsTemplate: TemplateNode[] = [
   {
     tag: 'div',
     attributes: {
@@ -57,49 +52,15 @@ const cardTemplate: ExtendedTemplateNode[] = [
   },
 ];
 
-const slots: CardSlots = {
-  header: [
-    {
-      tag: 'h2',
-      children: [
-        {
-          type: 'text',
-          content: 'Card Title',
-        },
-      ],
-    },
-  ],
-  content: [
-    {
-      tag: 'p',
-      children: [
-        {
-          type: 'text',
-          content: 'This is the main content of the card.',
-        },
-      ],
-    },
-  ],
-  footer: [
-    {
-      tag: 'button',
-      children: [
-        {
-          type: 'text',
-          content: 'Read More',
-        },
-      ],
-    },
-  ],
-};
-
 // Render
 (async () => {
-  await templateEngine.render(cardTemplate, {
-    name: 'card',
-    slots,
+  await templateEngine.render(slotsTemplate, {
+    name: 'slots',
     writeOutputFile: true,
     verbose,
-    outputDir: 'output'
-  } as TemplateOptions);
+    outputDir: 'output',
+    styles: {
+      outputFormat: 'scss'
+    }
+  } as RenderOptions);
 })(); 

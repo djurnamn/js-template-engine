@@ -1,6 +1,5 @@
-import { StyleDefinition } from '../types/styles';
-import { TemplateNode, TemplateOptions } from '../types';
-import { StyleProcessorPlugin } from '../types/extensions';
+import type { TemplateNode, StyleDefinition, RenderOptions, StyleProcessorPlugin } from '@js-template-engine/types';
+import type { TemplateOptions } from '../types';
 import { createLogger } from '../helpers/createLogger';
 
 export class StyleProcessor {
@@ -27,7 +26,7 @@ export class StyleProcessor {
     // Allow plugins to transform the selector
     this.plugins.forEach(plugin => {
       if (selector) {  // Type guard to ensure selector is string
-        const newSelector = plugin.onProcessNode?.(node, selector);
+        const newSelector = plugin.onProcessNode?.(node);
         if (typeof newSelector === 'string') {
           this.logger.info(`Selector transformed by plugin: ${selector} -> ${newSelector}`);
           selector = newSelector;

@@ -2,9 +2,16 @@ import path from 'path';
 import prettier from 'prettier';
 import { writeOutputFile } from '../handlers/FileHandler';
 import { createLogger } from '../helpers/createLogger';
-import { TemplateNode, TemplateOptions, TemplateExtension, Logger } from '../types';
+import type { 
+  TemplateNode, 
+  Extension, 
+  RenderOptions, 
+  ExtendedTemplate,
+  Logger,
+  StyleProcessorPlugin
+} from '@js-template-engine/types';
+import type { TemplateOptions } from '../types';
 import { StyleProcessor } from './StyleProcessor';
-import { StyleProcessorPlugin } from '../types/extensions';
 
 const selfClosingTags = [
   'area',
@@ -27,10 +34,10 @@ const selfClosingTags = [
 
 export class TemplateEngine {
   private styleProcessor: StyleProcessor;
-  private extensions: TemplateExtension[];
+  private extensions: Extension[];
   private logger: Logger;
 
-  constructor(extensions: TemplateExtension[] = [], verbose = false) {
+  constructor(extensions: Extension[] = [], verbose = false) {
     this.extensions = extensions;
     this.logger = createLogger(verbose, 'TemplateEngine');
 
@@ -52,7 +59,9 @@ export class TemplateEngine {
       writeOutputFile: false,
       verbose: false,
       styles: {
-        outputFormat: 'css'
+        outputFormat: 'css',
+        generateSourceMap: false,
+        minify: false,
       }
     };
 
@@ -68,7 +77,7 @@ export class TemplateEngine {
     }
 
     // Apply extension options handlers
-    mergedExtensions.forEach((extension: TemplateExtension) => {
+    mergedExtensions.forEach((extension: Extension) => {
       if (extension.optionsHandler) {
         defaultOptions = extension.optionsHandler(defaultOptions as TemplateOptions, options);
       }
@@ -154,21 +163,24 @@ export class TemplateEngine {
   }
 
   async render(
-    nodes: TemplateNode[],
+    input: TemplateNode[] | ExtendedTemplate,
     options: TemplateOptions = {},
     isRoot = true,
     ancestorNodesContext: TemplateNode[] = []
   ): Promise<string> {
+    // Normalize input
+    const { template: nodes, component } = Array.isArray(input)
+      ? { template: input, component: undefined }
+      : { template: input.template, component: input.component };
     options = isRoot ? this.mergeOptions(options) : options;
     let template = '';
 
     const { verbose } = options;
-    const logger = createLogger(verbose, 'render');
+    const logger = createLogger(Boolean(verbose), 'render');
     const attributeFormatter = options.attributeFormatter ?? ((attr: string, val: string | number | boolean, isExpression?: boolean) => ` ${attr}="${val}"`);
 
     if (isRoot) {
       logger.info('Starting template rendering process...');
-      
       // 🔹 1. Call beforeRender hooks
       for (const ext of options.extensions || []) {
         if (ext.beforeRender) {
@@ -226,7 +238,7 @@ export class TemplateEngine {
       if (options.extensions) {
         for (const extension of options.extensions) {
           if (extension.rootHandler) {
-            template = extension.rootHandler(template, options);
+            template = extension.rootHandler(template, options, component);
           }
         }
       }
@@ -285,7 +297,7 @@ export class TemplateEngine {
     return template;
   }
 
-  private processNodes(nodes: TemplateNode[], ext: TemplateExtension): TemplateNode[] {
+  private processNodes(nodes: TemplateNode[], ext: Extension): TemplateNode[] {
     return nodes.map(node => {
       const newNode = ext.nodeHandler ? ext.nodeHandler(node, []) : node;
       if (newNode.children) {

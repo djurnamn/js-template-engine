@@ -1,11 +1,7 @@
 import { createLogger } from '@js-template-engine/core';
-import { TemplateNode } from '@js-template-engine/core';
-import { 
-  ReactExtension as ReactTypes,
-  Extension, 
-  DeepPartial,
-  hasNodeExtensions 
-} from '@js-template-engine/core';
+import type { TemplateNode, Extension, DeepPartial } from '@js-template-engine/types';
+import { hasNodeExtensions } from '@js-template-engine/types';
+import type { ReactExtension as ReactTypes } from './types';
 
 interface ReactNode extends TemplateNode {
   extensions?: {
@@ -103,48 +99,56 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
     return node;
   }
 
-  public rootHandler(htmlContent: string, options: ReactTypes.Options): string {
-    const rawName = options.componentName ?? options.name ?? 'UntitledComponent';
+  public rootHandler(
+    htmlContent: string,
+    options: ReactTypes.Options,
+    component?: {
+      name?: string;
+      props?: Record<string, string>;
+      imports?: string[];
+      script?: string;
+    }
+  ): string {
+    const rawName = component?.name ?? options.componentName ?? options.name ?? 'UntitledComponent';
     const componentName = this.sanitizeComponentName(rawName);
     this.logger.info(`Generating React component: ${componentName}`);
 
-    const importStatements = options.importStatements?.join('\n') ?? "import React from 'react';";
-    const propsInterface = options.propsInterface ? options.propsInterface.trim() : '';
+    const importStatements = ([
+      ...(component?.imports ?? []),
+      ...(options.importStatements ?? ['import React from \'react\';'])
+    ]).join('\n');
+
+    const propsInterface = component?.props
+      ? `interface ${componentName}Props {\n` +
+        Object.entries(component.props)
+          .map(([key, val]) => `  ${key}: ${val};`)
+          .join('\n') + `\n}`
+      : options.propsInterface?.trim() ?? '';
+
     const props = options.props ?? 'props';
     const exportType = options.exportType ?? 'default';
     const isTypeScript = options.fileExtension === '.tsx';
 
-    // Extract interface name from propsInterface if it exists
-    let propsType = 'any';
-    if (options.propsInterface) {
-      const match = options.propsInterface.match(/interface\s+(\w+)/);
-      if (match) {
-        propsType = match[1];
-      }
-    }
-
-    // Format the component content with proper indentation
     const formattedContent = htmlContent
       .split('\n')
       .map(line => `    ${line}`)
       .join('\n');
 
-    // Use proper TypeScript syntax for the component declaration
     const componentDeclaration = isTypeScript
-      ? `const ${componentName}: React.FC<${propsType}> = (${props}) => {`
+      ? `const ${componentName}: React.FC<${componentName}Props> = (${props}) => {`
       : `function ${componentName}(${props}) {`;
 
-    // Build the final template with proper spacing
+    const preRenderLogic = component?.script?.trim() ?? '';
+
     const template = [
       importStatements,
       propsInterface,
-      [
-        componentDeclaration,
-        '  return (',
-        formattedContent,
-        '  );',
-        '}',
-      ].join('\n'),
+      componentDeclaration,
+      preRenderLogic && `  ${preRenderLogic.trim().replace(/\n/g, '\n  ')}`,
+      '  return (',
+      formattedContent,
+      '  );',
+      '}',
       exportType === 'default'
         ? `export default ${componentName};`
         : `export { ${componentName} };`

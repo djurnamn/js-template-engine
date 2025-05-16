@@ -1,11 +1,7 @@
 import { createLogger } from '@js-template-engine/core';
-import { TemplateNode } from '@js-template-engine/core';
-import { 
-  BemExtension as BemTypes,
-  Extension, 
-  DeepPartial,
-  StyleProcessorPlugin
-} from '@js-template-engine/core';
+import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin } from '@js-template-engine/types';
+import { hasNodeExtensions } from '@js-template-engine/types';
+import type { BemExtension as BemTypes } from './types';
 
 interface BemNode extends TemplateNode {
   block?: string;
@@ -132,10 +128,23 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
     onProcessNode: (node) => {
       this.logger.info(`Processing styles for <${node.tag}>`);
     },
-    generateStyles: (_styles, options, templateTree) => {
+    generateStyles: (processedStyles, options, templateTree) => {
       this.logger.info('Generating SCSS from template tree');
-      if (!templateTree) return null;
-      return this.generateBemScssFromTree(templateTree);
+      if (templateTree) {
+        return this.generateBemScssFromTree(templateTree);
+      }
+      if (processedStyles && processedStyles.size > 0) {
+        let scss = '';
+        processedStyles.forEach((styleDef, selector) => {
+          scss += `${selector} {\n`;
+          Object.entries(styleDef).forEach(([key, value]) => {
+            scss += `  ${key}: ${value};\n`;
+          });
+          scss += `}\n`;
+        });
+        return scss;
+      }
+      return undefined;
     }
   };
 

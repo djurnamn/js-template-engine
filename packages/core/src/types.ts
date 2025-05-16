@@ -1,15 +1,5 @@
 import { Extension, TemplateNode, RenderOptions } from '@js-template-engine/types';
 
-export type TemplateExtension = Extension<TemplateNode> & {
-  optionsHandler?: (defaultOptions: any, options: any) => any;
-  rootHandler?: (html: string, options: any) => string;
-  onNodeVisit?: (node: TemplateNode, ancestors?: TemplateNode[]) => void;
-  beforeRender?: (template: TemplateNode[], options: RenderOptions) => void;
-  afterRender?: (template: TemplateNode[], options: RenderOptions) => void;
-  onOutputWrite?: (output: string, options: RenderOptions) => string;
-  nodeHandler?: (node: TemplateNode, ancestors?: TemplateNode[]) => TemplateNode;
-};
-
 export type Logger = {
   info: (message: string, ...args: any[]) => void;
   warn: (message: string, ...args: any[]) => void;

@@ -1,14 +1,8 @@
 import { TemplateNode, TemplateOptions } from './index';
-import { StyleDefinition } from './styles';
+import type { DeepPartial, ExtensionKey } from '@js-template-engine/types';
 
 // Utility types
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
 export type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
-
-export type ExtensionKey = 'react' | 'bem' | string;
 
 // Base extension types
 export interface BaseExtensionOptions extends TemplateOptions {
@@ -81,20 +75,11 @@ export interface Extension<T extends BaseExtensionOptions = BaseExtensionOptions
 }
 
 // Type guard for extension options
-export function isExtensionOptions<T extends BaseExtensionOptions>(value: unknown): value is T {
-  return typeof value === 'object' && value !== null && 'options' in value;
+export function hasExtensionOptions<T>(obj: unknown): obj is DeepPartial<T> {
+  return typeof obj === 'object' && obj !== null;
 }
 
 // Type guard for node extensions
-export function hasNodeExtensions<T extends Record<string, any>>(node: TemplateNode, key: ExtensionKey): node is TemplateNode & { extensions: { [K in typeof key]: T } } {
-  return node.extensions !== undefined && key in node.extensions;
-}
-
-export interface StyleProcessorPlugin {
-  onProcessNode?: (node: TemplateNode, selector: string) => string | void;
-  generateStyles?: (
-    styles: Map<string, StyleDefinition>,
-    options: TemplateOptions,
-    originalTemplateTree?: TemplateNode[]
-  ) => string | null;
+export function hasNodeExtensions(node: unknown): node is { extensions?: Record<string, unknown> } {
+  return typeof node === 'object' && node !== null && 'extensions' in node;
 } 

@@ -11,24 +11,24 @@ import {
   processDirectory,
 } from '@js-template-engine/core';
 import { createLogger } from '@js-template-engine/core';
-import { TemplateExtension } from '@js-template-engine/core';
+import type { Extension } from '@js-template-engine/types';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { CliOptions, CliCommand } from './types/cli';
 
-function loadExtensions(): Record<string, new (verbose?: boolean) => TemplateExtension> {
+function loadExtensions(): Record<string, new (verbose?: boolean) => any> {
   return {
     bem: BemExtension,
     react: ReactExtension
   };
 }
 
-const availableExtensions = loadExtensions();
+const availableExtensions: Record<string, new (verbose?: boolean) => any> = loadExtensions();
 
 // Utility function for error handling and extension validation
 function validateExtensions(
   requestedExtensions: string[],
-  availableExtensions: Record<string, new (verbose?: boolean) => TemplateExtension>
+  availableExtensions: Record<string, new (verbose?: boolean) => any>
 ): boolean {
   const missingExtensions = requestedExtensions.filter(
     (ext) => !availableExtensions[ext]
@@ -93,7 +93,7 @@ const renderCommand: CliCommand = {
       }) as any; // Type assertion needed due to yargs type limitations
   },
   handler: async (argv: CliOptions) => {
-    const { verbose } = argv;
+    const { verbose = false } = argv;
     const logger = createLogger(verbose, 'cli');
     logger.info('Starting template rendering process...');
 

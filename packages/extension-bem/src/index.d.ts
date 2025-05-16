@@ -1,5 +1,6 @@
-import { TemplateNode } from '@js-template-engine/core';
-import { BemExtension as BemTypes, Extension, DeepPartial, StyleProcessorPlugin } from '@js-template-engine/core';
+import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin } from '@js-template-engine/types';
+import type { BemExtension as BemTypes } from './types';
+
 interface BemNode extends TemplateNode {
     block?: string;
     element?: string;
@@ -13,6 +14,7 @@ interface BemNode extends TemplateNode {
     tag?: string;
     attributes?: Record<string, any>;
 }
+
 export declare class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeExtensions> {
     readonly key: "bem";
     private logger;
@@ -37,4 +39,5 @@ export declare class BemExtension implements Extension<BemTypes.Options, BemType
     nodeHandler(node: BemNode, ancestorNodesContext?: TemplateNode[]): TemplateNode;
     private getBemClasses;
 }
+
 export {};

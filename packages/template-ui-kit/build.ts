@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { TemplateEngine } from '@js-template-engine/core';
+import type { TemplateNode, RenderOptions } from '@js-template-engine/types';
 import config from './template.config';
 
 async function build() {
@@ -24,7 +25,8 @@ async function build() {
       name,
       ...config.globalOptions,
       outputDir: config.output,
-    });
+      fileExtension: '.tsx' as const,
+    } as RenderOptions);
 
     console.log(`✅ Rendered: ${name}`);
   }

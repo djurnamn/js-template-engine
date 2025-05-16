@@ -1,5 +1,6 @@
-import { TemplateNode } from '@js-template-engine/core';
-import { ReactExtension as ReactTypes, Extension, DeepPartial } from '@js-template-engine/core';
+import type { TemplateNode, Extension, DeepPartial } from '@js-template-engine/types';
+import type { ReactExtension as ReactTypes } from './types';
+
 interface ReactNode extends TemplateNode {
     extensions?: {
         react?: ReactTypes.NodeExtensions;
@@ -9,6 +10,7 @@ interface ReactNode extends TemplateNode {
     attributes?: Record<string, any>;
     expressionAttributes?: Record<string, any>;
 }
+
 export declare class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.NodeExtensions> {
     readonly key: "react";
     private logger;
@@ -18,4 +20,5 @@ export declare class ReactExtension implements Extension<ReactTypes.Options, Rea
     nodeHandler(node: ReactNode): TemplateNode;
     rootHandler(htmlContent: string, options: ReactTypes.Options): string;
 }
+
 export {};

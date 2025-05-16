@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { loadExtensions } from './loadExtensions';
-import { TemplateEngine, TemplateExtension } from '@js-template-engine/core';
+import { TemplateEngine } from '@js-template-engine/core';
+import type { Extension } from '@js-template-engine/types';
 import { CliCommand, CliOptions } from './types/cli';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -55,7 +56,7 @@ async function run() {
         }
 
         // Initialize template engine
-        const templateEngine = new TemplateEngine(extensions as TemplateExtension[]);
+        const templateEngine = new TemplateEngine(extensions as Extension[]);
 
         // Read and parse the template file
         const templatePath = join(process.cwd(), argv.sourcePath);

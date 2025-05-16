@@ -10,7 +10,8 @@
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
     "@js-template-engine/extension-react": "workspace:*",
-    "@js-template-engine/extension-bem": "workspace:*"
+    "@js-template-engine/extension-bem": "workspace:*",
+    "@js-template-engine/types": "workspace:*"
   },
   "devDependencies": {
     "ts-node": "^10.9.1",

@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import type { TemplateNode, RenderOptions, Extension } from '@js-template-engine/types';
+import type { TemplateOptions } from '../types';
 import { createLogger } from '../helpers/createLogger';
 import { TemplateEngine } from '../engine/TemplateEngine';
-import { TemplateExtension, TemplateNode } from '../types';
 
 export function readJsonFile(sourcePath: string): TemplateNode[] {
   try {
@@ -54,7 +55,7 @@ export async function getSourcePathType(sourcePath: string): Promise<'directory'
 export async function processFile(
   sourcePath: string,
   outputDir: string,
-  extensions: TemplateExtension[],
+  extensions: Extension[],
   templateEngine: TemplateEngine,
   name?: string,
   componentName?: string,
@@ -84,7 +85,7 @@ export async function processFile(
 export async function processDirectory(
   sourceDir: string,
   outputDir: string,
-  extensions: TemplateExtension[],
+  extensions: Extension[],
   templateEngine: TemplateEngine,
   verbose = false
 ): Promise<void> {

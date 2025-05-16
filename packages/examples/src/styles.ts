@@ -1,4 +1,5 @@
-import { TemplateEngine, TemplateNode } from '@js-template-engine/core';
+import { TemplateEngine } from '@js-template-engine/core';
+import type { TemplateNode } from '@js-template-engine/types';
 
 // Create a template with nested styles
 const template: TemplateNode[] = [

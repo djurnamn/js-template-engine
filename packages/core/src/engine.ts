@@ -1,5 +1,25 @@
-import { Extension, TemplateNode, RenderOptions } from '@js-template-engine/types';
+import { Extension, TemplateNode, RenderOptions, ExtendedTemplate } from '@js-template-engine/types';
 import { createLogger } from './utils/logger';
+
+function isExtendedTemplate(input: unknown): input is ExtendedTemplate {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    !Array.isArray(input) &&
+    'template' in input
+  );
+}
+
+type NormalizedTemplateInput = {
+  template: TemplateNode[];
+  component?: ExtendedTemplate['component'];
+};
+
+function normalizeTemplateInput(input: TemplateNode[] | ExtendedTemplate): NormalizedTemplateInput {
+  return isExtendedTemplate(input)
+    ? { template: input.template, component: input.component }
+    : { template: input, component: undefined };
+}
 
 export class TemplateEngine {
   private extensions: Extension[];
@@ -10,10 +30,18 @@ export class TemplateEngine {
     this.logger = createLogger(verbose, 'TemplateEngine');
   }
 
-  async render(template: TemplateNode[], options: RenderOptions): Promise<void> {
+  async render(
+    input: TemplateNode[] | ExtendedTemplate,
+    options: RenderOptions = {},
+    isRoot = true,
+    ancestorNodesContext: TemplateNode[] = []
+  ): Promise<string> {
+    const { template: nodes, component } = isExtendedTemplate(input)
+      ? { template: input.template, component: input.component }
+      : { template: input, component: undefined };
     this.logger.info('Rendering template with options:', options);
 
-    let output = template;
+    let output = nodes;
 
     // Process each extension in sequence
     for (const extension of this.extensions) {
@@ -31,7 +59,16 @@ export class TemplateEngine {
       await this.generateStyles(output, stylePlugins as NonNullable<Extension['stylePlugin']>[], options);
     }
 
+    // Apply root handlers with component metadata
+    let template = '';
+    for (const extension of options?.extensions || []) {
+      if (extension.rootHandler) {
+        template = extension.rootHandler(template, options, component);
+      }
+    }
+
     this.logger.info('Template rendering complete');
+    return template;
   }
 
   private processNodes(nodes: TemplateNode[], extension: Extension): TemplateNode[] {
@@ -69,7 +106,7 @@ export class TemplateEngine {
       }
 
       if (plugin.generateStyles) {
-        const styles = plugin.generateStyles({}, options, template);
+        const styles = plugin.generateStyles(new Map(), options, template);
         if (styles) {
           // Handle style output
           this.logger.info('Generated styles:', styles);

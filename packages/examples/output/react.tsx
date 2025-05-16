@@ -3,19 +3,34 @@ import { DefaultButton } from "./components/Button";
 import { TodoCard } from "./components/TodoCard";
 import { Todo } from "./types";
 
-interface TodoProps {
-  initialTodos: Todo[];
-  handleAddTodo: (text: string) => void;
-  handleRemoveTodo: (id: number) => void;
-}
+interface TodoappProps {}
 
-const Todoapp: React.FC<TodoProps> = ({
+const Todoapp: React.FC<TodoappProps> = ({
   initialTodos,
   handleAddTodo,
   handleRemoveTodo,
 }) => {
+  function handleAddTodo() {
+    const todoList = document.getElementById("todoList");
+    const newTodoText = document.getElementById("todoInput").value;
+    const newTodoItem = document.createElement("li");
+
+    newTodoItem.textContent = newTodoText;
+    todoList.appendChild(newTodoItem);
+
+    document.getElementById("todoInput").value = ""; // Clear the input field
+  }
+
+  function handleRemoveTodo(id: number) {
+    const todoList = document.getElementById("todoList");
+    const todoItem = document.getElementById(`todo-${id}`);
+    if (todoItem) {
+      todoList?.removeChild(todoItem);
+    }
+  }
+
   return (
-    <div class="todo-app">
+    <div className="todo-app">
       <input type="text" id="todoInput" placeholder="Add a new todo" />
       <DefaultButton color="primary" label="Add" onClick={handleAddTodo}>
         Add

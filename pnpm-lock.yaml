@@ -166,6 +166,9 @@ importers:
       '@js-template-engine/extension-react':
         specifier: workspace:*
         version: link:../extension-react
+      '@js-template-engine/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
