@@ -1,12 +1,26 @@
-import type { TemplateNode, RenderOptions } from './index';
+import type { VueComponentOptions } from './context';
+import type { ReactComponentOptions } from './ReactComponentOptions';
 
-export type ExtensionKey = 'react' | 'bem' | string;
+export type ExtensionKey = 'vue' | 'react' | 'bem';
+
+export interface FrameworkExtensionMap {
+  vue: VueComponentOptions;
+  react: ReactComponentOptions;
+  bem: Record<string, any>;
+}
+
+export interface Component {
+  name?: string;
+  props?: Record<string, string>;
+  script?: string;
+  extensions?: Partial<FrameworkExtensionMap>;
+}
 
 export interface StyleProcessorPlugin {
-  onProcessNode?: (node: TemplateNode) => void;
-  generateStyles?: (
-    processedStyles: Map<string, any>,
-    options: RenderOptions,
-    templateTree?: TemplateNode[]
-  ) => string | undefined;
-} 
+  process?: (styles: Map<string, any>, options: any) => string;
+  generateStyles?: (styles: Map<string, any>, options: any) => string;
+}
+
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+}; 

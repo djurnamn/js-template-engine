@@ -1,11 +1,23 @@
 import { ExtendedTemplate } from './ExtendedTemplate';
 import { StyleDefinition, StyleOutputFormat } from './styles';
-import { ExtensionKey } from './extensions';
+import { ExtensionKey, FrameworkExtensionMap, Component } from './extensions';
 import { DeepPartial } from './utils';
 import { StyleProcessorPlugin } from './extensions';
 import { RootHandlerContext } from './context';
+import { VueComponentOptions } from './context';
+import { ReactComponentOptions } from './ReactComponentOptions';
 
-export type { StyleDefinition, StyleOutputFormat, ExtensionKey, DeepPartial, RootHandlerContext };
+export type {
+  StyleDefinition,
+  StyleOutputFormat,
+  ExtensionKey,
+  DeepPartial,
+  RootHandlerContext,
+  FrameworkExtensionMap,
+  Component,
+  VueComponentOptions,
+  ReactComponentOptions
+};
 
 export interface TemplateNode {
   type?: 'element' | 'text' | 'slot';
