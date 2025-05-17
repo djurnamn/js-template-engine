@@ -1,10 +1,10 @@
 import { TemplateEngine } from '@js-template-engine/core';
 import type { RenderOptions, ExtendedTemplate } from '@js-template-engine/types';
 import { VueExtension } from '@js-template-engine/extension-vue';
-import type { Options as VueExtensionOptions } from '@js-template-engine/extension-vue';
+import { Options } from '@js-template-engine/extension-vue/dist/types';
 
 const verbose = true;
-const vueExtension = new VueExtension(verbose);
+const vueExtension = new VueExtension({ componentName: 'TodoApp' });
 const templateEngine = new TemplateEngine([vueExtension]);
 
 const todoAppTemplate: ExtendedTemplate = {
@@ -132,5 +132,5 @@ interface TodoProps {
     propsInterface,
     props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
     fileExtension: '.ts',
-  } as RenderOptions & VueExtensionOptions);
+  } as RenderOptions & Options);
 })(); 

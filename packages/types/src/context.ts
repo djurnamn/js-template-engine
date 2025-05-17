@@ -6,4 +6,5 @@ export interface RootHandlerContext {
   framework: string;
   version?: string;
   styleProcessor?: StyleProcessorPlugin;
+  styleOutput?: string; // The generated style output from StyleProcessor
 } 

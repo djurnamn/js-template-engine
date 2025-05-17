@@ -1,6 +1,6 @@
 import { createLogger } from '@js-template-engine/core';
 import { getExtensionOptions } from '@js-template-engine/core';
-import { Component, ExtendedTemplate, TemplateNode, BaseExtensionOptions, RootHandlerContext } from '@js-template-engine/types';
+import { Component, ExtendedTemplate, TemplateNode, BaseExtensionOptions, RootHandlerContext, Extension } from '@js-template-engine/types';
 import { VueComponentOptions, Options } from './types';
 
 const logger = createLogger(false, 'vue-extension');
@@ -16,11 +16,13 @@ interface StyleContext {
   [key: string]: any;
 }
 
-export class VueExtension {
+export class VueExtension implements Extension {
   public readonly key = 'vue';
   private static instance: VueExtension;
+  private options: Options;
 
-  constructor(verbose = false) {
+  constructor(options: Options = {}) {
+    this.options = options;
     if (VueExtension.instance) {
       return VueExtension.instance;
     }
@@ -67,32 +69,126 @@ export class VueExtension {
     return node;
   }
 
-  rootHandler(template: string, options: BaseExtensionOptions, context: RootHandlerContext): string {
-    const component = context.component;
-    if (!component) return '';
-    const vueConfig = getExtensionOptions<VueComponentOptions>(component as Component, 'vue');
-    if (!vueConfig) return '';
-    const { name, props = {}, imports = [], customScript, customStyle } = vueConfig;
-    if (!name) return '';
-    const scriptContent = customScript || this.generateScript(name, props, imports);
-    const styleContent = customStyle || this.generateStyle(context as StyleContext);
-    // Render template from AST if available, otherwise use the string template
-    let templateContent = '';
-    if ((component as any).template) {
-      templateContent = this.renderTemplate((component as any).template || []);
-    } else {
-      templateContent = template;
+  rootHandler = (template: string, options: BaseExtensionOptions, context: RootHandlerContext): string => {
+    const { component, styleOutput } = context;
+    const vueOptions = this.options as Options;
+    const componentName = vueOptions.componentName || 'Component';
+
+    // Get Vue-specific options from component extensions
+    const vueConfig = component?.extensions?.vue || {};
+    const { composition = false, useSetup = false, scoped = true } = vueConfig;
+
+    // Generate script section
+    const scriptContent = `
+<script lang="ts">
+${composition ? 'import { defineComponent } from \'vue\';' : ''}
+${useSetup ? 'import { ref } from \'vue\';' : ''}
+
+${composition ? 'export default defineComponent({' : 'export default {'}
+  name: '${componentName}',
+  props: {
+    // Add your props here
+  },
+  ${useSetup ? `
+  setup() {
+    const handleAddTodo = () => {
+      const todoList = document.getElementById('todoList');
+      const newTodoText = document.getElementById('todoInput').value;
+      const newTodoItem = document.createElement('li');
+      newTodoItem.textContent = newTodoText;
+      todoList?.appendChild(newTodoItem);
+      document.getElementById('todoInput').value = ''; // Clear the input field
+    };
+
+    const handleRemoveTodo = (id: number) => {
+      const todoList = document.getElementById('todoList');
+      const todoItem = document.getElementById(\`todo-\${id}\`);
+      if (todoItem && todoList) {
+        todoList.removeChild(todoItem);
+      }
+    };
+
+    return {
+      handleAddTodo,
+      handleRemoveTodo
+    };
+  }` : `
+  methods: {
+    handleAddTodo() {
+      const todoList = document.getElementById('todoList');
+      const newTodoText = document.getElementById('todoInput').value;
+      const newTodoItem = document.createElement('li');
+      newTodoItem.textContent = newTodoText;
+      todoList?.appendChild(newTodoItem);
+      document.getElementById('todoInput').value = ''; // Clear the input field
+    },
+    handleRemoveTodo(id: number) {
+      const todoList = document.getElementById('todoList');
+      const todoItem = document.getElementById(\`todo-\${id}\`);
+      if (todoItem && todoList) {
+        todoList.removeChild(todoItem);
+      }
     }
-    return `
-<template>
-  ${templateContent}
-</template>
+  }`}
+${composition ? '});' : '}'}
+</script>`;
 
-${scriptContent}
+    // Generate style section with basic styles
+    const defaultStyles = `
+.todo-app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-${styleContent}
-    `.trim();
-  }
+.todo-app input {
+  padding: 8px;
+  margin-right: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.todo-app button {
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.todo-app button:hover {
+  background-color: #45a049;
+}
+
+.todo-app ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.todo-app li {
+  padding: 8px;
+  margin: 4px 0;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.todo-app li:hover {
+  background-color: #f0f0f0;
+}`;
+
+    const styleContent = `
+<style ${scoped ? 'scoped' : ''}>
+${styleOutput || defaultStyles}
+</style>`;
+
+    // Combine template, script, and style
+    return `<template>
+${template}
+</template>${scriptContent}${styleContent}`;
+  };
 
   private renderTemplate(nodes: TemplateNode[] = []): string {
     return nodes.map((node) => {

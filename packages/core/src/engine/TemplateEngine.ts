@@ -174,13 +174,17 @@ export class TemplateEngine {
   }
 
   private getOutputPath(options: TemplateOptions, extension: Extension): string {
-    const framework = extension.key;
     const baseOutputDir = options.outputDir ?? 'dist';
-    const frameworkOutputDir = path.join(baseOutputDir, framework);
     const filename = options.filename ?? 'untitled';
     const fileExtension = options.fileExtension ?? '.html';
 
-    return path.join(frameworkOutputDir, `${filename}${fileExtension}`);
+    // Only use a subfolder if the extension has a rootHandler (i.e., is a rendering extension)
+    const isRenderingExtension = typeof extension.rootHandler === 'function';
+    const outputDir = isRenderingExtension
+      ? path.join(baseOutputDir, extension.key)
+      : baseOutputDir;
+
+    return path.join(outputDir, `${filename}${fileExtension}`);
   }
 
   async render(
@@ -256,15 +260,22 @@ export class TemplateEngine {
       const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options, processedNodes) : '';
 
       // 🔹 5. Apply root handlers
+      let styleHandled = false;
       if (options.extensions) {
         for (const extension of options.extensions) {
           if (extension.rootHandler) {
             const context: RootHandlerContext = {
               component,
               framework: extension.key,
-              version: isExtendedTemplate(input) ? input.version : undefined
+              version: isExtendedTemplate(input) ? input.version : undefined,
+              styleOutput // Pass the generated styles to the rootHandler
             };
-            template = extension.rootHandler(template, options, context);
+            const result = extension.rootHandler(template, options, context);
+            // If the extension included the styles in its output, mark as handled
+            if (result.includes(styleOutput)) {
+              styleHandled = true;
+            }
+            template = result;
           }
         }
       }
@@ -307,8 +318,8 @@ export class TemplateEngine {
             options.verbose
           );
 
-          // Write styles if not using inline styles and styles exist
-          if (hasStyles && options.styles?.outputFormat !== 'inline') {
+          // Write styles if not handled by any extension and not using inline styles
+          if (!styleHandled && hasStyles && options.styles?.outputFormat !== 'inline') {
             const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
             const stylePath = path.join(
               outputDir,
