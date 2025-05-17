@@ -1,11 +1,9 @@
 import { ExtendedTemplate } from './ExtendedTemplate';
 import { StyleDefinition, StyleOutputFormat } from './styles';
-import { ExtensionKey, FrameworkExtensionMap, Component } from './extensions';
+import { ExtensionKey, Component } from './extensions';
 import { DeepPartial } from './utils';
 import { StyleProcessorPlugin } from './extensions';
 import { RootHandlerContext } from './context';
-import { VueComponentOptions } from './context';
-import { ReactComponentOptions } from './ReactComponentOptions';
 
 export type {
   StyleDefinition,
@@ -13,10 +11,7 @@ export type {
   ExtensionKey,
   DeepPartial,
   RootHandlerContext,
-  FrameworkExtensionMap,
-  Component,
-  VueComponentOptions,
-  ReactComponentOptions
+  Component
 };
 
 export interface TemplateNode {

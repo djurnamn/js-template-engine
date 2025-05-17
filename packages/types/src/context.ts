@@ -6,15 +6,4 @@ export interface RootHandlerContext {
   framework: string;
   version?: string;
   styleProcessor?: StyleProcessorPlugin;
-}
-
-export interface VueComponentOptions {
-  directives?: Record<string, string>;
-  composition?: boolean;
-  useSetup?: boolean;
-  scoped?: boolean;
-  tag?: string;
-  attributes?: Record<string, any>;
-  expressionAttributes?: Record<string, string>;
-  [key: string]: any;
 } 

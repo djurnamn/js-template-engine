@@ -3,11 +3,11 @@ import type {
   TemplateNode,
   Extension,
   RootHandlerContext,
-  VueComponentOptions,
   DeepPartial,
   StyleProcessorPlugin,
   StyleOutputFormat,
 } from '@js-template-engine/types';
+import type { VueComponentOptions } from './types';
 
 export * from './types';
 export type { Options } from './types';
@@ -16,10 +16,7 @@ interface VueNode extends TemplateNode {
   tag?: string;
   attributes?: Record<string, any>;
   extensions?: {
-    vue?: {
-      directives?: Record<string, string>;
-      [key: string]: any;
-    };
+    vue?: VueComponentOptions;
     [key: string]: any;
   };
 }
@@ -78,7 +75,7 @@ export class VueExtension implements Extension<VueOptions> {
     context: RootHandlerContext
   ): string {
     const { component } = context;
-    const vueConfig = component?.extensions?.vue as VueComponentOptions;
+    const vueConfig = component?.extensions?.vue as VueComponentOptions | undefined;
 
     const componentName = component?.name ?? options.componentName ?? options.name ?? 'UnnamedComponent';
     const isScoped = vueConfig?.scoped ?? false;

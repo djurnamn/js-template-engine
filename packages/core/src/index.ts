@@ -5,4 +5,7 @@ export { TemplateEngine } from './engine/TemplateEngine';
 export * from './handlers/FileHandler';
 
 // Export helpers
-export { createLogger } from './helpers/createLogger'; 
+export { createLogger } from './utils/logger';
+
+// Export utils
+export { getExtensionOptions, hasExtensionOptions } from './utils'; 

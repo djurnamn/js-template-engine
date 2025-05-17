@@ -127,6 +127,7 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
   public readonly stylePlugin: StyleProcessorPlugin = {
     onProcessNode: (node) => {
       this.logger.info(`Processing styles for <${node.tag}>`);
+      return undefined;
     },
     generateStyles: (processedStyles, options, templateTree) => {
       this.logger.info('Generating SCSS from template tree');
@@ -144,7 +145,7 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
         });
         return scss;
       }
-      return undefined;
+      return '';
     }
   };
 
