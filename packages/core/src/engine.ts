@@ -1,4 +1,4 @@
-import { Extension, TemplateNode, RenderOptions, ExtendedTemplate } from '@js-template-engine/types';
+import { Extension, TemplateNode, RenderOptions, ExtendedTemplate, RootHandlerContext } from '@js-template-engine/types';
 import { createLogger } from './utils/logger';
 
 function isExtendedTemplate(input: unknown): input is ExtendedTemplate {
@@ -63,7 +63,12 @@ export class TemplateEngine {
     let template = '';
     for (const extension of options?.extensions || []) {
       if (extension.rootHandler) {
-        template = extension.rootHandler(template, options, component);
+        const context: RootHandlerContext = {
+          component,
+          framework: extension.key,
+          version: isExtendedTemplate(input) ? input.version : undefined
+        };
+        template = extension.rootHandler(template, options, context);
       }
     }
 

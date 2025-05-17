@@ -1,5 +1,5 @@
 import { createLogger } from '@js-template-engine/core';
-import type { TemplateNode, Extension, DeepPartial } from '@js-template-engine/types';
+import type { TemplateNode, Extension, DeepPartial, RootHandlerContext } from '@js-template-engine/types';
 import { hasNodeExtensions } from '@js-template-engine/types';
 import type { ReactExtension as ReactTypes } from './types';
 
@@ -102,31 +102,26 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
   public rootHandler(
     htmlContent: string,
     options: ReactTypes.Options,
-    component?: {
-      name?: string;
-      props?: Record<string, string>;
-      imports?: string[];
-      script?: string;
-    }
+    context: RootHandlerContext
   ): string {
-    const rawName = component?.name ?? options.componentName ?? options.name ?? 'UntitledComponent';
+    const rawName = context.component?.name ?? options.componentName ?? options.name ?? 'UntitledComponent';
     const componentName = this.sanitizeComponentName(rawName);
     this.logger.info(`Generating React component: ${componentName}`);
 
     const importStatements = ([
-      ...(component?.imports ?? []),
+      ...(context.component?.imports ?? []),
       ...(options.importStatements ?? ['import React from \'react\';'])
     ]).join('\n');
 
-    const propsInterface = component?.props
+    const propsInterface = context.component?.props
       ? `interface ${componentName}Props {\n` +
-        Object.entries(component.props)
+        Object.entries(context.component.props)
           .map(([key, val]) => `  ${key}: ${val};`)
           .join('\n') + `\n}`
       : options.propsInterface?.trim() ?? '';
 
     const props = options.props ?? 'props';
-    const exportType = options.exportType ?? 'default';
+    const exportType = context.component?.extensions?.react?.exportType ?? options.exportType ?? 'default';
     const isTypeScript = options.fileExtension === '.tsx';
 
     const formattedContent = htmlContent
@@ -138,7 +133,7 @@ export class ReactExtension implements Extension<ReactTypes.Options, ReactTypes.
       ? `const ${componentName}: React.FC<${componentName}Props> = (${props}) => {`
       : `function ${componentName}(${props}) {`;
 
-    const preRenderLogic = component?.script?.trim() ?? '';
+    const preRenderLogic = context.component?.script?.trim() ?? '';
 
     const template = [
       importStatements,

@@ -3,8 +3,9 @@ import { StyleDefinition, StyleOutputFormat } from './styles';
 import { ExtensionKey } from './extensions';
 import { DeepPartial } from './utils';
 import { StyleProcessorPlugin } from './extensions';
+import { RootHandlerContext } from './context';
 
-export type { StyleDefinition, StyleOutputFormat, ExtensionKey, DeepPartial };
+export type { StyleDefinition, StyleOutputFormat, ExtensionKey, DeepPartial, RootHandlerContext };
 
 export interface TemplateNode {
   type?: 'element' | 'text' | 'slot';
@@ -33,7 +34,7 @@ export interface Extension<T extends BaseExtensionOptions = BaseExtensionOptions
   beforeRender?: (template: TemplateNode[], options: T) => void;
   afterRender?: (template: TemplateNode[], options: T) => void;
   onOutputWrite?: (output: string, options: T) => string;
-  rootHandler?: (template: string, options: T, component?: ExtendedTemplate['component']) => string;
+  rootHandler?: (template: string, options: T, context: RootHandlerContext) => string;
   optionsHandler?: (defaultOptions: T, options: DeepPartial<T>) => T;
 }
 
@@ -69,8 +70,9 @@ export interface Logger {
 }
 
 export * from './ExtendedTemplate';
-export * from './utils';
+export * from './styles';
 export * from './extensions';
+export * from './utils';
 
 export function hasNodeExtensions<T extends Record<string, any>>(node: TemplateNode, key: ExtensionKey): node is TemplateNode & { extensions: { [K in typeof key]: T } } {
   return node.extensions !== undefined && key in node.extensions;

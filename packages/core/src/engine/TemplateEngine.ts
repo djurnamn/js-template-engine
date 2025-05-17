@@ -8,10 +8,12 @@ import type {
   RenderOptions, 
   ExtendedTemplate,
   Logger,
-  StyleProcessorPlugin
+  StyleProcessorPlugin,
+  RootHandlerContext
 } from '@js-template-engine/types';
 import type { TemplateOptions } from '../types';
 import { StyleProcessor } from './StyleProcessor';
+import fs from 'fs';
 
 const selfClosingTags = [
   'area',
@@ -31,6 +33,15 @@ const selfClosingTags = [
   'track',
   'wbr',
 ];
+
+function isExtendedTemplate(input: unknown): input is ExtendedTemplate {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    !Array.isArray(input) &&
+    'template' in input
+  );
+}
 
 export class TemplateEngine {
   private styleProcessor: StyleProcessor;
@@ -162,6 +173,16 @@ export class TemplateEngine {
     });
   }
 
+  private getOutputPath(options: TemplateOptions, extension: Extension): string {
+    const framework = extension.key;
+    const baseOutputDir = options.outputDir ?? 'dist';
+    const frameworkOutputDir = path.join(baseOutputDir, framework);
+    const filename = options.filename ?? 'untitled';
+    const fileExtension = options.fileExtension ?? '.html';
+
+    return path.join(frameworkOutputDir, `${filename}${fileExtension}`);
+  }
+
   async render(
     input: TemplateNode[] | ExtendedTemplate,
     options: TemplateOptions = {},
@@ -238,7 +259,12 @@ export class TemplateEngine {
       if (options.extensions) {
         for (const extension of options.extensions) {
           if (extension.rootHandler) {
-            template = extension.rootHandler(template, options, component);
+            const context: RootHandlerContext = {
+              component,
+              framework: extension.key,
+              version: isExtendedTemplate(input) ? input.version : undefined
+            };
+            template = extension.rootHandler(template, options, context);
           }
         }
       }
@@ -251,45 +277,49 @@ export class TemplateEngine {
       }
 
       // Write output files if requested
-      if (options.writeOutputFile) {
-        const outputDir = options.outputDir ?? 'dist';
-        const filename = options.filename ?? 'untitled';
-        const fileExtension = options.fileExtension ?? '.html';
+      if (options.writeOutputFile && options.extensions) {
+        for (const extension of options.extensions) {
+          const outputPath = this.getOutputPath(options, extension);
+          const outputDir = path.dirname(outputPath);
+          
+          // Ensure the output directory exists
+          await fs.promises.mkdir(outputDir, { recursive: true });
 
-        // Write template with styles if using inline format
-        if (hasStyles && options.styles?.outputFormat === 'inline') {
-          template = `${template}\n${styleOutput}`;
-        }
-
-        // Format the output if prettier parser is specified
-        if (options.prettierParser) {
-          template = await prettier.format(template, {
-            parser: options.prettierParser,
-          });
-        }
-
-        // Call onOutputWrite hooks
-        for (const ext of options.extensions || []) {
-          if (ext.onOutputWrite) {
-            template = ext.onOutputWrite(template, options);
+          // Format the output if prettier parser is specified
+          let finalOutput = template;
+          if (options.prettierParser) {
+            finalOutput = await prettier.format(template, {
+              parser: options.prettierParser,
+            });
           }
-        }
 
-        // Write template
-        await writeOutputFile(
-          template,
-          path.join(outputDir, `${filename}${fileExtension}`),
-          options.verbose
-        );
+          // Call onOutputWrite hooks
+          for (const ext of options.extensions || []) {
+            if (ext.onOutputWrite) {
+              finalOutput = ext.onOutputWrite(finalOutput, options);
+            }
+          }
 
-        // Write styles if not using inline styles and styles exist
-        if (hasStyles && options.styles?.outputFormat !== 'inline') {
-          const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
+          // Write template
           await writeOutputFile(
-            styleOutput,
-            path.join(outputDir, `${filename}${styleExtension}`),
+            finalOutput,
+            outputPath,
             options.verbose
           );
+
+          // Write styles if not using inline styles and styles exist
+          if (hasStyles && options.styles?.outputFormat !== 'inline') {
+            const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
+            const stylePath = path.join(
+              outputDir,
+              `${options.filename ?? 'untitled'}${styleExtension}`
+            );
+            await writeOutputFile(
+              styleOutput,
+              stylePath,
+              options.verbose
+            );
+          }
         }
       }
     }
