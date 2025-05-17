@@ -1,7 +1,7 @@
 {
   "name": "@js-template-engine/cli",
   "version": "1.0.1",
-  "description": "CLI for js-template-engine",
+  "description": "CLI for JS Template Engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -10,21 +10,21 @@
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
-    "test": "jest",
-    "type-check": "tsc --noEmit"
+    "prebuild": "npm run clean"
   },
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
-    "@js-template-engine/types": "workspace:*",
     "@js-template-engine/extension-bem": "workspace:*",
     "@js-template-engine/extension-react": "workspace:*",
+    "@js-template-engine/extension-vue": "workspace:*",
+    "@js-template-engine/types": "workspace:*",
     "yargs": "^17.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/yargs": "^17.0.0",
-    "typescript": "^5.0.0",
-    "rimraf": "^5.0.0",
+    "typescript": "^5.3.3",
+    "rimraf": "^5.0.5",
     "jest": "^29.0.0",
     "@types/jest": "^29.0.0"
   }

@@ -1,15 +1,18 @@
 import { Extension, TemplateNode } from '@js-template-engine/types';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
 
 type ExtensionMap = {
   '@js-template-engine/extension-bem': typeof BemExtension;
   '@js-template-engine/extension-react': typeof ReactExtension;
+  '@js-template-engine/extension-vue': typeof VueExtension;
 };
 
 const EXTENSION_MAP: ExtensionMap = {
   '@js-template-engine/extension-bem': BemExtension,
   '@js-template-engine/extension-react': ReactExtension,
+  '@js-template-engine/extension-vue': VueExtension,
 } as const;
 
 export async function loadExtensions(configPath = './template.config'): Promise<Extension[]> {

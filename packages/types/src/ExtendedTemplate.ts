@@ -16,6 +16,7 @@ export interface ReactComponentOptions extends BaseComponentOptions {
 export interface VueComponentOptions extends BaseComponentOptions {
   scoped?: boolean;
   composition?: boolean;
+  useSetup?: boolean;
 }
 
 export interface SvelteComponentOptions extends BaseComponentOptions {

@@ -41,7 +41,7 @@ export interface Extension<T extends BaseExtensionOptions = BaseExtensionOptions
 export interface RenderOptions {
   name?: string;
   outputDir?: string;
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css' | '.ts';
   verbose?: boolean;
   extensions?: Extension[];
   componentName?: string;
