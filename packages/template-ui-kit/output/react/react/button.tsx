@@ -9,7 +9,7 @@ const Button: React.FC<ButtonProps> = (props) => {
   return (
     <button
       type="button"
-      className="button button--primary button button--primary"
+      className="button button--primary"
       onClick={() => alert("Clicked!")}
     >
       Click me

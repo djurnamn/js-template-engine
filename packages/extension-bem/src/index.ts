@@ -180,16 +180,27 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
     };
   }
 
-  // ✅ Ensures BEM classes are always applied regardless of extension order
+  // Helper to find the nearest ancestor with a block
+  private findNearestBlockNode(ancestors: TemplateNode[]): BemNode | undefined {
+    return [...ancestors].reverse().find((ancestor) =>
+      getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')?.block || (ancestor as BemNode)?.block
+    ) as BemNode | undefined;
+  }
+
   public onNodeVisit(node: BemNode, ancestors: TemplateNode[] = []): void {
     if (node.ignoreBem || !node.tag) return;
 
     const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
-    const closestBlockNode = [...ancestors].reverse().find((ancestor) =>
-      getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')?.block || (ancestor as BemNode).block
-    );
+    
+    // Use helper to find the closest ancestor with a block
+    const closestBlockNode = this.findNearestBlockNode(ancestors);
+    const closestBlockBem = closestBlockNode && getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem');
 
-    const block = bem?.block ?? node.block;
+    // Get block from current node or ancestor
+    const block = bem?.block ?? node.block ?? closestBlockBem?.block ?? closestBlockNode?.block;
+    if (!block) return; // No block found, don't generate classes
+
+    // Get element and modifiers from current node
     const element = bem?.element ?? node.element;
     const modifiers = [
       ...(bem?.modifiers ?? []),
@@ -198,35 +209,32 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
       ...(node.modifier ? [node.modifier] : []),
     ];
 
-    const inheritedBlock = getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem')?.block ?? (closestBlockNode as BemNode)?.block;
+    // Generate BEM classes as array
+    const bemClasses = this.getBemClasses(block, element, modifiers);
+    if (!bemClasses.length) return;
 
-    const classNames = this.getBemClasses(block, element, modifiers, inheritedBlock);
+    // Get existing classes and deduplicate
+    const existingClass = node.attributes?.class || '';
+    const existingClassList = existingClass.split(/\s+/).filter(Boolean);
+    const uniqueClasses = Array.from(new Set([...existingClassList, ...bemClasses]));
 
-    if (!node.attributes) node.attributes = {};
-    node.attributes.class = node.attributes.class
-      ? `${classNames} ${node.attributes.class}`
-      : classNames;
+    // Update node attributes with deduplicated classes
+    node.attributes = {
+      ...node.attributes,
+      class: uniqueClasses.join(' '),
+    };
 
-    this.logger.info(`Applied BEM class: ${classNames} to <${node.tag}>`);
+    this.logger.info(`Applied BEM classes to <${node.tag}>: ${uniqueClasses.join(' ')}`);
   }
 
   private getBemClasses(
-    block?: string,
+    block: string,
     element?: string,
-    modifiers: string[] = [],
-    inheritedBlock?: string
-  ): string {
-    const classes: string[] = [];
-    const blockName = block ?? inheritedBlock ?? 'block';
-
-    const base = element ? `${blockName}__${element}` : blockName;
-    classes.push(base);
-
-    for (const mod of modifiers) {
-      classes.push(`${base}--${mod}`);
-    }
-
-    return classes.join(' ');
+    modifiers: string[] = []
+  ): string[] {
+    if (!block) return [];
+    const base = element ? `${block}__${element}` : block;
+    return [base, ...modifiers.map(mod => `${base}--${mod}`)];
   }
 
   public nodeHandler(node: BemNode, ancestorNodesContext: TemplateNode[] = []): TemplateNode {
