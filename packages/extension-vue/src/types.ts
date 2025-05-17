@@ -6,8 +6,10 @@ export interface VueComponentOptions {
   useSetup?: boolean;
   scoped?: boolean;
   tag?: string;
-  attributes?: Record<string, any>;
-  expressionAttributes?: Record<string, string>;
+  attributes?: Record<string, string>;
+  expressionAttributes?: string[] | Record<string, string>;
+  customScript?: string;
+  customStyle?: string;
   [key: string]: any;
 }
 

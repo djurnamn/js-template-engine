@@ -8,4 +8,4 @@ export * from './handlers/FileHandler';
 export { createLogger } from './utils/logger';
 
 // Export utils
-export { getExtensionOptions, hasExtensionOptions } from './utils'; 
+export * from './utils/extensionHelpers'; 

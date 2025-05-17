@@ -1,6 +1,5 @@
-import { createLogger } from '@js-template-engine/core';
+import { createLogger, getExtensionOptions } from '@js-template-engine/core';
 import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin } from '@js-template-engine/types';
-import { hasNodeExtensions } from '@js-template-engine/types';
 import type { BemExtension as BemTypes } from './types';
 
 interface BemNode extends TemplateNode {
@@ -53,7 +52,7 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
   ): any {
     if (!node) return selectorTree;
 
-    const bem = node.extensions?.bem;
+    const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
     const styles = node.attributes?.styles;
 
     if (bem) {
@@ -185,9 +184,9 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
   public onNodeVisit(node: BemNode, ancestors: TemplateNode[] = []): void {
     if (node.ignoreBem || !node.tag) return;
 
-    const bem = node.extensions?.bem;
+    const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
     const closestBlockNode = [...ancestors].reverse().find((ancestor) =>
-      (ancestor as BemNode).extensions?.bem?.block || (ancestor as BemNode).block
+      getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')?.block || (ancestor as BemNode).block
     );
 
     const block = bem?.block ?? node.block;
@@ -199,7 +198,7 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
       ...(node.modifier ? [node.modifier] : []),
     ];
 
-    const inheritedBlock = (closestBlockNode as BemNode)?.extensions?.bem?.block ?? (closestBlockNode as BemNode)?.block;
+    const inheritedBlock = getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem')?.block ?? (closestBlockNode as BemNode)?.block;
 
     const classNames = this.getBemClasses(block, element, modifiers, inheritedBlock);
 

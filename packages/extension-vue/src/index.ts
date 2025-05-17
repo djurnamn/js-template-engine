@@ -1,130 +1,143 @@
 import { createLogger } from '@js-template-engine/core';
-import type {
-  TemplateNode,
-  Extension,
-  RootHandlerContext,
-  DeepPartial,
-  StyleProcessorPlugin,
-  StyleOutputFormat,
-} from '@js-template-engine/types';
-import type { VueComponentOptions } from './types';
+import { getExtensionOptions } from '@js-template-engine/core';
+import { Component, ExtendedTemplate, TemplateNode, BaseExtensionOptions, RootHandlerContext } from '@js-template-engine/types';
+import { VueComponentOptions, Options } from './types';
 
-export * from './types';
-export type { Options } from './types';
+const logger = createLogger(false, 'vue-extension');
 
 interface VueNode extends TemplateNode {
-  tag?: string;
-  attributes?: Record<string, any>;
   extensions?: {
     vue?: VueComponentOptions;
-    [key: string]: any;
   };
 }
 
-interface VueOptions {
-  fileExtension?: string;
-  name?: string;
-  componentName?: string;
-  outputDir?: string;
-  verbose?: boolean;
-  styles?: {
-    outputFormat?: StyleOutputFormat;
-  };
-  _styleOutput?: string;
+interface StyleContext {
+  styles?: Record<string, string>;
+  [key: string]: any;
 }
 
-export class VueExtension implements Extension<VueOptions> {
-  public readonly key = 'vue' as const;
-  private logger: ReturnType<typeof createLogger>;
+export class VueExtension {
+  public readonly key = 'vue';
+  private static instance: VueExtension;
 
   constructor(verbose = false) {
-    this.logger = createLogger(verbose, 'VueExtension');
+    if (VueExtension.instance) {
+      return VueExtension.instance;
+    }
+    VueExtension.instance = this;
   }
 
-  public optionsHandler(defaultOptions: VueOptions, options: DeepPartial<VueOptions>): VueOptions {
-    return {
-      ...defaultOptions,
-      ...options,
-      fileExtension: '.vue',
-      outputDir: 'dist/vue',
-    };
+  static getInstance(): VueExtension {
+    if (!VueExtension.instance) {
+      VueExtension.instance = new VueExtension();
+    }
+    return VueExtension.instance;
   }
 
-  public nodeHandler(node: VueNode): TemplateNode {
-    if (node.extensions?.vue) {
-      const vueConfig = node.extensions.vue;
-      this.logger.info(`Processing Vue extension for node: ${node.tag || 'text'}`);
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-      // Handle Vue directives
-      if (vueConfig.directives) {
-        node.attributes = {
-          ...node.attributes,
-          ...Object.entries(vueConfig.directives).reduce((acc, [key, value]) => {
-            acc[`v-${key}`] = value;
-            return acc;
-          }, {} as Record<string, string>),
-        };
+  nodeHandler(node: VueNode): TemplateNode {
+    const vueConfig = getExtensionOptions<VueComponentOptions>(node as Component, 'vue');
+    if (vueConfig) {
+      if (vueConfig.attributes) {
+        node.attributes = { ...node.attributes, ...vueConfig.attributes };
+      }
+      if (vueConfig.expressionAttributes) {
+        node.attributes = node.attributes || {};
+        if (Array.isArray(vueConfig.expressionAttributes)) {
+          // Handle string[] format
+          for (const attr of vueConfig.expressionAttributes) {
+            node.attributes[`:${attr}`] = attr;
+          }
+        } else {
+          // Handle Record<string, string> format
+          for (const [attr, value] of Object.entries(vueConfig.expressionAttributes)) {
+            node.attributes[`:${attr}`] = value;
+          }
+        }
       }
     }
     return node;
   }
 
-  public rootHandler(
-    html: string,
-    options: VueOptions,
-    context: RootHandlerContext
-  ): string {
-    const { component } = context;
-    const vueConfig = component?.extensions?.vue as VueComponentOptions | undefined;
+  rootHandler(template: string, options: BaseExtensionOptions, context: RootHandlerContext): string {
+    const component = context.component;
+    if (!component) return '';
+    const vueConfig = getExtensionOptions<VueComponentOptions>(component as Component, 'vue');
+    if (!vueConfig) return '';
+    const { name, props = {}, imports = [], customScript, customStyle } = vueConfig;
+    if (!name) return '';
+    const scriptContent = customScript || this.generateScript(name, props, imports);
+    const styleContent = customStyle || this.generateStyle(context as StyleContext);
+    // Render template from AST if available, otherwise use the string template
+    let templateContent = '';
+    if ((component as any).template) {
+      templateContent = this.renderTemplate((component as any).template || []);
+    } else {
+      templateContent = template;
+    }
+    return `
+<template>
+  ${templateContent}
+</template>
 
-    const componentName = component?.name ?? options.componentName ?? options.name ?? 'UnnamedComponent';
-    const isScoped = vueConfig?.scoped ?? false;
-    const isComposition = vueConfig?.composition ?? false;
-    const useScriptSetup = isComposition && vueConfig?.useSetup === true;
+${scriptContent}
 
-    // Determine script language
-    const isTypeScript = options.fileExtension === '.ts' || options.fileExtension === '.tsx';
-    const scriptLang = isTypeScript ? 'ts' : '';
-    const langAttr = scriptLang ? ` lang="${scriptLang}"` : '';
-
-    // Props
-    const propsScript = component?.props
-      ? Object.entries(component.props)
-          .map(([key, type]) => `  ${key}: { type: ${type}, required: false },`)
-          .join('\n')
-      : '';
-
-    // Setup script block
-    const logicScript = component?.script?.trim() ?? '';
-
-    // Generate script block based on configuration
-    const scriptBlock = useScriptSetup
-      ? `<script setup${langAttr}>\n${logicScript}\n</script>`
-      : `<script${langAttr}>
-export default {
-  name: '${componentName}',
-  ${propsScript ? `props: {\n${propsScript}\n},` : ''}
-  ${isComposition ? `setup() {\n${logicScript}\n  },` : logicScript}
-};
-</script>`.trim();
-
-    const templateBlock = `<template>\n${html.trim()}\n</template>`;
-
-    // Style block with scoped and language support
-    const hasStyles = options.styles?.outputFormat && options.styles.outputFormat !== 'inline';
-    const styleLang = options.styles?.outputFormat === 'scss' ? 'scss' : 'css';
-    const scopedAttr = isScoped ? ' scoped' : '';
-    const styleOutput = options._styleOutput ?? context.styleProcessor?.generateStyles?.(new Map(), options as any);
-    const styleBlock = hasStyles && styleOutput
-      ? `<style lang="${styleLang}"${scopedAttr}>\n${styleOutput.trim()}\n</style>`
-      : '';
-
-    // Combine all blocks
-    const blocks = [templateBlock, scriptBlock];
-    if (styleBlock) blocks.push(styleBlock);
-
-    const output = blocks.join('\n\n');
-    this.logger.info(`Generated Vue component: ${componentName}`);
-    return output;
+${styleContent}
+    `.trim();
   }
-} 
+
+  private renderTemplate(nodes: TemplateNode[] = []): string {
+    return nodes.map((node) => {
+      if (typeof node === 'string') return this.escapeHtml(node);
+      const tag = node.tag || node.tagName;
+      if (!tag) return this.escapeHtml(node.content || '');
+      const attrs = node.attributes
+        ? Object.entries(node.attributes)
+            .map(([key, value]) => `${key}="${this.escapeHtml(String(value))}"`)
+            .join(' ')
+        : '';
+      const children = node.children ? this.renderTemplate(node.children) : '';
+      return `<${tag}${attrs ? ' ' + attrs : ''}>${children}</${tag}>`;
+    }).join('');
+  }
+
+  private generateScript(name: string, props: Record<string, string>, imports: string[]): string {
+    const propTypes = Object.entries(props)
+      .map(([key, type]) => `${key}: ${type}`)
+      .join(',\n  ');
+    return `
+<script lang="ts">
+${imports.map(imp => `import ${imp};`).join('\n')}
+
+export default {
+  name: '${name}',
+  props: {
+    ${propTypes}
+  }
+}
+</script>
+    `.trim();
+  }
+
+  private generateStyle(context: StyleContext): string {
+    const styles = context.styles || {};
+    if (Object.keys(styles).length === 0) return '';
+    return `
+<style scoped>
+${Object.entries(styles)
+  .map(([selector, rules]) => `${selector} { ${rules} }`)
+  .join('\n')}
+</style>
+    `.trim();
+  }
+}
+
+export type { Options }; 
