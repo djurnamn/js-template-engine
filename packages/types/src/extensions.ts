@@ -4,6 +4,8 @@ export interface Component {
   name?: string;
   props?: Record<string, string>;
   script?: string;
+  typescript?: boolean;
+  imports?: string[];
   extensions?: Record<string, Record<string, any>>;
 }
 

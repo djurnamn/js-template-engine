@@ -30,6 +30,7 @@ export interface ExtendedTemplate {
     props?: Record<string, string>; // TypeScript-style type map
     imports?: string[];
     script?: string;
+    typescript?: boolean;
     extensions?: {
       react?: ReactComponentOptions;
       vue?: VueComponentOptions;

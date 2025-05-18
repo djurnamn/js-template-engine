@@ -15,6 +15,7 @@ export interface VueComponentOptions {
 
 export namespace VueExtension {
   export interface Options extends RenderOptions {
+    componentName?: string;
     _styleOutput?: string;
   }
 }

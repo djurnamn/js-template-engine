@@ -15,8 +15,8 @@ class ReactExtension {
             .join('');
     }
     optionsHandler(defaultOptions, options) {
-        const fileExtension = options.fileExtension ?? '.jsx';
-        const isTypeScript = fileExtension === '.tsx';
+        const isTypeScript = options.component?.typescript ?? false;
+        const fileExtension = isTypeScript ? '.tsx' : '.jsx';
         return {
             ...defaultOptions,
             ...options,

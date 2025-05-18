@@ -77,111 +77,35 @@ export class VueExtension implements Extension {
     // Get Vue-specific options from component extensions
     const vueConfig = component?.extensions?.vue || {};
     const { composition = false, useSetup = false, scoped = true } = vueConfig;
+    const isTypeScript = component?.typescript ?? false;
+
+    // Generate props section
+    const propsContent = component?.props 
+      ? Object.entries(component.props)
+          .map(([key, type]) => `    ${key}: ${type}`)
+          .join(',\n')
+      : '    // Add your props here';
 
     // Generate script section
     const scriptContent = `
-<script lang="ts">
+<script${isTypeScript ? ' lang="ts"' : ''}>
 ${composition ? 'import { defineComponent } from \'vue\';' : ''}
 ${useSetup ? 'import { ref } from \'vue\';' : ''}
+${component?.imports?.map(imp => `import ${imp};`).join('\n') || ''}
 
 ${composition ? 'export default defineComponent({' : 'export default {'}
   name: '${componentName}',
   props: {
-    // Add your props here
+${propsContent}
   },
-  ${useSetup ? `
-  setup() {
-    const handleAddTodo = () => {
-      const todoList = document.getElementById('todoList');
-      const newTodoText = document.getElementById('todoInput').value;
-      const newTodoItem = document.createElement('li');
-      newTodoItem.textContent = newTodoText;
-      todoList?.appendChild(newTodoItem);
-      document.getElementById('todoInput').value = ''; // Clear the input field
-    };
-
-    const handleRemoveTodo = (id: number) => {
-      const todoList = document.getElementById('todoList');
-      const todoItem = document.getElementById(\`todo-\${id}\`);
-      if (todoItem && todoList) {
-        todoList.removeChild(todoItem);
-      }
-    };
-
-    return {
-      handleAddTodo,
-      handleRemoveTodo
-    };
-  }` : `
-  methods: {
-    handleAddTodo() {
-      const todoList = document.getElementById('todoList');
-      const newTodoText = document.getElementById('todoInput').value;
-      const newTodoItem = document.createElement('li');
-      newTodoItem.textContent = newTodoText;
-      todoList?.appendChild(newTodoItem);
-      document.getElementById('todoInput').value = ''; // Clear the input field
-    },
-    handleRemoveTodo(id: number) {
-      const todoList = document.getElementById('todoList');
-      const todoItem = document.getElementById(\`todo-\${id}\`);
-      if (todoItem && todoList) {
-        todoList.removeChild(todoItem);
-      }
-    }
-  }`}
+  ${component?.script || ''}
 ${composition ? '});' : '}'}
 </script>`;
 
-    // Generate style section with basic styles
-    const defaultStyles = `
-.todo-app {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.todo-app input {
-  padding: 8px;
-  margin-right: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.todo-app button {
-  padding: 8px 16px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.todo-app button:hover {
-  background-color: #45a049;
-}
-
-.todo-app ul {
-  list-style: none;
-  padding: 0;
-  margin-top: 20px;
-}
-
-.todo-app li {
-  padding: 8px;
-  margin: 4px 0;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.todo-app li:hover {
-  background-color: #f0f0f0;
-}`;
-
+    // Generate style section
     const styleContent = `
 <style ${scoped ? 'scoped' : ''}>
-${styleOutput || defaultStyles}
+${styleOutput || ''}
 </style>`;
 
     // Combine template, script, and style

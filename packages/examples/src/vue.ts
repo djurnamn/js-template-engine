@@ -131,6 +131,6 @@ interface TodoProps {
     ],
     propsInterface,
     props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
-    fileExtension: '.ts',
+    fileExtension: '.vue',
   } as RenderOptions & Options);
 })(); 

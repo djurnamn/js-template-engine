@@ -4,8 +4,7 @@ import { writeOutputFile } from '../handlers/FileHandler';
 import { createLogger } from '../helpers/createLogger';
 import type { 
   TemplateNode, 
-  Extension, 
-  RenderOptions, 
+  Extension,
   ExtendedTemplate,
   Logger,
   StyleProcessorPlugin,
