@@ -1,13 +1,15 @@
 import { TemplateEngine } from '@js-template-engine/core';
 import type { RenderOptions, ExtendedTemplate } from '@js-template-engine/types';
 import { VueExtension } from '@js-template-engine/extension-vue';
-import { Options } from '@js-template-engine/extension-vue/dist/types';
+import type { Options as VueOptions } from '@js-template-engine/extension-vue/dist/types';
 
 const verbose = true;
-const vueExtension = new VueExtension({ componentName: 'TodoApp' });
-const templateEngine = new TemplateEngine([vueExtension]);
+const vueExtension = new VueExtension();
+vueExtension.options.componentName = 'TodoApp';
 
-const todoAppTemplate: ExtendedTemplate = {
+const engine = new TemplateEngine([vueExtension]);
+
+const template: ExtendedTemplate = {
   component: {
     name: 'TodoApp',
     props: {},
@@ -106,7 +108,6 @@ const todoAppTemplate: ExtendedTemplate = {
   ]
 };
 
-// Optional TypeScript interface (not strictly used by Vue, but may help structure shared logic)
 const propsInterface = `
 interface TodoProps {
   initialTodos: Todo[];
@@ -116,21 +117,23 @@ interface TodoProps {
 `;
 
 (async () => {
-  await templateEngine.render(todoAppTemplate, {
+  await engine.render(template, {
     name: 'vue',
     writeOutputFile: true,
     verbose,
     outputDir: 'output',
+    fileExtension: '.vue',
     styles: {
       outputFormat: 'scss'
     },
+    propsInterface,
+    props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
     importStatements: [
       "import { DefaultButton } from './components/Button';",
       "import { TodoCard } from './components/TodoCard';",
       "import { Todo } from './types';",
     ],
-    propsInterface,
-    props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
-    fileExtension: '.vue',
-  } as RenderOptions & Options);
-})(); 
+  } as RenderOptions & VueOptions);
+
+  console.log('[render] Done. Output saved to dist directory');
+})();

@@ -1,4 +1,4 @@
-import type { RenderOptions } from '@js-template-engine/types';
+import type { RenderOptions, BaseExtensionOptions } from '@js-template-engine/types';
 
 export interface VueComponentOptions {
   directives?: Record<string, string>;
@@ -21,4 +21,18 @@ export namespace VueExtension {
 }
 
 // Re-export Options type for convenience
-export type Options = VueExtension.Options; 
+export type Options = VueExtension.Options;
+
+export interface VueExtensionOptions extends BaseExtensionOptions {
+  fileExtension?: '.vue';
+  scriptLang?: 'js' | 'ts';
+  styleLang?: 'css' | 'scss' | 'less' | 'stylus';
+  scoped?: boolean;
+  scriptContent?: string;
+}
+
+export interface VueNodeExtensions {
+  tag?: string;
+  attributes?: Record<string, string | number | boolean>;
+  expressionAttributes?: Record<string, string>;
+}

@@ -1,12 +1,10 @@
 import { TemplateEngine } from '@js-template-engine/core';
 import type { RenderOptions, ExtendedTemplate } from '@js-template-engine/types';
 import { ReactExtension } from '@js-template-engine/extension-react';
-import type { ReactExtension as ReactTypes } from '@js-template-engine/extension-react/src/types';
 
 const verbose = true;
-
-const reactExtension = new ReactExtension(verbose);
-const templateEngine = new TemplateEngine([reactExtension]);
+const reactExtension = new ReactExtension();
+const engine = new TemplateEngine([reactExtension]);
 
 interface Todo {
   id: number;
@@ -19,7 +17,7 @@ const initialTodos: Todo[] = [
   { id: 2, text: 'Build a todo app', completed: false },
 ];
 
-const todoAppTemplate: ExtendedTemplate = {
+const template: ExtendedTemplate = {
   component: {
     name: 'TodoApp',
     props: {},
@@ -28,11 +26,9 @@ const todoAppTemplate: ExtendedTemplate = {
         const todoList = document.getElementById('todoList');
         const newTodoText = document.getElementById('todoInput').value;
         const newTodoItem = document.createElement('li');
-        
         newTodoItem.textContent = newTodoText;
         todoList.appendChild(newTodoItem);
-        
-        document.getElementById('todoInput').value = ''; // Clear the input field
+        document.getElementById('todoInput').value = '';
       }
 
       function handleRemoveTodo(id: number) {
@@ -122,7 +118,6 @@ const todoAppTemplate: ExtendedTemplate = {
   ]
 };
 
-// Define the props interface for the component
 const propsInterface = `
 interface TodoProps {
   initialTodos: Todo[];
@@ -131,16 +126,16 @@ interface TodoProps {
 }
 `;
 
-// Render
 (async () => {
-  await templateEngine.render(todoAppTemplate, {
+  await engine.render(template, {
     name: 'react',
-    writeOutputFile: true,
     verbose,
+    writeOutputFile: true,
     outputDir: 'output',
     styles: {
       outputFormat: 'scss'
     },
+    fileExtension: '.tsx',
     importStatements: [
       "import React, { useState } from 'react';",
       "import { DefaultButton } from './components/Button';",
@@ -149,6 +144,7 @@ interface TodoProps {
     ],
     propsInterface,
     props: '{ initialTodos, handleAddTodo, handleRemoveTodo }',
-    fileExtension: '.tsx',
-  } as RenderOptions & ReactTypes.Options);
+  } as RenderOptions & any);
+
+  console.log('[render] Done. Output saved to dist directory');
 })(); 

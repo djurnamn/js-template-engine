@@ -1,4 +1,4 @@
-import type { RenderOptions } from '@js-template-engine/types';
+import type { RenderOptions, BaseExtensionOptions } from '@js-template-engine/types';
 
 export namespace BemExtension {
   export interface Options extends RenderOptions {
@@ -16,4 +16,16 @@ export namespace BemExtension {
     modifier?: string;
     modifiers?: string[];
   }
-} 
+}
+
+export interface BemExtensionOptions extends BaseExtensionOptions {
+  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css' | '.ts' | '.vue';
+}
+
+export interface BemNodeExtensions {
+  block?: string;
+  element?: string;
+  modifiers?: string[];
+}
+
+export type { BemExtensionOptions, BemNodeExtensions }; 

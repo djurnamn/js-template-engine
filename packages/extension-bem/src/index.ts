@@ -1,6 +1,16 @@
 import { createLogger, getExtensionOptions } from '@js-template-engine/core';
-import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin } from '@js-template-engine/types';
+import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin, BaseExtensionOptions, RootHandlerContext } from '@js-template-engine/types';
 import type { BemExtension as BemTypes } from './types';
+
+export interface BemExtensionOptions extends BaseExtensionOptions {
+  fileExtension?: string;
+}
+
+export interface BemNodeExtensions {
+  block?: string;
+  element?: string;
+  modifiers?: string[];
+}
 
 interface BemNode extends TemplateNode {
   block?: string;
@@ -16,9 +26,13 @@ interface BemNode extends TemplateNode {
   attributes?: Record<string, any>;
 }
 
-export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeExtensions> {
+export class BemExtension implements Extension<BemExtensionOptions, BemNodeExtensions> {
   public readonly key = 'bem' as const;
   private logger: ReturnType<typeof createLogger>;
+  isRenderer = false;
+  options: BemExtensionOptions = {
+    fileExtension: '.html'
+  };
 
   constructor(verbose = false) {
     this.logger = createLogger(verbose, 'BemExtension');
@@ -136,7 +150,7 @@ export class BemExtension implements Extension<BemTypes.Options, BemTypes.NodeEx
       if (processedStyles && processedStyles.size > 0) {
         let scss = '';
         processedStyles.forEach((styleDef, selector) => {
-          scss += `${selector} {\n`;
+          scss += `.${selector} {\n`;
           Object.entries(styleDef).forEach(([key, value]) => {
             scss += `  ${key}: ${value};\n`;
           });

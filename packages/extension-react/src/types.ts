@@ -1,18 +1,17 @@
-import type { RenderOptions } from '@js-template-engine/types';
+import type { BaseExtensionOptions } from '@js-template-engine/types';
 
-export namespace ReactExtension {
-  export interface Options extends RenderOptions {
-    componentName?: string;
-    importStatements?: string[];
-    exportType?: 'default' | 'named';
-    propsInterface?: string;
-    props?: string;
-  }
+export interface ReactExtensionOptions extends BaseExtensionOptions {
+  fileExtension?: '.jsx' | '.tsx';
+  name?: string;
+  componentName?: string;
+  rendererKey?: string;
+  exportType?: 'default' | 'named';
+  props?: string;
+  importStatements?: string[];
+}
 
-  export interface NodeExtensions {
-    ignore?: boolean;
-    tag?: string;
-    attributes?: Record<string, string | number | boolean>;
-    expressionAttributes?: Record<string, string>;
-  }
-} 
+export interface ReactNodeExtensions {
+  tag?: string;
+  attributes?: Record<string, any>;
+  expressionAttributes?: Record<string, any>;
+}

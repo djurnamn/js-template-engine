@@ -83,4 +83,10 @@ export * from './utils';
 
 export function hasNodeExtensions<T extends Record<string, any>>(node: TemplateNode, key: ExtensionKey): node is TemplateNode & { extensions: { [K in typeof key]: T } } {
   return node.extensions !== undefined && key in node.extensions;
-} 
+}
+
+export {
+  resolveComponentName,
+  resolveComponentProps,
+  resolveComponentImports
+} from './Component'; 
