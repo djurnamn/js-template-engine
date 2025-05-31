@@ -7,4 +7,5 @@ export interface RootHandlerContext {
   version?: string;
   styleProcessor?: StyleProcessorPlugin;
   styleOutput?: string; // The generated style output from StyleProcessor
+  styleLang?: string; // The language of the style block (e.g., 'scss', 'less')
 } 

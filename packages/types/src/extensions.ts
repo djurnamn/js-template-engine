@@ -1,3 +1,5 @@
+import type { ImportDefinition } from './Component';
+
 export type ExtensionKey = string;
 
 export interface Component {
@@ -5,8 +7,8 @@ export interface Component {
   props?: Record<string, string>;
   script?: string;
   typescript?: boolean;
-  imports?: string[];
-  extensions?: Record<string, Record<string, any>>;
+  imports?: ImportDefinition[];
+  extensions?: Record<string, Record<string, any> | undefined>;
 }
 
 export interface StyleProcessorPlugin {

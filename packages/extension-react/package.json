@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean"
+    "prebuild": "npm run clean",
+    "test": "vitest run"
   },
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "rimraf": "^5.0.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
   }
 } 

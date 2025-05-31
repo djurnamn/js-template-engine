@@ -1,4 +1,5 @@
 import { TemplateNode } from './index';
+import { ImportDefinition } from './Component';
 
 // Base interface for all framework extensions
 export interface BaseComponentOptions {
@@ -28,7 +29,7 @@ export interface ExtendedTemplate {
   component?: {
     name?: string;
     props?: Record<string, string>; // TypeScript-style type map
-    imports?: string[];
+    imports?: ImportDefinition[];
     script?: string;
     typescript?: boolean;
     extensions?: {

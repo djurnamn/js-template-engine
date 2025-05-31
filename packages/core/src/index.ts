@@ -1,5 +1,5 @@
 // Export engine
-export { TemplateEngine } from './engine/TemplateEngine';
+export { TemplateEngine } from './engine';
 
 // Export handlers
 export * from './handlers/FileHandler';

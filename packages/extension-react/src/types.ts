@@ -7,6 +7,7 @@ export interface ReactExtensionOptions extends BaseExtensionOptions {
   rendererKey?: string;
   exportType?: 'default' | 'named';
   props?: string;
+  propsInterface?: string;
   importStatements?: string[];
 }
 

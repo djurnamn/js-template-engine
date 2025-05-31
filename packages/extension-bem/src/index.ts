@@ -4,6 +4,10 @@ import type { BemExtension as BemTypes } from './types';
 
 export interface BemExtensionOptions extends BaseExtensionOptions {
   fileExtension?: string;
+  separator?: {
+    element?: string;
+    modifier?: string;
+  };
 }
 
 export interface BemNodeExtensions {
@@ -31,7 +35,11 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
   private logger: ReturnType<typeof createLogger>;
   isRenderer = false;
   options: BemExtensionOptions = {
-    fileExtension: '.html'
+    fileExtension: '.html',
+    separator: {
+      element: '__',
+      modifier: '--',
+    },
   };
 
   constructor(verbose = false) {
@@ -183,7 +191,7 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
       : {};
   }
 
-  public optionsHandler(defaultOptions: BemTypes.Options, options: DeepPartial<BemTypes.Options>): BemTypes.Options {
+  public optionsHandler(defaultOptions: BemExtensionOptions, options: DeepPartial<BemExtensionOptions>): BemExtensionOptions {
     return {
       ...defaultOptions,
       ...options,

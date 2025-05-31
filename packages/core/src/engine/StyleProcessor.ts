@@ -13,7 +13,7 @@ export class StyleProcessor {
   }
 
   processNode(node: TemplateNode): void {
-    if (!node.attributes?.styles) {
+    if (!node.attributes?.style) {
       return;
     }
 
@@ -36,7 +36,7 @@ export class StyleProcessor {
 
     // Merge with existing styles if any
     const existing = this.processedStyles.get(selector) || {};
-    const newStyles = node.attributes.styles as StyleDefinition;
+    const newStyles = node.attributes.style as StyleDefinition;
     
     // Deep merge styles, handling media queries and pseudo-selectors
     const mergedStyles = this.mergeStyleDefinitions(existing, newStyles);
@@ -228,16 +228,11 @@ export class StyleProcessor {
 
   // Add a new method to get inline styles for a specific node
   getInlineStyles(node: TemplateNode): string | null {
-    if (!node.attributes?.styles) {
+    if (!node.attributes?.style) {
       return null;
     }
 
-    const selector = this.getSelector(node);
-    if (!selector) {
-      return null;
-    }
-
-    const styleDef = this.processedStyles.get(selector);
+    const styleDef = node.attributes.style as StyleDefinition;
     if (!styleDef) {
       return null;
     }

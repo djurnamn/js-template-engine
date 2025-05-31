@@ -26,6 +26,4 @@ export interface BemNodeExtensions {
   block?: string;
   element?: string;
   modifiers?: string[];
-}
-
-export type { BemExtensionOptions, BemNodeExtensions }; 
+} 

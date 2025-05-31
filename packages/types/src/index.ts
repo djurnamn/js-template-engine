@@ -88,5 +88,8 @@ export function hasNodeExtensions<T extends Record<string, any>>(node: TemplateN
 export {
   resolveComponentName,
   resolveComponentProps,
-  resolveComponentImports
-} from './Component'; 
+  resolveComponentImports,
+  sanitizeComponentName
+} from './Component';
+
+export type { ImportDefinition } from './Component'; 
