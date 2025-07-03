@@ -4,9 +4,6 @@ import type {
   Extension,
   RootHandlerContext,
   BaseExtensionOptions,
-  RenderOptions,
-  ExtendedTemplate,
-  Component,
   ImportDefinition
 } from '@js-template-engine/types';
 
@@ -22,16 +19,6 @@ import {
 } from '@js-template-engine/types';
 
 const logger = createLogger(false, 'react-extension');
-
-// Add type guard for object-based imports
-function isImportObject(imp: unknown): imp is { from: string; default?: string; named?: string[] } {
-  return typeof imp === 'object' && imp !== null && 'from' in imp;
-}
-
-// Helper to extract named imports from a string
-function extractNamedImports(str: string): string[] {
-  return str.split(',').map(s => s.trim()).filter(Boolean);
-}
 
 /**
  * Determines if React import should be injected based on component configuration
@@ -55,66 +42,6 @@ function shouldInjectReact(imports: ImportDefinition[], component: any): boolean
 function injectReactImport(imports: ImportDefinition[]): ImportDefinition[] {
   const reactImport = { from: 'react', default: 'React' };
   return [reactImport, ...imports];
-}
-
-/**
- * Merges all React imports (string and object) into a single line, deduplicating named imports.
- */
-function mergeReactImports(imports: ImportDefinition[]): string[] {
-  let hasDefaultReact = false;
-  const namedReactSet = new Set<string>();
-  const otherImports: string[] = [];
-
-  for (const imp of imports) {
-    if (typeof imp === 'string') {
-      // Parse string imports for React (with or without semicolon, any whitespace)
-      const match = imp.match(/import\s+(?:([^,{;]+?)(?:,\s*{([^}]+)})?|{([^}]+)})\s+from\s+['"]react['"];?/);
-      if (match) {
-        // match[1]: default import, match[2]: named with default, match[3]: named only
-        if (match[1] && match[1].trim() === 'React') {
-          hasDefaultReact = true;
-        }
-        const named = (match[2] || match[3] || '').split(',').map(s => s.trim()).filter(Boolean);
-        named.forEach(name => namedReactSet.add(name));
-        continue; // skip adding this import to otherImports
-      }
-      // Not a React import, keep as is
-      otherImports.push(imp);
-    } else if (isImportObject(imp) && imp.from === 'react') {
-      if (imp.default === 'React') {
-        hasDefaultReact = true;
-      }
-      if (Array.isArray(imp.named)) {
-        imp.named.forEach(name => namedReactSet.add(name));
-      }
-      // skip adding this import to otherImports
-    } else if (isImportObject(imp)) {
-      // Non-React object import
-      const { from, default: defaultImport, named } = imp;
-      if (defaultImport && named?.length) {
-        otherImports.push(`import ${defaultImport}, { ${named.join(', ')} } from "${from}"`);
-      } else if (defaultImport) {
-        otherImports.push(`import ${defaultImport} from "${from}"`);
-      } else if (named?.length) {
-        otherImports.push(`import { ${named.join(', ')} } from "${from}"`);
-      }
-    }
-  }
-
-  // Compose merged React import
-  let mergedReact = null;
-  if (hasDefaultReact && namedReactSet.size > 0) {
-    mergedReact = `import React, { ${Array.from(namedReactSet).join(', ')} } from "react"`;
-  } else if (hasDefaultReact) {
-    mergedReact = `import React from "react"`;
-  } else if (namedReactSet.size > 0) {
-    mergedReact = `import { ${Array.from(namedReactSet).join(', ')} } from "react"`;
-  }
-
-  return [
-    ...(mergedReact ? [mergedReact] : []),
-    ...otherImports
-  ];
 }
 
 export class ReactExtension implements Extension<ReactExtensionOptions> {
@@ -172,11 +99,11 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     if (shouldInjectReact(imports, component)) {
       imports = injectReactImport(imports);
     }
-    const formattedImports = mergeReactImports(imports);
+    const importStatements = resolveComponentImports(component, imports);
 
     // Add style import if present
     const styleImport = context.styleOutput || component.extensions?.react?.styleOutput
-      ? `import './${componentName}.scss'`
+      ? `import './${componentName}.scss';`
       : null;
 
     // Use component.typescript flag to determine TypeScript usage
@@ -199,7 +126,7 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
         : `const ${componentName} = () => {`;
 
     // Return formatted component with proper indentation
-    const importSection = formattedImports.join('\n');
+    const importSection = importStatements.join('\n');
     const interfaceSection = propsInterface ? propsInterface.trim() : '';
     const styleSection = styleImport ? styleImport : '';
     const componentSection = [

@@ -30,12 +30,14 @@ describe('VueExtension - rootHandler', () => {
     }
   };
 
-  it('renders a complete valid Vue component snapshot', () => {
+  it('renders a complete valid Vue component', () => {
     const output = extension.rootHandler('<div>Hello</div>', {
       componentName: 'TestComponent',
-      scriptContent: 'console.log("Hello")',
+      script: 'console.log("Hello")',
       scoped: true,
-      styleLang: 'scss',
+      styles: {
+        outputFormat: 'scss'
+      },
       setup: true,
       composition: true
     }, {
@@ -80,8 +82,13 @@ describe('VueExtension - rootHandler', () => {
 
   it('wraps content in a Vue component with script, template, and style blocks', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(vueBaseTemplate, {
-      fileExtension: '.vue',
+    const output = await engine.render({
+      ...vueBaseTemplate,
+      component: {
+        ...vueBaseTemplate.component,
+        typescript: true
+      }
+    }, {
       extensions: [extension],
     });
 
@@ -104,7 +111,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -124,7 +130,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -148,7 +153,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -171,14 +175,13 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
     expect(output).toContain('<style scoped>');
   });
 
-  it('applies language attribute to style block when specified', async () => {
+  it('applies language attribute to style block based on styles.outputFormat', async () => {
     const template: ExtendedTemplate = {
       ...vueBaseTemplate,
       component: {
@@ -186,7 +189,9 @@ describe('VueExtension - rootHandler', () => {
         extensions: {
           vue: {
             styleOutput: '.test { color: red; }',
-            styleLang: 'scss'
+            styles: {
+              outputFormat: 'scss'
+            }
           }
         }
       }
@@ -194,7 +199,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -221,7 +225,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
       name: 'CustomComponent'
     });
@@ -256,7 +259,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -287,7 +289,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -301,7 +302,6 @@ describe('VueExtension - rootHandler', () => {
   it('omits style block when styleOutput is undefined', async () => {
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(vueBaseTemplate, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -324,7 +324,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -337,10 +336,11 @@ describe('VueExtension - rootHandler', () => {
       ...vueBaseTemplate,
       component: {
         ...vueBaseTemplate.component,
+        typescript: true,
         extensions: {
           vue: {
             composition: true,
-            useSetup: true
+            setup: true
           }
         }
       }
@@ -348,7 +348,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -361,10 +360,11 @@ describe('VueExtension - rootHandler', () => {
       ...vueBaseTemplate,
       component: {
         ...vueBaseTemplate.component,
+        typescript: true,
         extensions: {
           vue: {
             composition: true,
-            useSetup: false
+            setup: false
           }
         }
       }
@@ -372,7 +372,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -386,6 +385,7 @@ describe('VueExtension - rootHandler', () => {
       ...vueBaseTemplate,
       component: {
         ...vueBaseTemplate.component,
+        typescript: true,
         extensions: {
           vue: {
             composition: false
@@ -396,7 +396,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -427,7 +426,6 @@ describe('VueExtension - rootHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 

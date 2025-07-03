@@ -116,12 +116,14 @@ export function resolveComponentImports(
         parts.push(defaultImport);
       }
       if (named.size) {
-        parts.push(`{ ${Array.from(named).join(', ')} }`);
+        // Sort named imports alphabetically
+        const sortedNamed = Array.from(named).sort();
+        parts.push(`{ ${sortedNamed.join(', ')} }`);
       }
-      result.push(`import ${parts.join(', ')} from "${from}"`);
+      result.push(`import ${parts.join(', ')} from "${from}";`);
     } else {
-      // Keep non-matching imports as-is
-      result.push(from);
+      // Keep non-matching imports as-is, but ensure they end with semicolon
+      result.push(from.endsWith(';') ? from : `${from};`);
     }
   }
 

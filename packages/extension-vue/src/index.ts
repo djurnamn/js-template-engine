@@ -16,13 +16,13 @@ import {
 const logger = createLogger(false, 'vue-extension');
 
 export interface VueExtensionOptions extends BaseExtensionOptions, ComponentOptions {
-  fileExtension?: '.vue';
-  scriptLang?: 'js' | 'ts';
-  styleLang?: 'css' | 'scss' | 'less' | 'stylus';
   scoped?: boolean;
-  scriptContent?: string;
+  script?: string;
   composition?: boolean;
   setup?: boolean;
+  styles?: {
+    outputFormat?: 'css' | 'scss' | 'less' | 'stylus' | 'inline';
+  };
   attributeFormatter?: (attr: string, val: string | number | boolean, isExpression?: boolean) => string;
 }
 
@@ -46,14 +46,12 @@ interface VueRootHandlerContext extends BaseRootHandlerContext {
   props?: PropDefinition[];
 }
 
-export interface VueRootHandlerOptions extends Omit<VueExtensionOptions, 'scriptLang' | 'styleLang'> {
+export interface VueRootHandlerOptions extends Omit<VueExtensionOptions, 'script'> {
   componentName?: string;
-  scriptContent?: string;
+  script?: string;
   styleOutput?: string;
   isSetup?: boolean;
   isComposition?: boolean;
-  scriptLang?: 'js' | 'ts';
-  styleLang?: 'css' | 'scss' | 'less' | 'stylus';
   isScoped?: boolean;
   imports?: Array<{ from: string; imports: string[] }>;
   propsInterface?: string;
@@ -64,7 +62,6 @@ export class VueExtension implements Extension<VueExtensionOptions, VueNodeExten
   isRenderer = true;
 
   options: VueExtensionOptions = {
-    fileExtension: '.vue',
     attributeFormatter: (attr: string, val: string | number | boolean, isExpression?: boolean) =>
       ` ${attr}="${val}"`
   };
@@ -263,13 +260,19 @@ export class VueExtension implements Extension<VueExtensionOptions, VueNodeExten
   rootHandler(template: string, options: VueExtensionOptions, context: VueRootHandlerContext): string {
     const resolvedName = resolveComponentName(context, options) || 'Component';
     const componentName = this.sanitizeAttributeValue(resolvedName);
-    const scriptContent = (context.component?.extensions?.vue?.scriptContent || options.scriptContent || '').replace(/<\/?script[^>]*>/g, '').trim();
+    
+    // Combine vanilla and framework-specific script content
+    const scriptContent = [
+      context.component?.script,
+      context.component?.extensions?.vue?.script,
+      options.script
+    ].filter(Boolean).join('\n\n').replace(/<\/?script[^>]*>/g, '').trim();
+
     const styleOutput = context.component?.extensions?.vue?.styleOutput || context.styleOutput || '';
-    const styleLang = context.component?.extensions?.vue?.styleLang || options.styleLang || 'css';
+    const styleLang = context.component?.extensions?.vue?.styles?.outputFormat ?? options.styles?.outputFormat ?? 'css';
     const isScoped = context.component?.extensions?.vue?.scoped ?? options.scoped ?? false;
     const isComposition = context.component?.extensions?.vue?.composition ?? options.composition ?? false;
-    const useSetup = context.component?.extensions?.vue?.useSetup ?? options.setup ?? false;
-    const scriptLang = options.scriptLang ?? 'ts';
+    const useSetup = context.component?.extensions?.vue?.setup ?? options.setup ?? false;
     const useTypeScript = context.component?.typescript ?? false;
 
     // --- Props Handling ---
@@ -308,91 +311,16 @@ export class VueExtension implements Extension<VueExtensionOptions, VueNodeExten
       interfaceBlock = lines.join('\n') + '\n\n';
     }
 
-    // --- Import Deduplication ---
-    const importMap = new Map<string, Set<string>>();
-    const defaultImports = new Map<string, string>();
-    const sideEffectImports = new Set<string>();
-
-    const addImport = (module: string, symbol: string) => {
-      if (!importMap.has(module)) importMap.set(module, new Set());
-      importMap.get(module)!.add(symbol);
-    };
-
-    // Only add imports if needed
-    const shouldImport = hasProps || isComposition || useSetup || hasComponentImports;
-    if (shouldImport) {
-      // Add Vue core imports
-      addImport('vue', 'defineComponent');
+    // --- Import Handling ---
+    const defaultImports: string[] = [];
+    if (hasProps || isComposition || useSetup) {
+      defaultImports.push('import { defineComponent } from "vue";');
       if (isComposition || useSetup) {
-        ['ref', 'computed', 'watch', 'onMounted'].forEach(sym => addImport('vue', sym));
-      }
-
-      // Process component imports
-      if (hasComponentImports && context.component?.imports) {
-        for (const imp of context.component.imports) {
-          if (typeof imp === 'string') {
-            // Handle named imports: import { foo, bar } from 'baz'
-            const namedMatch = imp.match(/import\s+{([^}]+)}\s+from\s+["']([^"']+)["']/);
-            if (namedMatch) {
-              const [, named, from] = namedMatch;
-              const symbols = named.split(',').map(s => s.trim());
-              symbols.forEach(sym => addImport(from, sym));
-              continue;
-            }
-
-            // Handle default imports: import foo from 'bar'
-            const defaultMatch = imp.match(/import\s+([\w_]+)\s+from\s+["']([^"']+)["']/);
-            if (defaultMatch) {
-              const [, def, from] = defaultMatch;
-              defaultImports.set(from, def);
-              continue;
-            }
-
-            // Handle mixed imports: import foo, { bar } from 'baz'
-            const mixedMatch = imp.match(/import\s+([\w_]+)\s*,\s*{([^}]+)}\s+from\s+["']([^"']+)["']/);
-            if (mixedMatch) {
-              const [, def, named, from] = mixedMatch;
-              defaultImports.set(from, def);
-              const symbols = named.split(',').map(s => s.trim());
-              symbols.forEach(sym => addImport(from, sym));
-              continue;
-            }
-
-            // Handle side-effect imports: import 'foo'
-            const sideEffectMatch = imp.match(/import\s+["']([^"']+)["']/);
-            if (sideEffectMatch) {
-              const [, from] = sideEffectMatch;
-              sideEffectImports.add(from);
-            }
-          }
-        }
+        defaultImports.push('import { ref, computed, watch, onMounted } from "vue";');
       }
     }
 
-    // Compose import statements with sorted symbols
-    const importStatements = [];
-    
-    // Add side-effect imports first
-    for (const from of sideEffectImports) {
-      importStatements.push(`import "${from}";`);
-    }
-
-    // Add default imports
-    for (const [from, def] of defaultImports) {
-      if (importMap.has(from)) {
-        // If we have both default and named imports, combine them
-        const symbols = Array.from(importMap.get(from)!).sort();
-        importStatements.push(`import ${def}, { ${symbols.join(', ')} } from "${from}";`);
-        importMap.delete(from);
-      } else {
-        importStatements.push(`import ${def} from "${from}";`);
-      }
-    }
-
-    // Add remaining named imports
-    for (const [from, symbols] of importMap) {
-      importStatements.push(`import { ${Array.from(symbols).sort().join(', ')} } from "${from}";`);
-    }
+    const importStatements = resolveComponentImports(context.component, defaultImports);
 
     // --- Props Logic ---
     let propsBlock = '';
@@ -408,9 +336,7 @@ export class VueExtension implements Extension<VueExtensionOptions, VueNodeExten
         }
       } else {
         if (useTypeScript) {
-          propsBlock = `  props: {\n    ${Object.entries(componentProps)
-            .map(([key, type]) => `${key}: { type: ${type}, required: true }`)
-            .join(',\n    ')}\n  },`;
+          propsBlock = resolveComponentProps(context.component);
         } else {
           const runtimePropsConfig = runtimeProps
             .map((p: PropDefinition) => `${p.name}: { type: ${p.type.name}, required: true }`)
@@ -420,33 +346,29 @@ export class VueExtension implements Extension<VueExtensionOptions, VueNodeExten
       }
     }
 
-    // Remove any import statements from scriptContent
-    const cleanedScriptContent = scriptContent.replace(/^import\s+.*;?$/gm, '').trim();
-
     // --- Script Block ---
     let scriptBlock = '';
     const shouldRenderScript = hasProps || hasScriptContent || importStatements.length > 0;
     if (shouldRenderScript) {
       if (useSetup) {
-        scriptBlock = `<script setup lang="${scriptLang}">\n${importStatements.join('\n')}\n\n${interfaceBlock}${propsBlock}${cleanedScriptContent}\n</script>`;
+        scriptBlock = `<script setup lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\n${interfaceBlock}${propsBlock}${scriptContent}\n</script>`;
       } else {
-        const generic = hasProps && useTypeScript ? `<${componentName}Props>` : '';
-        const setupFn = isComposition ? `\n  setup() {\n    ${cleanedScriptContent}\n  }` : '';
-        scriptBlock = `<script lang="${scriptLang}">\n${importStatements.join('\n')}\n\n${interfaceBlock}export default defineComponent${generic}({\n  name: "${componentName}",\n  ${propsBlock}${setupFn ? setupFn + '\n' : ''}});\n</script>`;
+        const setupFn = isComposition ? `\n  setup() {\n    ${scriptContent}\n  }` : '';
+        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\n${interfaceBlock}export default defineComponent({\n  name: "${componentName}",\n  ${propsBlock}${setupFn ? setupFn + '\n' : ''}});\n</script>`;
       }
     } else {
       // For minimal SFCs, only include a script block if we have imports
       if (importStatements.length > 0) {
-        scriptBlock = `<script lang="${scriptLang}">\n${importStatements.join('\n')}\n\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
+        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
       } else {
         // For truly minimal SFCs with no imports, props, or script content, include a minimal script block
-        scriptBlock = `<script lang="${scriptLang}">\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
+        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
       }
     }
 
     // --- Style Block ---
     let styleBlock = '';
-    if (styleOutput && styleOutput.trim()) {
+    if (styleOutput && styleOutput.trim() && styleLang !== 'inline') {
       const attrs = [];
       if (isScoped) attrs.push('scoped');
       if (styleLang && styleLang !== 'css') attrs.push(`lang="${styleLang}"`);

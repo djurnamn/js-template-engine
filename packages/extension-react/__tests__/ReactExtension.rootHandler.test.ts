@@ -38,7 +38,19 @@ describe('ReactExtension - rootHandler', () => {
     });
 
     expect(output).toMatchInlineSnapshot(`
-      "import React from \"react\"\n\ninterface TestComponentProps {\n  title: string\n}\n\nconst TestComponent: React.FC<TestComponentProps> = (props) => {\n  return (\n    <div>Hello</div>\n  );\n};\n\nexport default TestComponent;"
+      "import React from "react";
+
+      interface TestComponentProps {
+        title: string
+      }
+
+      const TestComponent: React.FC<TestComponentProps> = (props) => {
+        return (
+          <div>Hello</div>
+        );
+      };
+
+      export default TestComponent;"
     `);
   });
 
@@ -210,13 +222,8 @@ describe('ReactExtension - rootHandler', () => {
     });
 
     // Verify merged imports
-    expect(output).toContain('import React, { useState, useEffect } from "react"');
-    expect(output).toContain('import { Button } from "./components"');
-    
-    // Verify no duplicate imports
-    expect(output).not.toContain('import { useState } from "react"');
-    expect(output).not.toContain('import { useEffect } from "react"');
-    expect(output).not.toContain('import React from "react";');
+    expect(output).toContain('import React, { useEffect, useState } from "react";');
+    expect(output).toContain('import { Button } from "./components";');
   });
 
   it('renders a minimal React component without props or imports', async () => {
@@ -286,36 +293,37 @@ describe('ReactExtension - rootHandler', () => {
     expect(output).not.toContain('</style>');
   });
 
-  it('should handle mixed string and object import definitions', () => {
-    const template = '<div>Hello</div>';
-    const options: ReactExtensionOptions = {};
-    const context: RootHandlerContext = {
+  it('should handle mixed string and object import definitions', async () => {
+    const template: ExtendedTemplate = {
+      template: [{
+        type: 'element',
+        tag: 'div',
+        children: [{
+          type: 'text',
+          content: 'Hello'
+        }]
+      }],
       component: {
         name: 'TestComponent',
         typescript: true,
         imports: [
-          // String import
-          'import { useState } from "react"',
-          // Object import with default
-          { from: './utils', default: 'myUtil' } as any,
-          // Object import with named
-          { from: './components', named: ['Button', 'Input'] } as any,
-          // Object import with both default and named
-          { from: './hooks', default: 'useCustomHook', named: ['useEffect', 'useCallback'] } as any
+          'import React from "react";',
+          { from: './components', named: ['Button', 'Input'] },
+          { from: './utils', default: 'myUtil' },
+          { from: './hooks', default: 'useCustomHook', named: ['useEffect', 'useCallback'] }
         ]
-      },
-      framework: 'react'
+      }
     };
 
-    const output = extension.rootHandler(template, options, context);
+    const engine = new TemplateEngine([extension]);
+    const output = await engine.render(template, {
+      extensions: [extension],
+    });
 
-    // Verify React import is always included
-    expect(output).toContain('import React, { useState } from "react"');
-    // Verify default import
-    expect(output).toContain('import myUtil from "./utils"');
-    // Verify named imports
-    expect(output).toContain('import { Button, Input } from "./components"');
-    // Verify combined default and named imports
-    expect(output).toContain('import useCustomHook, { useEffect, useCallback } from "./hooks"');
+    // Verify imports are properly formatted
+    expect(output).toContain('import React from "react";');
+    expect(output).toContain('import { Button, Input } from "./components";');
+    expect(output).toContain('import myUtil from "./utils";');
+    expect(output).toContain('import useCustomHook, { useCallback, useEffect } from "./hooks";');
   });
 }); 

@@ -28,7 +28,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -65,7 +64,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -103,7 +101,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -139,7 +136,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -173,7 +169,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -202,7 +197,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -238,7 +232,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -274,7 +267,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -318,7 +310,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
@@ -359,7 +350,6 @@ describe('VueExtension - nodeHandler', () => {
 
     const engine = new TemplateEngine([extension]);
     const output = await engine.render(template, {
-      fileExtension: '.vue',
       extensions: [extension],
     });
 
