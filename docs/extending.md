@@ -125,4 +125,21 @@ export class MarkdownExtension implements Extension {
 
 * Use `ancestorNodesContext` in `nodeHandler()` for inheritance-aware rendering
 * Return rich logs with `createLogger(verbose, 'MyExtension')`
-* Combine with other extensions (e.g., React + BEM) 
+* Combine with other extensions (e.g., React + BEM)
+
+## Renderer Extensions (Frameworks)
+
+Only one renderer extension (framework) can be active at a time (e.g., React, Vue, Svelte). If multiple renderer extensions are provided to the engine, an error will be thrown.
+
+## Extension API Stability
+
+The extension API is stable, but core responsibilities are now handled by dedicated modules:
+- AttributeRenderer
+- NodeTraverser
+- ExtensionManager
+- StyleManager
+- FileOutputManager
+
+## Integration Testing
+
+Integration tests now live in the `integration-tests` package and verify that extensions work as expected with the core engine. See that package for real-world extension scenarios and contract tests. 

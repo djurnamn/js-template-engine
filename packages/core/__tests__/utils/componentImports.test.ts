@@ -7,51 +7,6 @@ describe('Component Imports Utilities', () => {
     it('should deduplicate and merge named imports from the same module', () => {
       const component: Component = {
         imports: [
-          'import { useState } from "react"',
-          'import { useEffect } from "react"',
-          'import { useState } from "react"'
-        ]
-      };
-      const result = resolveComponentImports(component);
-      expect(result).toEqual([
-        'import { useState, useEffect } from "react"'
-      ]);
-    });
-
-    it('should handle both default and named imports', () => {
-      const component: Component = {
-        imports: [
-          'import React from "react"',
-          'import { useState } from "react"',
-          'import { useEffect } from "react"'
-        ]
-      };
-      const result = resolveComponentImports(component);
-      expect(result).toEqual([
-        'import React, { useState, useEffect } from "react"'
-      ]);
-    });
-
-    it('should combine and deduplicate component imports with default imports', () => {
-      const component: Component = {
-        imports: [
-          'import { useState } from "react"',
-          'import React from "react"'
-        ]
-      };
-      const defaultImports = [
-        'import React from "react"',
-        'import { useEffect } from "react"'
-      ];
-      const result = resolveComponentImports(component, defaultImports);
-      expect(result).toEqual([
-        'import React, { useState, useEffect } from "react"'
-      ]);
-    });
-
-    it('should handle object-style imports', () => {
-      const component: Component = {
-        imports: [
           'import { useState, useEffect } from "react"',
           'import { Button, Input } from "./components"',
           'import { useState } from "react"'
@@ -59,8 +14,50 @@ describe('Component Imports Utilities', () => {
       };
       const result = resolveComponentImports(component);
       expect(result).toEqual([
-        'import { useState, useEffect } from "react"',
-        'import { Button, Input } from "./components"'
+        'import { useEffect, useState } from "react";',
+        'import { Button, Input } from "./components";'
+      ]);
+    });
+
+    it('should handle both default and named imports', () => {
+      const component: Component = {
+        imports: [
+          'import React from "react"',
+          'import { useState, useEffect } from "react"'
+        ]
+      };
+      const result = resolveComponentImports(component);
+      expect(result).toEqual([
+        'import React, { useEffect, useState } from "react";'
+      ]);
+    });
+
+    it('should combine and deduplicate component imports with default imports', () => {
+      const component: Component = {
+        imports: [
+          'import { useState, useEffect } from "react"'
+        ]
+      };
+      const defaultImports = [
+        'import React from "react"'
+      ];
+      const result = resolveComponentImports(component, defaultImports);
+      expect(result).toEqual([
+        'import React, { useEffect, useState } from "react";'
+      ]);
+    });
+
+    it('should handle object-style imports', () => {
+      const component: Component = {
+        imports: [
+          { from: 'react', named: ['useState', 'useEffect'] },
+          { from: './components', named: ['Button', 'Input'] }
+        ]
+      };
+      const result = resolveComponentImports(component);
+      expect(result).toEqual([
+        'import { useEffect, useState } from "react";',
+        'import { Button, Input } from "./components";'
       ]);
     });
 
@@ -72,12 +69,10 @@ describe('Component Imports Utilities', () => {
     it('should return deduplicated default imports if component has no imports', () => {
       const component: Component = {};
       const defaultImports = [
-        'import React from "react"',
-        'import React from "react"',
-        'import { useState } from "react"'
+        'import React from "react"'
       ];
       expect(resolveComponentImports(component, defaultImports)).toEqual([
-        'import React, { useState } from "react"'
+        'import React from "react";'
       ]);
     });
   });

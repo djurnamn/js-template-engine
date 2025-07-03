@@ -1,0 +1,20 @@
+{
+  "name": "integration-tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.9.0",
+  "devDependencies": {
+    "@js-template-engine/core": "workspace:*",
+    "@js-template-engine/extension-react": "workspace:*",
+    "@js-template-engine/extension-vue": "workspace:*",
+    "@js-template-engine/extension-bem": "workspace:*",
+    "vitest": "^1.0.0"
+  }
+}

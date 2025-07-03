@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { TemplateNode, Extension } from '@js-template-engine/types';
-import { createLogger } from '../helpers/createLogger';
+import { createLogger } from '../utils/logger';
 import { TemplateEngine } from '../engine';
 
 export function readJsonFile(sourcePath: string): TemplateNode[] {

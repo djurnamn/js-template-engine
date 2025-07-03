@@ -1,17 +1,30 @@
+/**
+ * StyleManager
+ * Centralizes all style-related processing, extraction, formatting, and plugin support for the template engine.
+ */
 import type { TemplateNode, StyleDefinition, RenderOptions, StyleProcessorPlugin } from '@js-template-engine/types';
 import type { TemplateOptions } from '../types';
-import { createLogger } from '../helpers/createLogger';
+import { createLogger } from '../utils/logger';
 
-export class StyleProcessor {
+export class StyleManager {
   private logger: ReturnType<typeof createLogger>;
   private processedStyles: Map<string, StyleDefinition> = new Map();
   private plugins: StyleProcessorPlugin[] = [];
 
+  /**
+   * Create a new StyleManager.
+   * @param verbose Enable verbose logging
+   * @param plugins Optional style processor plugins
+   */
   constructor(verbose = false, plugins: StyleProcessorPlugin[] = []) {
-    this.logger = createLogger(verbose, 'StyleProcessor');
+    this.logger = createLogger(verbose, 'StyleManager');
     this.plugins = plugins;
   }
 
+  /**
+   * Process a node for style extraction and plugin transformation.
+   * @param node The template node to process
+   */
   processNode(node: TemplateNode): void {
     if (!node.attributes?.style) {
       return;
@@ -66,6 +79,9 @@ export class StyleProcessor {
     return merged;
   }
 
+  /**
+   * Returns true if any styles have been processed.
+   */
   hasStyles(): boolean {
     return this.processedStyles.size > 0;
   }
@@ -85,6 +101,11 @@ export class StyleProcessor {
     return null;
   }
 
+  /**
+   * Generate the final style output (inline, CSS, SCSS, or via plugin).
+   * @param options Template options
+   * @param originalTemplateTree Optional original template tree for plugin use
+   */
   generateOutput(options: TemplateOptions, originalTemplateTree?: TemplateNode[]): string {
     if (!options.styles) {
       return '';
@@ -226,7 +247,10 @@ export class StyleProcessor {
     return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
   }
 
-  // Add a new method to get inline styles for a specific node
+  /**
+   * Get inline style string for a node, or null if not available.
+   * @param node The template node
+   */
   getInlineStyles(node: TemplateNode): string | null {
     if (!node.attributes?.style) {
       return null;

@@ -1,5 +1,3 @@
-import path from 'path';
-import prettier from 'prettier';
 import { writeOutputFile } from './handlers/FileHandler';
 import { createLogger } from './utils/logger';
 import type { 
@@ -11,8 +9,11 @@ import type {
   RootHandlerContext
 } from '@js-template-engine/types';
 import type { TemplateOptions } from './types';
-import { StyleProcessor } from './engine/StyleProcessor';
-import fs from 'fs';
+import { StyleManager } from './engine/StyleManager';
+import { AttributeRenderer } from './utils/AttributeRenderer';
+import { NodeTraverser } from './utils/NodeTraverser';
+import { ExtensionManager } from './utils/ExtensionManager';
+import { FileOutputManager } from './utils/FileOutputManager';
 
 const selfClosingTags = [
   'area',
@@ -43,19 +44,32 @@ function isExtendedTemplate(input: unknown): input is ExtendedTemplate {
 }
 
 export class TemplateEngine {
-  private styleProcessor: StyleProcessor;
+  private styleManager: StyleManager;
   private extensions: Extension[];
   private logger: Logger;
+  private nodeTraverser: NodeTraverser;
+  private extensionManager: ExtensionManager;
+  private fileOutputManager: FileOutputManager;
 
   constructor(extensions: Extension[] = [], verbose = false) {
     this.extensions = extensions;
     this.logger = createLogger(verbose, 'TemplateEngine');
 
+    // Enforce only one renderer extension (framework) at a time
+    const rendererExtensions = extensions.filter(ext => (ext as any).isRenderer);
+    if (rendererExtensions.length > 1) {
+      const names = rendererExtensions.map(ext => ext.key || 'unknown').join(', ');
+      throw new Error(`Multiple renderer extensions detected: ${names}. Only one renderer extension can be used at a time.`);
+    }
+
     const stylePlugins = extensions
       .map(ext => 'stylePlugin' in ext ? (ext as any).stylePlugin : null)
       .filter(Boolean) as StyleProcessorPlugin[];
 
-    this.styleProcessor = new StyleProcessor(verbose, stylePlugins);
+    this.styleManager = new StyleManager(verbose, stylePlugins);
+    this.nodeTraverser = new NodeTraverser({ extensions });
+    this.extensionManager = new ExtensionManager(extensions);
+    this.fileOutputManager = new FileOutputManager(verbose);
   }
 
   private mergeOptions(options: TemplateOptions): TemplateOptions {
@@ -78,7 +92,6 @@ export class TemplateEngine {
     // Merge constructor extensions with options extensions
     const mergedExtensions = [...this.extensions];
     if (options.extensions) {
-      // Add any new extensions from options that aren't already in constructor extensions
       options.extensions.forEach(ext => {
         if (!mergedExtensions.some(e => e.key === ext.key)) {
           mergedExtensions.push(ext);
@@ -86,109 +99,24 @@ export class TemplateEngine {
       });
     }
 
-    // Apply extension options handlers
-    mergedExtensions.forEach((extension: Extension) => {
-      if (extension.optionsHandler) {
-        defaultOptions = extension.optionsHandler(defaultOptions as TemplateOptions, options);
-      }
-    });
+    // Use ExtensionManager to merge options
+    const extensionManager = new ExtensionManager(mergedExtensions);
+    const merged = extensionManager.callOptionsHandlers(defaultOptions as TemplateOptions, options);
 
-    return { 
-      ...defaultOptions, 
+    return {
+      ...merged,
       ...options,
-      extensions: mergedExtensions // Use merged extensions
+      extensions: mergedExtensions
     } as TemplateOptions;
   }
 
-  private applyExtensionOverrides(node: TemplateNode, currentExtensionKey: string): TemplateNode {
-    if (node.extensions && node.extensions[currentExtensionKey]) {
-      const extensionOverrides = node.extensions[currentExtensionKey];
 
-      Object.entries(extensionOverrides).forEach(([key, value]) => {
-        if (key !== 'ignore') {
-          (node as any)[key] = value;
-        }
-      });
-    }
-
-    return node;
-  }
 
   private processStyles(node: TemplateNode): void {
-    this.styleProcessor.processNode(node);
+    this.styleManager.processNode(node);
     if (node.children) {
       node.children.forEach(child => this.processStyles(child));
     }
-  }
-
-  private isAttributeValue(value: unknown): value is string | number | boolean {
-    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-  }
-
-  private renderAttributes(
-    node: TemplateNode,
-    formatter: (attr: string, val: string | number | boolean, isExpression?: boolean) => string,
-    options: TemplateOptions
-  ): string {
-    let attributes = '';
-
-    // Collect all expression attribute keys for quick lookup
-    const expressionKeys = node.expressionAttributes ? new Set(Object.keys(node.expressionAttributes)) : new Set();
-
-    if (node.attributes) {
-      for (const [attribute, value] of Object.entries(node.attributes)) {
-        // Skip if this attribute is also present in expressionAttributes
-        if (expressionKeys.has(attribute)) continue;
-        if (attribute === 'style' && options.styles?.outputFormat === 'inline') {
-          const inlineStyles = this.styleProcessor.getInlineStyles(node);
-          if (inlineStyles) {
-            attributes += formatter('style', inlineStyles);
-          }
-        } else if (this.isAttributeValue(value)) {
-          attributes += formatter(attribute, value);
-        }
-      }
-    }
-
-    if (node.expressionAttributes) {
-      for (const [attribute, value] of Object.entries(node.expressionAttributes)) {
-        attributes += formatter(attribute, value, true);
-      }
-    }
-
-    return attributes;
-  }
-
-  private traverseTree(nodes: TemplateNode[], ancestors: TemplateNode[] = []): TemplateNode[] {
-    return nodes.map(node => {
-      // Call onNodeVisit hooks for each extension
-      for (const ext of this.extensions) {
-        if (ext.onNodeVisit) {
-          ext.onNodeVisit(node, ancestors);
-        }
-      }
-
-      const updatedNode = { ...node };
-      if (updatedNode.children) {
-        updatedNode.children = this.traverseTree(updatedNode.children, [...ancestors, updatedNode]);
-      }
-
-      return updatedNode;
-    });
-  }
-
-  private getOutputPath(options: TemplateOptions, extension: Extension): string {
-    const baseOutputDir = options.outputDir ?? 'dist';
-    const filename = options.filename ?? 'untitled';
-    const fileExtension = options.fileExtension ?? '.html';
-
-    // Only use a subfolder if the extension has a rootHandler (i.e., is a rendering extension)
-    const isRenderingExtension = typeof extension.rootHandler === 'function';
-    const outputDir = isRenderingExtension
-      ? path.join(baseOutputDir, extension.key)
-      : baseOutputDir;
-
-    return path.join(outputDir, `${filename}${fileExtension}`);
   }
 
   async render(
@@ -227,31 +155,28 @@ export class TemplateEngine {
     if (isRoot) {
       logger.info('Starting template rendering process...');
       // 🔹 1. Call beforeRender hooks
-      for (const ext of options.extensions || []) {
-        if (ext.beforeRender) {
-          ext.beforeRender(nodes, options);
-        }
-      }
+      this.extensionManager.callBeforeRender(nodes, options);
     }
 
     // 🔹 2. Process node handlers
     let processedNodes = nodes;
     if (options.extensions) {
       for (const extension of options.extensions) {
-        processedNodes = this.processNodes(processedNodes, extension);
+        processedNodes = processedNodes.map(node =>
+          this.extensionManager.callNodeHandlers(node, [])
+        );
       }
     }
 
     // 🔹 3. Apply onNodeVisit hooks
-    processedNodes = this.traverseTree(processedNodes, ancestorNodesContext);
+    processedNodes = this.nodeTraverser.traverseTree(processedNodes, ancestorNodesContext);
 
     // 🔹 4. Process styles if enabled
     if (options.styles?.outputFormat === 'inline') {
       processedNodes.forEach(node => this.processStyles(node));
     }
 
-    // Debug output to log processedNodes
-    console.log('Processed Nodes:', JSON.stringify(processedNodes, null, 2));
+
 
     // Render the processed nodes
     for (const node of processedNodes) {
@@ -261,9 +186,15 @@ export class TemplateEngine {
         const isSelfClosing = (node.selfClosing || options.preferSelfClosingTags || selfClosingTags.includes(node.tag)) && !node.children;
 
         if (isSelfClosing) {
-          template += `<${node.tag}${this.renderAttributes(node, attributeFormatter, options)} />`;
+          template += `<${node.tag}${AttributeRenderer.renderAttributes(node, attributeFormatter, options, (n) => {
+            const result = this.styleManager.getInlineStyles(n);
+            return result === null ? undefined : result;
+          })} />`;
         } else {
-          template += `<${node.tag}${this.renderAttributes(node, attributeFormatter, options)}>`;
+          template += `<${node.tag}${AttributeRenderer.renderAttributes(node, attributeFormatter, options, (n) => {
+            const result = this.styleManager.getInlineStyles(n);
+            return result === null ? undefined : result;
+          })}>`;
 
           if (node.children) {
             logger.info(`Rendering children for node: ${node.tag}`);
@@ -283,9 +214,9 @@ export class TemplateEngine {
 
     if (isRoot) {
       // 🔹 5. Process styles
-      processedNodes.forEach(node => this.styleProcessor.processNode(node));
-      const hasStyles = this.styleProcessor.hasStyles();
-      const styleOutput = hasStyles ? this.styleProcessor.generateOutput(options, processedNodes) : '';
+      processedNodes.forEach(node => this.styleManager.processNode(node));
+      const hasStyles = this.styleManager.hasStyles();
+      const styleOutput = hasStyles ? this.styleManager.generateOutput(options, processedNodes) : '';
 
       // 🔹 6. Apply root handlers
       let styleHandled = false;
@@ -299,8 +230,7 @@ export class TemplateEngine {
               version: isExtendedTemplate(input) ? input.version : undefined,
               styleOutput // Pass the generated styles to the rootHandler
             };
-            const result = extension.rootHandler(template, options, context);
-            // If the extension included the styles in its output, mark as handled
+            const result = this.extensionManager.callRootHandlers(template, options, context);
             if (result.includes(styleOutput)) {
               styleHandled = true;
             }
@@ -350,75 +280,27 @@ export class TemplateEngine {
         }
 
         if (scriptContent.length > 0) {
-          template += `\n<script>\n${scriptContent.join('\n')}\n</script>`;
+          template += `\n<script>\n${scriptContent.join('\n')}\n<\/script>`;
         }
       }
 
       // 🔹 7. Call afterRender hooks
-      for (const ext of options.extensions || []) {
-        if (ext.afterRender) {
-          ext.afterRender(processedNodes, options);
-        }
-      }
+      this.extensionManager.callAfterRender(processedNodes, options);
 
       // Write output files if requested
-      if (options.writeOutputFile && options.extensions) {
-        for (const extension of options.extensions) {
-          const outputPath = this.getOutputPath(options, extension);
-          const outputDir = path.dirname(outputPath);
-          
-          // Ensure the output directory exists
-          await fs.promises.mkdir(outputDir, { recursive: true });
-
-          // Format the output if prettier parser is specified
-          let finalOutput = template;
-          if (options.prettierParser) {
-            finalOutput = await prettier.format(template, {
-              parser: options.prettierParser,
-            });
-          }
-
-          // Call onOutputWrite hooks
-          for (const ext of options.extensions || []) {
-            if (ext.onOutputWrite) {
-              finalOutput = ext.onOutputWrite(finalOutput, options);
-            }
-          }
-
-          // Write template
-          await writeOutputFile(
-            finalOutput,
-            outputPath,
-            options.verbose
-          );
-
-          // Write styles if not handled by any extension and not using inline styles
-          if (!styleHandled && hasStyles && options.styles?.outputFormat !== 'inline') {
-            const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
-            const stylePath = path.join(
-              outputDir,
-              `${options.filename ?? 'untitled'}${styleExtension}`
-            );
-            await writeOutputFile(
-              styleOutput,
-              stylePath,
-              options.verbose
-            );
-          }
-        }
-      }
+      await this.fileOutputManager.writeAllOutputs({
+        template,
+        styleOutput,
+        hasStyles,
+        styleHandled,
+        options,
+        processedNodes,
+        extensionManager: this.extensionManager
+      });
     }
 
     return template;
   }
 
-  private processNodes(nodes: TemplateNode[], ext: Extension): TemplateNode[] {
-    return nodes.map(node => {
-      const newNode = ext.nodeHandler ? ext.nodeHandler(node, []) : node;
-      if (newNode.children) {
-        newNode.children = this.processNodes(newNode.children, ext);
-      }
-      return newNode;
-    });
-  }
+
 } 

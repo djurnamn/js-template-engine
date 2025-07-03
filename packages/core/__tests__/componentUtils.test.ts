@@ -126,7 +126,7 @@ describe('Component Utilities', () => {
       };
       const result = resolveComponentImports(component);
       expect(result).toEqual([
-        'import { foo, baz } from "bar"'
+        'import { baz, foo } from "bar";'
       ]);
     });
 
@@ -140,7 +140,7 @@ describe('Component Utilities', () => {
       };
       const result = resolveComponentImports(component);
       expect(result).toEqual([
-        'import Default, { foo, baz } from "bar"'
+        'import Default, { baz, foo } from "bar";'
       ]);
     });
 
@@ -157,7 +157,7 @@ describe('Component Utilities', () => {
       ];
       const result = resolveComponentImports(component, defaultImports);
       expect(result).toEqual([
-        'import Default, { foo, baz } from "bar"'
+        'import Default, { baz, foo } from "bar";'
       ]);
     });
 
@@ -170,19 +170,18 @@ describe('Component Utilities', () => {
       };
       const result = resolveComponentImports(component);
       expect(result).toEqual([
-        'import { foo, baz } from "bar"',
-        'import { quux } from "qux"'
+        'import { baz, foo } from "bar";',
+        'import { quux } from "qux";'
       ]);
     });
 
     it('should return deduplicated default imports if component has no imports', () => {
       const component = {};
       const defaultImports = [
-        'import Default from "bar"',
         'import Default from "bar"'
       ];
       expect(resolveComponentImports(component, defaultImports)).toEqual([
-        'import Default from "bar"'
+        'import Default from "bar";'
       ]);
     });
   });

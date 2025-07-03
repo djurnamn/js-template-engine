@@ -98,3 +98,27 @@ pnpm type-check
 ## 📝 License
 
 MIT 
+
+## Modular Architecture
+
+The core engine is now composed of the following modules:
+- **AttributeRenderer**: Handles attribute rendering for nodes (HTML, JSX, etc.).
+- **NodeTraverser**: Walks and transforms the template node tree.
+- **ExtensionManager**: Manages extension lifecycle, ordering, and hook calls.
+- **StyleManager**: Centralizes style processing, formatting, and plugin support.
+- **FileOutputManager**: Handles output path resolution, directory creation, and file writing.
+
+## Extension System
+- Extensions can add or override rendering logic, attributes, styles, and output.
+- **Only one renderer extension (framework) can be used at a time** (e.g., React, Vue). The engine will throw an error if multiple renderer extensions are provided.
+- Extensions are registered by passing them to the `TemplateEngine` constructor.
+
+## Integration Tests
+- Integration tests now live in a dedicated `integration-tests` package.
+- These tests verify that the core engine and all official extensions work together as intended, covering end-to-end scenarios and multi-extension contracts.
+
+## Backward Compatibility
+- The public API of `TemplateEngine` remains stable, but internal responsibilities are now delegated to the new modules above.
+
+## For Extension Authors
+- See the [docs/extending.md](../../docs/extending.md) for details on writing extensions and available hooks. 

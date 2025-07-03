@@ -58,8 +58,8 @@ export interface VueRootHandlerOptions extends Omit<VueExtensionOptions, 'script
 }
 
 export class VueExtension implements Extension<VueExtensionOptions, VueNodeExtensions> {
-  key = 'vue';
-  isRenderer = true;
+  public key = 'vue';
+  public isRenderer = true;
 
   options: VueExtensionOptions = {
     attributeFormatter: (attr: string, val: string | number | boolean, isExpression?: boolean) =>
