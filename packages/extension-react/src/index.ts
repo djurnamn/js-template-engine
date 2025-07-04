@@ -47,6 +47,11 @@ function injectReactImport(imports: ImportDefinition[]): ImportDefinition[] {
 export class ReactExtension implements Extension<ReactExtensionOptions> {
   public key = 'react';
   public isRenderer = true;
+  private logger: ReturnType<typeof createLogger>;
+
+  constructor(verbose = false) {
+    this.logger = createLogger(verbose, 'react-extension');
+  }
 
   public nodeHandler(node: TemplateNode): TemplateNode {
     if (node.type !== 'element') return node;

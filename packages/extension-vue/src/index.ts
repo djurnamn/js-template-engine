@@ -60,11 +60,16 @@ export interface VueRootHandlerOptions extends Omit<VueExtensionOptions, 'script
 export class VueExtension implements Extension<VueExtensionOptions, VueNodeExtensions> {
   public key = 'vue';
   public isRenderer = true;
+  private logger: ReturnType<typeof createLogger>;
 
   options: VueExtensionOptions = {
     attributeFormatter: (attr: string, val: string | number | boolean, isExpression?: boolean) =>
       ` ${attr}="${val}"`
   };
+
+  constructor(verbose = false) {
+    this.logger = createLogger(verbose, 'vue-extension');
+  }
 
   attributeFormatter(attr: string, val: string | number | boolean, isExpression?: boolean): string {
     return ` ${attr}="${val}"`;

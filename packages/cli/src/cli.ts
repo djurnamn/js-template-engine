@@ -14,12 +14,14 @@ import { createLogger } from '@js-template-engine/core';
 import type { Extension } from '@js-template-engine/types';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
 import { CliOptions, CliCommand } from './types/cli';
 
 function loadExtensions(): Record<string, new (verbose?: boolean) => any> {
   return {
     bem: BemExtension,
-    react: ReactExtension
+    react: ReactExtension,
+    vue: VueExtension
   };
 }
 
@@ -82,7 +84,7 @@ const renderCommand: CliCommand = {
       .option('extension', {
         describe: 'Extension type to use',
         type: 'string',
-        choices: ['react', 'bem', 'none'],
+        choices: ['react', 'vue', 'bem', 'none'],
         default: 'none',
       })
       .option('fileExtension', {
