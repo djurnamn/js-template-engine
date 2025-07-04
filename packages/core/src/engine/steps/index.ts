@@ -5,4 +5,4 @@ export { TemplateRenderingStep } from './TemplateRenderingStep';
 export { StyleProcessingStep } from './StyleProcessingStep';
 export { RootHandlerStep } from './RootHandlerStep';
 export { FileOutputStep } from './FileOutputStep';
-export { AfterRenderStep } from './AfterRenderStep'; 
+export { AfterRenderStep } from './AfterRenderStep';

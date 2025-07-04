@@ -2,19 +2,28 @@
  * StyleManager
  * Centralizes all style-related processing, extraction, formatting, and plugin support for the template engine.
  */
-import type { TemplateNode, StyleDefinition, RenderOptions, StyleProcessorPlugin } from '@js-template-engine/types';
+import type {
+  TemplateNode,
+  StyleDefinition,
+  RenderOptions,
+  StyleProcessorPlugin,
+} from '@js-template-engine/types';
 import type { TemplateOptions } from '../types';
 import { createLogger } from '../utils/logger';
 
+/**
+ * Manages style processing, extraction, and output generation for template nodes.
+ * Supports plugins, multiple output formats, and style merging.
+ */
 export class StyleManager {
   private logger: ReturnType<typeof createLogger>;
   private processedStyles: Map<string, StyleDefinition> = new Map();
   private plugins: StyleProcessorPlugin[] = [];
 
   /**
-   * Create a new StyleManager.
-   * @param verbose Enable verbose logging
-   * @param plugins Optional style processor plugins
+   * Creates a new StyleManager instance.
+   * @param verbose - Whether to enable verbose logging.
+   * @param plugins - Optional style processor plugins.
    */
   constructor(verbose = false, plugins: StyleProcessorPlugin[] = []) {
     this.logger = createLogger(verbose, 'StyleManager');
@@ -22,11 +31,14 @@ export class StyleManager {
   }
 
   /**
-   * Process a node for style extraction and plugin transformation.
-   * @param node The template node to process
+   * Processes a node for style extraction and plugin transformation.
+   * @param node - The template node to process.
    */
   processNode(node: TemplateNode): void {
-    if ((node.type !== 'element' && node.type !== undefined) || !node.attributes?.style) {
+    if (
+      (node.type !== 'element' && node.type !== undefined) ||
+      !node.attributes?.style
+    ) {
       return;
     }
 
@@ -37,11 +49,14 @@ export class StyleManager {
     }
 
     // Allow plugins to transform the selector
-    this.plugins.forEach(plugin => {
-      if (selector) {  // Type guard to ensure selector is string
+    this.plugins.forEach((plugin) => {
+      if (selector) {
+        // Type guard to ensure selector is string
         const newSelector = plugin.onProcessNode?.(node);
         if (typeof newSelector === 'string') {
-          this.logger.info(`Selector transformed by plugin: ${selector} -> ${newSelector}`);
+          this.logger.info(
+            `Selector transformed by plugin: ${selector} -> ${newSelector}`
+          );
           selector = newSelector;
         }
       }
@@ -50,26 +65,43 @@ export class StyleManager {
     // Merge with existing styles if any
     const existing = this.processedStyles.get(selector) || {};
     const newStyles = node.attributes.style as StyleDefinition;
-    
+
     // Deep merge styles, handling media queries and pseudo-selectors
     const mergedStyles = this.mergeStyleDefinitions(existing, newStyles);
-    
+
     this.processedStyles.set(selector, mergedStyles);
     this.logger.info(`Processed styles for selector: ${selector}`);
   }
 
-  private mergeStyleDefinitions(existing: StyleDefinition, newStyles: StyleDefinition): StyleDefinition {
+  /**
+   * Merges two style definitions, handling media queries and pseudo-selectors.
+   * @param existing - The existing style definition.
+   * @param newStyles - The new styles to merge.
+   * @returns The merged style definition.
+   */
+  private mergeStyleDefinitions(
+    existing: StyleDefinition,
+    newStyles: StyleDefinition
+  ): StyleDefinition {
     const merged: StyleDefinition = { ...existing };
 
     Object.entries(newStyles).forEach(([key, value]) => {
       if (key.startsWith('@media')) {
         // Merge media query styles
-        const existingMedia = existing[key] as Record<string, string | number> || {};
-        merged[key] = { ...existingMedia, ...value as Record<string, string | number> };
+        const existingMedia =
+          (existing[key] as Record<string, string | number>) || {};
+        merged[key] = {
+          ...existingMedia,
+          ...(value as Record<string, string | number>),
+        };
       } else if (key.startsWith(':')) {
         // Merge pseudo-selector styles
-        const existingPseudo = existing[key] as Record<string, string | number> || {};
-        merged[key] = { ...existingPseudo, ...value as Record<string, string | number> };
+        const existingPseudo =
+          (existing[key] as Record<string, string | number>) || {};
+        merged[key] = {
+          ...existingPseudo,
+          ...(value as Record<string, string | number>),
+        };
       } else {
         // Merge base styles
         merged[key] = value;
@@ -81,11 +113,17 @@ export class StyleManager {
 
   /**
    * Returns true if any styles have been processed.
+   * @returns True if styles have been processed, otherwise false.
    */
   hasStyles(): boolean {
     return this.processedStyles.size > 0;
   }
 
+  /**
+   * Gets a CSS selector for a template node.
+   * @param node - The template node to get a selector for.
+   * @returns The CSS selector string, or null if no selector can be determined.
+   */
   private getSelector(node: TemplateNode): string | null {
     if (node.type === 'element' || node.type === undefined) {
       if (node.attributes?.class) {
@@ -104,18 +142,26 @@ export class StyleManager {
   }
 
   /**
-   * Generate the final style output (inline, CSS, SCSS, or via plugin).
-   * @param options Template options
-   * @param originalTemplateTree Optional original template tree for plugin use
+   * Generates the final style output (inline, CSS, SCSS, or via plugin).
+   * @param options - Template options.
+   * @param originalTemplateTree - Optional original template tree for plugin use.
+   * @returns The generated style output as a string.
    */
-  generateOutput(options: TemplateOptions, originalTemplateTree?: TemplateNode[]): string {
+  generateOutput(
+    options: TemplateOptions,
+    originalTemplateTree?: TemplateNode[]
+  ): string {
     if (!options.styles) {
       return '';
     }
 
     for (const plugin of this.plugins) {
       this.logger.info('Checking plugin for style generation...');
-      const pluginOutput = plugin.generateStyles?.(this.processedStyles, options, originalTemplateTree);
+      const pluginOutput = plugin.generateStyles?.(
+        this.processedStyles,
+        options,
+        originalTemplateTree
+      );
       if (pluginOutput) {
         this.logger.info('Using style output from plugin');
         return pluginOutput;
@@ -131,24 +177,36 @@ export class StyleManager {
       case 'scss':
         return this.generateScss();
       default:
-        throw new Error(`Unsupported output format: ${options.styles.outputFormat}`);
+        throw new Error(
+          `Unsupported output format: ${options.styles.outputFormat}`
+        );
     }
   }
 
+  /**
+   * Generates inline styles as a style tag.
+   * @returns The inline styles as a string.
+   */
   private generateInlineStyles(): string {
     const styleTagRules: string[] = [];
-    
+
     this.processedStyles.forEach((styleDef, selector) => {
       // Process pseudo selectors and media queries for style tag
       Object.entries(styleDef).forEach(([key, value]) => {
         if (key.startsWith('@media')) {
           const query = key.replace('@media', '').trim();
-          const mediaStyles = Object.entries(value as Record<string, string | number>)
+          const mediaStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `${this.camelToKebab(k)}: ${v};`)
             .join('\n');
-          styleTagRules.push(`@media (${query}) {\n  ${selector} {\n${mediaStyles}\n  }\n}`);
+          styleTagRules.push(
+            `@media (${query}) {\n  ${selector} {\n${mediaStyles}\n  }\n}`
+          );
         } else if (key.startsWith(':')) {
-          const pseudoStyles = Object.entries(value as Record<string, string | number>)
+          const pseudoStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           styleTagRules.push(`${selector}${key} {\n${pseudoStyles}\n}`);
@@ -157,16 +215,20 @@ export class StyleManager {
     });
 
     // Only return the style tag if there are rules
-    return styleTagRules.length > 0 
+    return styleTagRules.length > 0
       ? `\n<style>\n${styleTagRules.join('\n\n')}\n</style>`
       : '';
   }
 
+  /**
+   * Generates CSS output.
+   * @returns The CSS output as a string.
+   */
   private generateCss(): string {
     const styles: string[] = [];
     const mediaQueries: Map<string, string[]> = new Map();
     const pseudoSelectors: string[] = [];
-    
+
     this.processedStyles.forEach((styleDef, selector) => {
       const baseStyles: string[] = [];
 
@@ -178,13 +240,17 @@ export class StyleManager {
           if (!mediaQueries.has(query)) {
             mediaQueries.set(query, []);
           }
-          const mediaStyles = Object.entries(value as Record<string, string | number>)
+          const mediaStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `    ${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           mediaQueries.get(query)?.push(`  ${selector} {\n${mediaStyles}\n  }`);
         } else if (key.startsWith(':')) {
           // Handle pseudo selectors
-          const pseudoStyles = Object.entries(value as Record<string, string | number>)
+          const pseudoStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `  ${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           pseudoSelectors.push(`${selector}${key} {\n${pseudoStyles}\n}`);
@@ -210,9 +276,13 @@ export class StyleManager {
     return styles.join('\n\n');
   }
 
+  /**
+   * Generates SCSS output with proper nesting.
+   * @returns The SCSS output as a string.
+   */
   private generateScss(): string {
     const styles: string[] = [];
-    
+
     this.processedStyles.forEach((styleDef, selector) => {
       const rules: string[] = [];
 
@@ -221,13 +291,19 @@ export class StyleManager {
         if (key.startsWith('@media')) {
           // Handle media queries with proper nesting
           const query = key.replace('@media', '').trim();
-          const mediaStyles = Object.entries(value as Record<string, string | number>)
+          const mediaStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `      ${this.camelToKebab(k)}: ${v};`)
             .join('\n');
-          rules.push(`  @media (${query}) {\n    & {\n${mediaStyles}\n    }\n  }`);
+          rules.push(
+            `  @media (${query}) {\n    & {\n${mediaStyles}\n    }\n  }`
+          );
         } else if (key.startsWith(':')) {
           // Handle pseudo selectors
-          const pseudoStyles = Object.entries(value as Record<string, string | number>)
+          const pseudoStyles = Object.entries(
+            value as Record<string, string | number>
+          )
             .map(([k, v]) => `    ${this.camelToKebab(k)}: ${v};`)
             .join('\n');
           rules.push(`  &${key} {\n${pseudoStyles}\n  }`);
@@ -245,16 +321,25 @@ export class StyleManager {
     return styles.join('\n\n');
   }
 
+  /**
+   * Converts camelCase to kebab-case for CSS property names.
+   * @param str - The camelCase string to convert.
+   * @returns The kebab-case string.
+   */
   private camelToKebab(str: string): string {
     return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
   }
 
   /**
-   * Get inline style string for a node, or null if not available.
-   * @param node The template node
+   * Gets inline style string for a node, or null if not available.
+   * @param node - The template node.
+   * @returns The inline style string, or null if not available.
    */
   getInlineStyles(node: TemplateNode): string | null {
-    if ((node.type !== 'element' && node.type !== undefined) || !node.attributes?.style) {
+    if (
+      (node.type !== 'element' && node.type !== undefined) ||
+      !node.attributes?.style
+    ) {
       return null;
     }
 
@@ -269,4 +354,4 @@ export class StyleManager {
       .map(([key, value]) => `${this.camelToKebab(key)}: ${value}`)
       .join('; ');
   }
-} 
+}

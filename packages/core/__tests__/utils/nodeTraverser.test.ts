@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { NodeTraverser } from '../../src/utils/NodeTraverser';
+import { NodeTraverser } from '../../src/engine/NodeTraverser';
 import type { TemplateNode, Extension } from '@js-template-engine/types';
 
 describe('NodeTraverser', () => {

@@ -5,22 +5,42 @@
 import path from 'path';
 import prettier from 'prettier';
 import { writeOutputFile } from '../handlers/FileHandler';
-import type { TemplateNode, Extension, RootHandlerContext } from '@js-template-engine/types';
+import type {
+  TemplateNode,
+  Extension,
+  RootHandlerContext,
+} from '@js-template-engine/types';
 import type { TemplateOptions } from '../types';
-import { createLogger } from './logger';
+import { createLogger } from '../utils/logger';
 import fs from 'fs';
 
+/**
+ * Manages file output operations for rendered templates and styles.
+ */
 export class FileOutputManager {
   private logger: ReturnType<typeof createLogger>;
   private formatter: (input: string, options: any) => Promise<string>;
 
-  constructor(verbose = false, formatter?: (input: string, options: any) => Promise<string>) {
+  /**
+   * Creates a new FileOutputManager instance.
+   * @param verbose - Whether to enable verbose logging.
+   * @param formatter - Optional custom formatter function for output.
+   */
+  constructor(
+    verbose = false,
+    formatter?: (input: string, options: any) => Promise<string>
+  ) {
     this.logger = createLogger(verbose, 'FileOutputManager');
-    this.formatter = formatter ?? (async (input, options) => prettier.format(input, options));
+    this.formatter =
+      formatter ?? (async (input, options) => prettier.format(input, options));
   }
 
   /**
-   * Get the output path for a given extension and options.
+   * Gets the output path for a given extension and options.
+   *
+   * @param options - The template options.
+   * @param extension - The extension for which to generate the output path.
+   * @returns The resolved output file path as a string.
    */
   getOutputPath(options: TemplateOptions, extension: Extension): string {
     const baseOutputDir = options.outputDir ?? 'dist';
@@ -34,9 +54,19 @@ export class FileOutputManager {
   }
 
   /**
-   * Write the template and style output files for all extensions.
+   * Writes the template and style output files for all extensions.
    * Handles formatting, directory creation, and style output.
    * Calls onOutputWrite hooks as needed.
+   *
+   * @param params - An object containing all parameters for output writing.
+   * @param params.template - The rendered template string.
+   * @param params.styleOutput - The rendered style output string.
+   * @param params.hasStyles - Whether styles are present.
+   * @param params.styleHandled - Whether styles have already been handled.
+   * @param params.options - The template options.
+   * @param params.processedNodes - The processed template nodes.
+   * @param params.extensionManager - The extension manager instance.
+   * @returns A promise that resolves when all outputs are written.
    */
   async writeAllOutputs({
     template,
@@ -45,7 +75,7 @@ export class FileOutputManager {
     styleHandled,
     options,
     processedNodes,
-    extensionManager
+    extensionManager,
   }: {
     template: string;
     styleOutput: string;
@@ -68,8 +98,13 @@ export class FileOutputManager {
       }
       finalOutput = extensionManager.callOnOutputWrite(finalOutput, options);
       await writeOutputFile(finalOutput, outputPath, options.verbose);
-      if (!styleHandled && hasStyles && options.styles?.outputFormat !== 'inline') {
-        const styleExtension = options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
+      if (
+        !styleHandled &&
+        hasStyles &&
+        options.styles?.outputFormat !== 'inline'
+      ) {
+        const styleExtension =
+          options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
         const stylePath = path.join(
           outputDir,
           `${options.filename ?? 'untitled'}${styleExtension}`
@@ -80,9 +115,12 @@ export class FileOutputManager {
   }
 
   /**
-   * Ensure a directory exists, creating it recursively if needed.
+   * Ensures a directory exists, creating it recursively if needed.
+   *
+   * @param dir - The directory path to ensure exists.
+   * @returns A promise that resolves when the directory exists.
    */
   async ensureDir(dir: string): Promise<void> {
     await fs.promises.mkdir(dir, { recursive: true });
   }
-} 
+}

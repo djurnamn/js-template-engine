@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AttributeRenderer } from '../../src/utils/AttributeRenderer';
+import { AttributeRenderer } from '../../src/engine/AttributeRenderer';
 import type { TemplateNode } from '@js-template-engine/types';
 
 const baseFormatter = (attr: string, val: string | number | boolean, isExpression?: boolean) =>

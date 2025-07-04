@@ -4,9 +4,9 @@ import type { RenderContext } from '../types/renderContext';
 
 import { StyleManager } from './StyleManager';
 import { RenderPipeline } from './RenderPipeline';
-import { FileOutputManager } from '../utils/FileOutputManager';
-import { ExtensionManager } from '../utils/ExtensionManager';
-import { NodeTraverser } from '../utils/NodeTraverser';
+import { FileOutputManager } from './FileOutputManager';
+import { ExtensionManager } from './ExtensionManager';
+import { NodeTraverser } from './NodeTraverser';
 import { createLogger } from '../utils/logger';
 
 import {
@@ -17,13 +17,14 @@ import {
   StyleProcessingStep,
   RootHandlerStep,
   FileOutputStep,
-  AfterRenderStep
+  AfterRenderStep,
 } from './steps';
 
 import { TemplateEngineError } from './errors';
 
 /**
- * Refactored TemplateEngine using pipeline architecture
+ * Main template engine class that orchestrates the rendering process.
+ * Uses a pipeline architecture to process templates through multiple steps.
  */
 export class TemplateEngine {
   private styleManager: StyleManager;
@@ -35,6 +36,11 @@ export class TemplateEngine {
   private fileOutputManager: FileOutputManager;
   private renderPipeline: RenderPipeline;
 
+  /**
+   * Creates a new TemplateEngine instance.
+   * @param extensions - Array of extensions to use during rendering.
+   * @param verbose - Whether to enable verbose logging.
+   */
   constructor(extensions: any[] = [], verbose = false) {
     this.extensions = extensions;
     this.verbose = verbose;
@@ -45,27 +51,36 @@ export class TemplateEngine {
     this.fileOutputManager = new FileOutputManager();
 
     // Initialize the rendering pipeline with all steps
-    this.renderPipeline = new RenderPipeline([
-      new InputNormalizationStep(),
-      new OptionsMergingStep(extensions),
-      new ExtensionProcessingStep(),
-      new TemplateRenderingStep(this.styleManager, verbose),
-      new StyleProcessingStep(this.styleManager),
-      new RootHandlerStep(extensions),
-      new FileOutputStep(this.fileOutputManager),
-      new AfterRenderStep(extensions)
-    ], verbose);
+    this.renderPipeline = new RenderPipeline(
+      [
+        new InputNormalizationStep(),
+        new OptionsMergingStep(extensions),
+        new ExtensionProcessingStep(),
+        new TemplateRenderingStep(this.styleManager, verbose),
+        new StyleProcessingStep(this.styleManager),
+        new RootHandlerStep(extensions),
+        new FileOutputStep(this.fileOutputManager),
+        new AfterRenderStep(extensions),
+      ],
+      verbose
+    );
   }
 
   /**
-   * Render template nodes or extended template to HTML/JSX
+   * Renders template nodes or extended template to HTML/JSX.
+   *
+   * @param input - The template nodes or extended template to render.
+   * @param options - Template rendering options.
+   * @param isRoot - Whether this is a root-level render call.
+   * @param ancestorNodesContext - Context of ancestor nodes for nested rendering.
+   * @returns A promise that resolves to the rendered output and any errors.
    */
   async render(
     input: TemplateNode[] | ExtendedTemplate,
     options: TemplateOptions = {},
     isRoot = true,
     ancestorNodesContext: TemplateNode[] = []
-  ): Promise<{ output: string, errors: TemplateEngineError[] }> {
+  ): Promise<{ output: string; errors: TemplateEngineError[] }> {
     // Create initial render context
     const context: RenderContext = {
       input,
@@ -74,7 +89,7 @@ export class TemplateEngine {
       options,
       isRoot,
       ancestorNodesContext,
-      extensionManager: this.extensionManager
+      extensionManager: this.extensionManager,
     };
 
     // Execute the rendering pipeline
@@ -84,41 +99,48 @@ export class TemplateEngine {
   }
 
   /**
-   * Get the current extensions
+   * Gets the current extensions.
+   * @returns A copy of the current extensions array.
    */
   getExtensions(): any[] {
     return [...this.extensions];
   }
 
   /**
-   * Add an extension
+   * Adds an extension to the engine.
+   * @param extension - The extension to add.
    */
   addExtension(extension: any): void {
     this.extensions.push(extension);
     // Reinitialize pipeline with new extensions
-    this.renderPipeline = new RenderPipeline([
-      new InputNormalizationStep(),
-      new OptionsMergingStep(this.extensions),
-      new ExtensionProcessingStep(),
-      new TemplateRenderingStep(this.styleManager, this.verbose),
-      new StyleProcessingStep(this.styleManager),
-      new RootHandlerStep(this.extensions),
-      new FileOutputStep(this.fileOutputManager),
-      new AfterRenderStep(this.extensions)
-    ], this.verbose);
+    this.renderPipeline = new RenderPipeline(
+      [
+        new InputNormalizationStep(),
+        new OptionsMergingStep(this.extensions),
+        new ExtensionProcessingStep(),
+        new TemplateRenderingStep(this.styleManager, this.verbose),
+        new StyleProcessingStep(this.styleManager),
+        new RootHandlerStep(this.extensions),
+        new FileOutputStep(this.fileOutputManager),
+        new AfterRenderStep(this.extensions),
+      ],
+      this.verbose
+    );
   }
 
   /**
-   * Get the style manager
+   * Gets the style manager instance.
+   * @returns The StyleManager instance.
    */
   getStyleManager(): StyleManager {
     return this.styleManager;
   }
 
   /**
-   * Get the file output manager
+   * Gets the file output manager instance.
+   * @returns The FileOutputManager instance.
    */
   getFileOutputManager(): FileOutputManager {
     return this.fileOutputManager;
   }
-} 
+}

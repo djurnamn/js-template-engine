@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ExtensionManager } from '../../src/utils/ExtensionManager';
+import { ExtensionManager } from '../../src/engine/ExtensionManager';
 import type { TemplateNode, Extension } from '@js-template-engine/types';
 
 describe('ExtensionManager', () => {

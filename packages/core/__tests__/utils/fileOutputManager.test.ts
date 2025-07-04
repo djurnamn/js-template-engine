@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import prettier from 'prettier';
-import { FileOutputManager } from '../../src/utils/FileOutputManager';
+import { FileOutputManager } from '../../src/engine/FileOutputManager';
 import type { TemplateOptions } from '../../src/types';
 import type { Extension } from '@js-template-engine/types';
 

@@ -1,25 +1,43 @@
-import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
-import { ExtensionManager } from '../../utils/ExtensionManager';
-import { NodeTraverser } from '../../utils/NodeTraverser';
+import type {
+  RenderContext,
+  PipelineStep,
+  PipelineStepResult,
+} from '../../types/renderContext';
+import { NodeTraverser } from '../NodeTraverser';
 import { ExtensionError } from '../errors';
 
 /**
- * Processes extensions and applies node handlers
+ * Processes extensions and applies node handlers.
+ * Handles beforeRender hooks, node processing, and onNodeVisit hooks.
  */
 export class ExtensionProcessingStep implements PipelineStep {
   name = 'ExtensionProcessing';
 
+  /**
+   * Executes the extension processing step.
+   * Applies extension hooks and processes nodes through all extensions.
+   *
+   * @param context - The rendering context containing nodes and extensions to process.
+   * @returns A promise that resolves to the pipeline step result.
+   */
   async execute(context: RenderContext): Promise<PipelineStepResult> {
     try {
-      const { nodes, options, isRoot, ancestorNodesContext, extensionManager } = context;
-      const nodeTraverser = new NodeTraverser({ extensions: options.extensions || [] });
-      
+      const { nodes, options, isRoot, ancestorNodesContext, extensionManager } =
+        context;
+      const nodeTraverser = new NodeTraverser({
+        extensions: options.extensions || [],
+      });
+
       // Call beforeRender hooks for root renders
       if (isRoot) {
         try {
           extensionManager.callBeforeRender(nodes, options);
         } catch (err) {
-          throw new ExtensionError('Error in beforeRender hook', { extension: 'unknown', hook: 'beforeRender', error: err });
+          throw new ExtensionError('Error in beforeRender hook', {
+            extension: 'unknown',
+            hook: 'beforeRender',
+            error: err,
+          });
         }
       }
 
@@ -27,38 +45,56 @@ export class ExtensionProcessingStep implements PipelineStep {
       let processedNodes = nodes;
       if (options.extensions) {
         for (const extension of options.extensions) {
-          processedNodes = nodes.map(node => {
+          processedNodes = nodes.map((node) => {
             try {
-              return extensionManager.callNodeHandlers(node, ancestorNodesContext);
+              return extensionManager.callNodeHandlers(
+                node,
+                ancestorNodesContext
+              );
             } catch (err) {
-              throw new ExtensionError('Error in nodeHandler', { extension: extension.key, node, hook: 'nodeHandler', error: err });
+              throw new ExtensionError('Error in nodeHandler', {
+                extension: extension.key,
+                node,
+                hook: 'nodeHandler',
+                error: err,
+              });
             }
           });
         }
       }
 
       // Apply onNodeVisit hooks
-      processedNodes = nodeTraverser.traverseTree(processedNodes, ancestorNodesContext);
+      processedNodes = nodeTraverser.traverseTree(
+        processedNodes,
+        ancestorNodesContext
+      );
 
       // Update context with processed nodes
       const updatedContext: RenderContext = {
         ...context,
-        processedNodes
+        processedNodes,
       };
 
       return {
         success: true,
-        context: updatedContext
+        context: updatedContext,
       };
-      
     } catch (error) {
       return {
         success: false,
-        error: error instanceof ExtensionError ? error : new ExtensionError(error instanceof Error ? error.message : String(error)),
-        context
+        error:
+          error instanceof ExtensionError
+            ? error
+            : new ExtensionError(
+                error instanceof Error ? error.message : String(error)
+              ),
+        context,
       };
     }
   }
 
+  /**
+   * Whether this step should run for non-root renders.
+   */
   runForNonRoot = true;
-} 
+}
