@@ -11,6 +11,7 @@ This document defines the code style and naming conventions for this project. Al
 - **Content:** Include a summary, parameter descriptions, return type, and any relevant tags (e.g., `@param`, `@returns`, `@example`).
 
 **Example:**
+
 ```ts
 /**
  * Renders a template to HTML.
@@ -32,12 +33,14 @@ function renderTemplate(template: Template, options: RenderOptions): string {
 ## 2. Naming Conventions
 
 ### Files & Folders
+
 - **Default:** Use `kebab-case` for files and folders.
 - **Single-Class Files:** Use `PascalCase` if the file contains only a single class (e.g., `TemplateEngine.ts`).
 - **Test Files:** Name test files to match the class or function they test (e.g., `TemplateEngine.test.ts`).
 - **Extensions:** Follow the same rules as above.
 
 ### Variables, Functions, Classes
+
 - **Variables & Functions:** Use `camelCase` (e.g., `renderTemplate`).
 - **Classes & Types:** Use `PascalCase` (e.g., `TemplateEngine`).
 - **Constants:** Use `UPPER_CASE` if the value is truly constant and exported.
@@ -75,4 +78,4 @@ function renderTemplate(template: Template, options: RenderOptions): string {
 
 ---
 
-_Last updated: [DATE]_ 
+_Last updated: [DATE]_

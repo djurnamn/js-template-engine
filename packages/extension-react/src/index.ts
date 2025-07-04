@@ -4,18 +4,15 @@ import type {
   Extension,
   RootHandlerContext,
   BaseExtensionOptions,
-  ImportDefinition
+  ImportDefinition,
 } from '@js-template-engine/types';
 
-import type {
-  ReactExtensionOptions,
-  ReactNodeExtensions
-} from './types';
+import type { ReactExtensionOptions, ReactNodeExtensions } from './types';
 
 import {
   resolveComponentName,
   resolveComponentProps,
-  resolveComponentImports
+  resolveComponentImports,
 } from '@js-template-engine/types';
 
 const logger = createLogger(false, 'react-extension');
@@ -23,16 +20,21 @@ const logger = createLogger(false, 'react-extension');
 /**
  * Determines if React import should be injected based on component configuration
  */
-function shouldInjectReact(imports: ImportDefinition[], component: any): boolean {
+function shouldInjectReact(
+  imports: ImportDefinition[],
+  component: any
+): boolean {
   // Check if we need React for hooks or JSX
-  const hasHooks = imports.some(imp => 
-    typeof imp === 'string' && imp.includes('use') && imp.includes('react')
+  const hasHooks = imports.some(
+    (imp) =>
+      typeof imp === 'string' && imp.includes('use') && imp.includes('react')
   );
-  const hasNamedImports = imports.some(imp => 
-    typeof imp === 'string' && imp.includes('{') && imp.includes('react')
+  const hasNamedImports = imports.some(
+    (imp) =>
+      typeof imp === 'string' && imp.includes('{') && imp.includes('react')
   );
   const hasProps = component.props && Object.keys(component.props).length > 0;
-  
+
   return Boolean(hasHooks || hasNamedImports || hasProps);
 }
 
@@ -53,15 +55,24 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     this.logger = createLogger(verbose, 'react-extension');
   }
 
+  /**
+   * Recursively transforms HTML attributes to React attributes for all element nodes.
+   * Handles expression attributes and preserves custom attributes.
+   * @param node - The template node to process.
+   * @returns The processed template node.
+   */
   public nodeHandler(node: TemplateNode): TemplateNode {
     if (node.type !== 'element') return node;
 
     // Handle expression attributes first
     if (node.extensions?.react?.expressionAttributes) {
       if (!node.expressionAttributes) node.expressionAttributes = {};
-      Object.assign(node.expressionAttributes, node.extensions.react.expressionAttributes);
+      Object.assign(
+        node.expressionAttributes,
+        node.extensions.react.expressionAttributes
+      );
       // Remove the original attributes that have expression versions
-      Object.keys(node.extensions.react.expressionAttributes).forEach(key => {
+      Object.keys(node.extensions.react.expressionAttributes).forEach((key) => {
         const lowerKey = key.toLowerCase();
         if (node.attributes?.[lowerKey]) {
           delete node.attributes[lowerKey];
@@ -73,26 +84,41 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     }
 
     // Transform HTML attributes to React attributes
-    const transformedAttrs: Record<string, string> = {};
-    for (const [key, value] of Object.entries(node.attributes || {})) {
-      if (key === 'class') {
-        transformedAttrs['className'] = String(value);
-      } else if (key === 'for') {
-        transformedAttrs['htmlFor'] = String(value);
+    const transformedAttributes: Record<string, string> = {};
+    for (const [attributeKey, attributeValue] of Object.entries(
+      node.attributes || {}
+    )) {
+      if (attributeKey === 'class') {
+        transformedAttributes['className'] = String(attributeValue);
+      } else if (attributeKey === 'for') {
+        transformedAttributes['htmlFor'] = String(attributeValue);
       } else {
-        transformedAttrs[key] = String(value);
+        transformedAttributes[attributeKey] = String(attributeValue);
       }
     }
-    node.attributes = transformedAttrs;
+    node.attributes = transformedAttributes;
+
+    // Recursively transform children
+    if (node.children) {
+      node.children = node.children.map((child) => this.nodeHandler(child));
+    }
 
     return node;
   }
 
-  public attributeFormatter(attr: string, val: string | number | boolean, isExpression?: boolean): string {
+  public attributeFormatter(
+    attr: string,
+    val: string | number | boolean,
+    isExpression?: boolean
+  ): string {
     return isExpression ? ` ${attr}={${val}}` : ` ${attr}="${val}"`;
   }
 
-  public rootHandler(template: string, options: ReactExtensionOptions, context: RootHandlerContext): string {
+  public rootHandler(
+    template: string,
+    options: ReactExtensionOptions,
+    context: RootHandlerContext
+  ): string {
     const { component } = context;
     if (!component) return template;
 
@@ -107,19 +133,25 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     const importStatements = resolveComponentImports(component, imports);
 
     // Add style import if present
-    const styleImport = context.styleOutput || component.extensions?.react?.styleOutput
-      ? `import './${componentName}.scss';`
-      : null;
+    const styleImport =
+      context.styleOutput || component.extensions?.react?.styleOutput
+        ? `import './${componentName}.scss';`
+        : null;
 
     // Use component.typescript flag to determine TypeScript usage
     const useTypeScript = component.typescript ?? false;
 
     // Generate props interface only if TypeScript is enabled
-    const propsInterface = useTypeScript && component.props && Object.keys(component.props).length > 0
-      ? `\ninterface ${componentName}Props {\n${Object.entries(component.props)
-          .map(([key, type]) => `  ${key}: ${type}`)
-          .join('\n')}\n}\n`
-      : '';
+    const propsInterface =
+      useTypeScript &&
+      component.props &&
+      Object.keys(component.props).length > 0
+        ? `\ninterface ${componentName}Props {\n${Object.entries(
+            component.props
+          )
+            .map(([key, type]) => `  ${key}: ${type}`)
+            .join('\n')}\n}\n`
+        : '';
 
     // Format component signature based on TypeScript flag
     const componentSignature = useTypeScript
@@ -139,7 +171,7 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
       '  return (',
       '    ' + template,
       '  );',
-      '};'
+      '};',
     ].join('\n');
     const exportSection = `export default ${componentName};`;
 
@@ -149,13 +181,13 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
       styleSection,
       interfaceSection,
       componentSection,
-      exportSection
+      exportSection,
     ]
       .filter((section, idx, arr) => {
         // Remove empty styleSection if not present
-        if (section === '' && (idx === 1)) return false;
+        if (section === '' && idx === 1) return false;
         // Remove empty interfaceSection if not present
-        if (section === '' && (idx === 2)) return false;
+        if (section === '' && idx === 2) return false;
         return true;
       })
       .join('\n\n');

@@ -1,39 +1,96 @@
 import { createLogger, getExtensionOptions } from '@js-template-engine/core';
-import type { TemplateNode, Extension, DeepPartial, StyleProcessorPlugin, BaseExtensionOptions, RootHandlerContext } from '@js-template-engine/types';
+import type {
+  TemplateNode,
+  Extension,
+  DeepPartial,
+  StyleProcessorPlugin,
+  BaseExtensionOptions,
+  RootHandlerContext,
+} from '@js-template-engine/types';
 import type { BemExtension as BemTypes } from './types';
 
+/**
+ * Options for configuring the BEM extension.
+ */
 export interface BemExtensionOptions extends BaseExtensionOptions {
+  /** File extension for output files. */
   fileExtension?: string;
+  /** Separators for BEM element and modifier. */
   separator?: {
+    /** Separator for elements (default: '__'). */
     element?: string;
+    /** Separator for modifiers (default: '--'). */
     modifier?: string;
   };
 }
 
+/**
+ * Node-level BEM extension options.
+ */
 export interface BemNodeExtensions {
+  /** Block name for BEM. */
   block?: string;
+  /** Element name for BEM. */
   element?: string;
+  /** Modifiers for BEM. */
   modifiers?: string[];
 }
 
-interface BemNode extends TemplateNode {
+/**
+ * Internal node type for BEM processing.
+ * Extends only element TemplateNode with BEM-specific properties.
+ */
+interface BemNode extends Extract<TemplateNode, { type: 'element' }> {
+  /** Block name for BEM. */
   block?: string;
+  /** Element name for BEM. */
   element?: string;
+  /** Modifiers for BEM. */
   modifiers?: string[];
+  /** Single modifier for BEM. */
   modifier?: string;
+  /** If true, disables BEM processing for this node. */
   ignoreBem?: boolean;
+  /** Extension-specific options. */
   extensions?: {
+    /** BEM node extensions. */
     bem?: BemTypes.NodeExtensions;
     [key: string]: any;
   };
-  tag?: string;
+  /** Tag name for the node. */
+  tag: string;
+  /** HTML attributes for the node. */
   attributes?: Record<string, any>;
+  /** Child nodes of this element. */
+  children?: TemplateNode[];
 }
 
-export class BemExtension implements Extension<BemExtensionOptions, BemNodeExtensions> {
+/**
+ * Type guard to check if a node is an element node.
+ * @param node - The node to check.
+ * @returns True if the node is an element node.
+ */
+function isElementNode(
+  node: TemplateNode
+): node is Extract<TemplateNode, { type: 'element' }> {
+  return node.type === 'element';
+}
+
+/**
+ * BEM extension for the template engine.
+ * Handles BEM class generation and SCSS output.
+ * @implements Extension<BemExtensionOptions, BemNodeExtensions>
+ */
+export class BemExtension
+  implements Extension<BemExtensionOptions, BemNodeExtensions>
+{
+  /** Extension key. */
   public readonly key = 'bem' as const;
+  /** Logger instance. */
   private logger: ReturnType<typeof createLogger>;
+  /** Whether this extension is a renderer. */
   isRenderer = false;
+  /** Extension options. */
   options: BemExtensionOptions = {
     fileExtension: '.html',
     separator: {
@@ -42,14 +99,29 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
     },
   };
 
+  /**
+   * Creates a new BEM extension instance.
+   * @param verbose - If true, enables verbose logging.
+   */
   constructor(verbose = false) {
     this.logger = createLogger(verbose, 'BemExtension');
   }
 
+  /**
+   * Converts a camelCase string to kebab-case.
+   * @param str - The string to convert.
+   * @returns The kebab-case string.
+   */
   private camelToKebab(str: string): string {
     return str.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
   }
 
+  /**
+   * Converts a style object to a SCSS string.
+   * @param styles - The style object.
+   * @param indent - Indentation level.
+   * @returns The SCSS string.
+   */
   private stringifyStyles(styles: Record<string, any>, indent = 2): string {
     const lines: string[] = [];
 
@@ -67,12 +139,19 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
     return lines.join('\n');
   }
 
+  /**
+   * Traverses the template tree to build a BEM selector tree.
+   * @param node - The current template node.
+   * @param block - The current block name.
+   * @param selectorTree - The selector tree being built.
+   * @returns The updated selector tree.
+   */
   private traverse(
     node: TemplateNode,
     block?: string,
     selectorTree: any = {}
   ): any {
-    if (!node) return selectorTree;
+    if (!node || !isElementNode(node)) return selectorTree;
 
     const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
     const styles = node.attributes?.styles;
@@ -110,6 +189,13 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
     return selectorTree;
   }
 
+  /**
+   * Formats a BEM selector tree as SCSS.
+   * @param block - The block name.
+   * @param tree - The selector tree.
+   * @param indent - Indentation level.
+   * @returns The SCSS string.
+   */
   private formatSCSS(block: string, tree: any, indent = 0): string {
     const indentStr = ' '.repeat(indent);
     const lines: string[] = [`${indentStr}.${block} {`];
@@ -121,10 +207,17 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
           for (const [childKey, childVal] of Object.entries(value)) {
             if (childKey.startsWith('&')) {
               lines.push(`${' '.repeat(indent + 4)}${childKey} {`);
-              lines.push(this.stringifyStyles(childVal as Record<string, any>, indent + 6));
+              lines.push(
+                this.stringifyStyles(
+                  childVal as Record<string, any>,
+                  indent + 6
+                )
+              );
               lines.push(`${' '.repeat(indent + 4)}}`);
             } else {
-              lines.push(this.stringifyStyles({ [childKey]: childVal }, indent + 4));
+              lines.push(
+                this.stringifyStyles({ [childKey]: childVal }, indent + 4)
+              );
             }
           }
         }
@@ -138,6 +231,11 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
     return lines.join('\n');
   }
 
+  /**
+   * Generates BEM SCSS from a template tree.
+   * @param templateTree - The template tree.
+   * @returns The generated SCSS string.
+   */
   private generateBemScssFromTree(templateTree: TemplateNode[]): string {
     const tree = this.traverse({ children: templateTree } as TemplateNode);
     return Object.entries(tree)
@@ -145,11 +243,26 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
       .join('\n\n');
   }
 
+  /**
+   * Style processor plugin for BEM.
+   */
   public readonly stylePlugin: StyleProcessorPlugin = {
+    /**
+     * Called when processing a node for styles.
+     * @param node - The template node.
+     * @returns Always undefined.
+     */
     onProcessNode: (node) => {
       this.logger.info(`Processing styles for <${node.tag}>`);
       return undefined;
     },
+    /**
+     * Generates SCSS from processed styles or template tree.
+     * @param processedStyles - The processed styles map.
+     * @param options - Style processor options.
+     * @param templateTree - The template tree.
+     * @returns The generated SCSS string.
+     */
     generateStyles: (processedStyles, options, templateTree) => {
       this.logger.info('Generating SCSS from template tree');
       if (templateTree) {
@@ -167,9 +280,14 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
         return scss;
       }
       return '';
-    }
+    },
   };
 
+  /**
+   * Sets BEM node extension options as a shortcut.
+   * @param options - BEM node extension options.
+   * @returns An object with the extensions property set.
+   */
   public setNodeExtensionOptionsShortcut(options: {
     block?: string;
     element?: string;
@@ -191,7 +309,16 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
       : {};
   }
 
-  public optionsHandler(defaultOptions: BemExtensionOptions, options: DeepPartial<BemExtensionOptions>): BemExtensionOptions {
+  /**
+   * Merges default and user-provided BEM extension options.
+   * @param defaultOptions - The default options.
+   * @param options - The user-provided options.
+   * @returns The merged options.
+   */
+  public optionsHandler(
+    defaultOptions: BemExtensionOptions,
+    options: DeepPartial<BemExtensionOptions>
+  ): BemExtensionOptions {
     return {
       ...defaultOptions,
       ...options,
@@ -202,53 +329,75 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
     };
   }
 
-  // Helper to find the nearest ancestor with a block
+  /**
+   * Finds the nearest ancestor node with a BEM block.
+   * @param ancestors - The ancestor nodes.
+   * @returns The nearest ancestor with a block, or undefined.
+   */
   private findNearestBlockNode(ancestors: TemplateNode[]): BemNode | undefined {
-    return [...ancestors].reverse().find((ancestor) =>
-      getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')?.block || (ancestor as BemNode)?.block
-    ) as BemNode | undefined;
+    return [...ancestors]
+      .reverse()
+      .find(
+        (ancestor) =>
+          getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')
+            ?.block || (ancestor as BemNode)?.block
+      ) as BemNode | undefined;
   }
 
-  public onNodeVisit(node: BemNode, ancestors: TemplateNode[] = []): void {
-    if (node.ignoreBem || !node.tag) return;
-
+  /**
+   * Visits a node and applies BEM classes.
+   * @param node - The node to visit.
+   * @param ancestors - Ancestor nodes.
+   */
+  public onNodeVisit(node: TemplateNode, ancestors: TemplateNode[] = []): void {
+    if (!isElementNode(node)) return;
     const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
-    
     // Use helper to find the closest ancestor with a block
     const closestBlockNode = this.findNearestBlockNode(ancestors);
-    const closestBlockBem = closestBlockNode && getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem');
-
+    const closestBlockBem =
+      closestBlockNode &&
+      getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem');
     // Get block from current node or ancestor
-    const block = bem?.block ?? node.block ?? closestBlockBem?.block ?? closestBlockNode?.block;
+    const block =
+      bem?.block ??
+      (node as BemNode).block ??
+      closestBlockBem?.block ??
+      (closestBlockNode as BemNode)?.block;
     if (!block) return; // No block found, don't generate classes
-
     // Get element and modifiers from current node
-    const element = bem?.element ?? node.element;
+    const element = bem?.element ?? (node as BemNode).element;
     const modifiers = [
       ...(bem?.modifiers ?? []),
       ...(bem?.modifier ? [bem.modifier] : []),
-      ...(node.modifiers ?? []),
-      ...(node.modifier ? [node.modifier] : []),
-    ];
-
+      ...((node as BemNode).modifiers ?? []),
+      ...((node as BemNode).modifier ? [(node as BemNode).modifier] : []),
+    ].filter((modifier): modifier is string => typeof modifier === 'string');
     // Generate BEM classes as array
     const bemClasses = this.getBemClasses(block, element, modifiers);
     if (!bemClasses.length) return;
-
     // Get existing classes and deduplicate
-    const existingClass = node.attributes?.class || '';
+    const existingClass = (node as BemNode).attributes?.class || '';
     const existingClassList = existingClass.split(/\s+/).filter(Boolean);
-    const uniqueClasses = Array.from(new Set([...existingClassList, ...bemClasses]));
-
+    const uniqueClasses = Array.from(
+      new Set([...existingClassList, ...bemClasses])
+    );
     // Update node attributes with deduplicated classes
-    node.attributes = {
-      ...node.attributes,
+    (node as BemNode).attributes = {
+      ...(node as BemNode).attributes,
       class: uniqueClasses.join(' '),
     };
-
-    this.logger.info(`Applied BEM classes to <${node.tag}>: ${uniqueClasses.join(' ')}`);
+    this.logger.info(
+      `Applied BEM classes to <${(node as BemNode).tag}>: ${uniqueClasses.join(' ')}`
+    );
   }
 
+  /**
+   * Generates BEM class names for a node.
+   * @param block - The block name.
+   * @param element - The element name.
+   * @param modifiers - The modifiers.
+   * @returns An array of BEM class names.
+   */
   private getBemClasses(
     block: string,
     element?: string,
@@ -256,12 +405,20 @@ export class BemExtension implements Extension<BemExtensionOptions, BemNodeExten
   ): string[] {
     if (!block) return [];
     const base = element ? `${block}__${element}` : block;
-    return [base, ...modifiers.map(mod => `${base}--${mod}`)];
+    return [base, ...modifiers.map((mod) => `${base}--${mod}`)];
   }
 
-  public nodeHandler(node: BemNode, ancestorNodesContext: TemplateNode[] = []): TemplateNode {
-    // Delegate to onNodeVisit for BEM class generation
+  /**
+   * Handles a node during traversal.
+   * @param node - The node to handle.
+   * @param ancestorNodesContext - Ancestor nodes.
+   * @returns The updated node.
+   */
+  public nodeHandler(
+    node: TemplateNode,
+    ancestorNodesContext: TemplateNode[] = []
+  ): TemplateNode {
     this.onNodeVisit(node, ancestorNodesContext);
     return node;
   }
-} 
+}

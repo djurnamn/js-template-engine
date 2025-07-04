@@ -26,9 +26,9 @@ describe('ReactExtension - nodeHandler', () => {
         imports: ['import React from "react";']
       }
     };
-    const output = await engine.render(template);
-    expect(output).toContain('className="container"');
-    expect(output).toContain('htmlFor="input"');
+    const result = await engine.render(template);
+    expect(result.output).toContain('className="container"');
+    expect(result.output).toContain('htmlFor="input"');
   });
 
   it('handles expression attributes correctly', async () => {
@@ -56,9 +56,9 @@ describe('ReactExtension - nodeHandler', () => {
         imports: ['import React from "react";']
       }
     };
-    const output = await engine.render(template);
-    expect(output).toContain('onClick={handleClick}');
-    expect(output).not.toContain('onclick="handleClick"');
+    const result = await engine.render(template);
+    expect(result.output).toContain('onClick={handleClick}');
+    expect(result.output).not.toContain('onclick="handleClick"');
   });
 
   it('preserves custom React attributes', async () => {
@@ -79,8 +79,8 @@ describe('ReactExtension - nodeHandler', () => {
         imports: ['import React from "react";']
       }
     };
-    const output = await engine.render(template);
-    expect(output).toContain('data-testid="test"');
+    const result = await engine.render(template);
+    expect(result.output).toContain('data-testid="test"');
   });
 
   it('handles nested element transformations', async () => {
@@ -108,8 +108,8 @@ describe('ReactExtension - nodeHandler', () => {
         imports: ['import React from "react";']
       }
     };
-    const output = await engine.render(template);
-    expect(output).toContain('className="outer"');
-    expect(output).toContain('className="inner"');
+    const result = await engine.render(template);
+    expect(result.output).toContain('className="outer"');
+    expect(result.output).toContain('className="inner"');
   });
 }); 

@@ -1,4 +1,7 @@
-import type { RenderOptions, BaseExtensionOptions } from '@js-template-engine/types';
+import type {
+  RenderOptions,
+  BaseExtensionOptions,
+} from '@js-template-engine/types';
 
 export interface VueComponentOptions {
   directives?: Record<string, string>;

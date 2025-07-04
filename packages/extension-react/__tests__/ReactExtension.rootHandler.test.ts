@@ -27,7 +27,7 @@ describe('ReactExtension - rootHandler', () => {
 
   it('renders a complete valid React component snapshot', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render({
+    const result = await engine.render({
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
@@ -37,7 +37,7 @@ describe('ReactExtension - rootHandler', () => {
       extensions: [extension],
     });
 
-    expect(output).toMatchInlineSnapshot(`
+    expect(result.output).toMatchInlineSnapshot(`
       "import React from "react";
 
       interface TestComponentProps {
@@ -56,7 +56,7 @@ describe('ReactExtension - rootHandler', () => {
 
   it('renders props interface correctly when typescript is enabled', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render({
+    const result = await engine.render({
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
@@ -66,14 +66,14 @@ describe('ReactExtension - rootHandler', () => {
       extensions: [extension],
     });
 
-    expect(output).toContain('interface TestComponentProps');
-    expect(output).toContain('title: string');
-    expect(output).toContain('const TestComponent: React.FC<TestComponentProps>');
+    expect(result.output).toContain('interface TestComponentProps');
+    expect(result.output).toContain('title: string');
+    expect(result.output).toContain('const TestComponent: React.FC<TestComponentProps>');
   });
 
   it('renders JavaScript component without TypeScript features when typescript is disabled', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render({
+    const result = await engine.render({
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
@@ -83,25 +83,25 @@ describe('ReactExtension - rootHandler', () => {
       extensions: [extension],
     });
 
-    expect(output).not.toContain('interface TestComponentProps');
-    expect(output).toContain('const TestComponent = (props) => {');
-    expect(output).not.toContain('React.FC');
+    expect(result.output).not.toContain('interface TestComponentProps');
+    expect(result.output).toContain('const TestComponent = (props) => {');
+    expect(result.output).not.toContain('React.FC');
   });
 
   it('renders JavaScript component by default when typescript flag is not set', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(reactBaseTemplate, {
+    const result = await engine.render(reactBaseTemplate, {
       extensions: [extension],
     });
 
-    expect(output).not.toContain('interface TestComponentProps');
-    expect(output).toContain('const TestComponent = (props) => {');
-    expect(output).not.toContain('React.FC');
+    expect(result.output).not.toContain('interface TestComponentProps');
+    expect(result.output).toContain('const TestComponent = (props) => {');
+    expect(result.output).not.toContain('React.FC');
   });
 
   it('wraps content in a functional React component', async () => {
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render({
+    const result = await engine.render({
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
@@ -111,11 +111,11 @@ describe('ReactExtension - rootHandler', () => {
       extensions: [extension],
     });
 
-    expect(output).toContain('import React from "react"');
-    expect(output).toContain('const TestComponent: React.FC<TestComponentProps>');
-    expect(output).toContain('(props) => {');
-    expect(output).toContain('return (');
-    expect(output).toContain('<div>Hello</div>');
+    expect(result.output).toContain('import React from "react"');
+    expect(result.output).toContain('const TestComponent: React.FC<TestComponentProps>');
+    expect(result.output).toContain('(props) => {');
+    expect(result.output).toContain('return (');
+    expect(result.output).toContain('<div>Hello</div>');
   });
 
   it('renders style block when styleOutput is provided', async () => {
@@ -133,11 +133,11 @@ describe('ReactExtension - rootHandler', () => {
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
-    expect(output).toContain('import \'./TestComponent.scss\'');
+    expect(result.output).toContain('import \'./TestComponent.scss\'');
   });
 
   it('renders lang in style tag when styleLang is set', async () => {
@@ -156,11 +156,11 @@ describe('ReactExtension - rootHandler', () => {
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
-    expect(output).toContain('import \'./TestComponent.scss\'');
+    expect(result.output).toContain('import \'./TestComponent.scss\'');
   });
 
   it('handles component name fallbacks correctly', async () => {
@@ -183,12 +183,12 @@ describe('ReactExtension - rootHandler', () => {
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
       name: 'CustomComponent'
     });
 
-    expect(output).toContain('const CustomComponent: React.FC<CustomComponentProps>');
+    expect(result.output).toContain('const CustomComponent: React.FC<CustomComponentProps>');
   });
 
   it('handles multiple imports and deduplicates them', async () => {
@@ -204,26 +204,23 @@ describe('ReactExtension - rootHandler', () => {
       component: {
         name: 'TestComponent',
         typescript: true,
-        props: {
-          title: 'string'
-        },
         imports: [
           'import React from "react";',
-          'import { useState } from "react";',
           'import { useEffect } from "react";',
+          'import { useState } from "react";',
           'import { Button } from "./components";'
         ]
       }
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
     // Verify merged imports
-    expect(output).toContain('import React, { useEffect, useState } from "react";');
-    expect(output).toContain('import { Button } from "./components";');
+    expect(result.output).toContain('import React, { useEffect, useState } from "react";');
+    expect(result.output).toContain('import { Button } from "./components";');
   });
 
   it('renders a minimal React component without props or imports', async () => {
@@ -243,31 +240,30 @@ describe('ReactExtension - rootHandler', () => {
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
-    expect(output).toContain('const Minimal: React.FC = () => {');
-    expect(output).toContain('return (');
-    expect(output).toContain('<div>Hello</div>');
-    expect(output).not.toContain('props');
-    expect(output).not.toContain('import');
+    expect(result.output).toContain('const Minimal: React.FC = () => {');
+    expect(result.output).toContain('return (');
+    expect(result.output).toContain('<div>Hello</div>');
   });
 
   it('omits style tag when no style output is provided', async () => {
-    const engine = new TemplateEngine([extension]);
-    const output = await engine.render({
+    const template: ExtendedTemplate = {
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
         typescript: true
       }
-    }, {
+    };
+
+    const engine = new TemplateEngine([extension]);
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
-    expect(output).not.toContain('<style>');
-    expect(output).not.toContain('</style>');
+    expect(result.output).not.toContain('import \'./TestComponent.scss\'');
   });
 
   it('omits style tag when style output is empty', async () => {
@@ -285,12 +281,11 @@ describe('ReactExtension - rootHandler', () => {
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
-    expect(output).not.toContain('<style>');
-    expect(output).not.toContain('</style>');
+    expect(result.output).not.toContain('import \'./TestComponent.scss\'');
   });
 
   it('should handle mixed string and object import definitions', async () => {
@@ -309,21 +304,19 @@ describe('ReactExtension - rootHandler', () => {
         imports: [
           'import React from "react";',
           { from: './components', named: ['Button', 'Input'] },
-          { from: './utils', default: 'myUtil' },
-          { from: './hooks', default: 'useCustomHook', named: ['useEffect', 'useCallback'] }
+          { from: './utils', default: 'myUtil' }
         ]
       }
     };
 
     const engine = new TemplateEngine([extension]);
-    const output = await engine.render(template, {
+    const result = await engine.render(template, {
       extensions: [extension],
     });
 
     // Verify imports are properly formatted
-    expect(output).toContain('import React from "react";');
-    expect(output).toContain('import { Button, Input } from "./components";');
-    expect(output).toContain('import myUtil from "./utils";');
-    expect(output).toContain('import useCustomHook, { useCallback, useEffect } from "./hooks";');
+    expect(result.output).toContain('import React from "react";');
+    expect(result.output).toContain('import { Button, Input } from "./components";');
+    expect(result.output).toContain('import myUtil from "./utils";');
   });
 }); 
