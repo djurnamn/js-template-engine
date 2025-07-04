@@ -33,7 +33,7 @@ export class NodeTraverser {
         }
       }
       const updatedNode = { ...node };
-      if (updatedNode.children) {
+      if ((updatedNode.type === 'element' || updatedNode.type === undefined || updatedNode.type === 'slot') && updatedNode.children) {
         updatedNode.children = this.traverseTree(updatedNode.children, [...ancestors, updatedNode]);
       }
       return updatedNode;

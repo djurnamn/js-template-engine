@@ -57,15 +57,6 @@ export interface NodeExtensions<T extends Record<string, any> = Record<string, a
   };
 }
 
-// Extended TemplateNode with specific extension types
-export interface ExtendedTemplateNode extends TemplateNode {
-  extensions?: {
-    react?: ReactExtension.NodeExtensions;
-    bem?: BemExtension.NodeExtensions;
-    [key: ExtensionKey]: Record<string, any> | undefined;
-  };
-}
-
 // Generic extension interface
 export interface Extension<T extends BaseExtensionOptions = BaseExtensionOptions, U extends Record<string, any> = Record<string, any>> {
   key: ExtensionKey;

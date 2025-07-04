@@ -28,6 +28,7 @@ export class AttributeRenderer {
     options: TemplateOptions,
     getInlineStyles?: (node: TemplateNode) => string | undefined
   ): string {
+    if (node.type !== 'element' && node.type !== undefined) return '';
     let attributes = '';
 
     // Collect all expression attribute keys for quick lookup

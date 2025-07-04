@@ -26,7 +26,7 @@ export class StyleManager {
    * @param node The template node to process
    */
   processNode(node: TemplateNode): void {
-    if (!node.attributes?.style) {
+    if ((node.type !== 'element' && node.type !== undefined) || !node.attributes?.style) {
       return;
     }
 
@@ -87,16 +87,18 @@ export class StyleManager {
   }
 
   private getSelector(node: TemplateNode): string | null {
-    if (node.attributes?.class) {
-      // Use the first class name as the primary selector
-      const classValue = node.attributes.class;
-      if (typeof classValue === 'string') {
-        const classes = classValue.split(/\s+/);
-        return `.${classes[0]}`;
+    if (node.type === 'element' || node.type === undefined) {
+      if (node.attributes?.class) {
+        // Use the first class name as the primary selector
+        const classValue = node.attributes.class;
+        if (typeof classValue === 'string') {
+          const classes = classValue.split(/\s+/);
+          return `.${classes[0]}`;
+        }
       }
-    }
-    if (node.tag) {
-      return node.tag;
+      if (node.tag) {
+        return node.tag;
+      }
     }
     return null;
   }
@@ -252,7 +254,7 @@ export class StyleManager {
    * @param node The template node
    */
   getInlineStyles(node: TemplateNode): string | null {
-    if (!node.attributes?.style) {
+    if ((node.type !== 'element' && node.type !== undefined) || !node.attributes?.style) {
       return null;
     }
 

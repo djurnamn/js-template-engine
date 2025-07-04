@@ -14,20 +14,29 @@ export type {
   Component
 };
 
-export interface TemplateNode {
-  type?: 'element' | 'text' | 'slot';
-  tagName?: string;
-  tag?: string;
-  name?: string;
-  attributes?: {
-    [key: string]: string | number | boolean | StyleDefinition | undefined;
-  };
-  expressionAttributes?: Record<string, string>;
-  children?: TemplateNode[];
-  content?: string;
-  extensions?: Record<string, any>;
-  selfClosing?: boolean;
-}
+export type TemplateNode =
+  | {
+      type: 'element';
+      tag: string;
+      attributes?: {
+        [key: string]: string | number | boolean | StyleDefinition | undefined;
+      };
+      expressionAttributes?: Record<string, string>;
+      children?: TemplateNode[];
+      extensions?: Record<string, any>;
+      selfClosing?: boolean;
+    }
+  | {
+      type: 'text';
+      content: string;
+      extensions?: Record<string, any>;
+    }
+  | {
+      type: 'slot';
+      name: string;
+      children?: TemplateNode[];
+      extensions?: Record<string, any>;
+    };
 
 export interface NodeExtensions {
   [key: string]: any;
@@ -92,4 +101,20 @@ export {
   sanitizeComponentName
 } from './Component';
 
-export type { ImportDefinition } from './Component'; 
+export type { ImportDefinition } from './Component';
+
+/**
+ * Runtime type guard for TemplateNode.
+ * Accepts nodes with type: 'element', 'text', 'slot', or undefined (treated as 'element').
+ */
+export function isTemplateNode(node: any): node is TemplateNode {
+  if (typeof node !== 'object' || node === null) return false;
+  if (node.type === 'text') {
+    return typeof node.content === 'string';
+  }
+  if (node.type === 'slot') {
+    return typeof node.name === 'string';
+  }
+  // Default: treat as element if type is 'element' or undefined
+  return typeof node.tag === 'string';
+} 

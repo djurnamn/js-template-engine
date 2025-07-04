@@ -1,6 +1,7 @@
 import type { TemplateNode, ExtendedTemplate } from '@js-template-engine/types';
 import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
 import { ValidationError } from '../errors';
+import { isTemplateNode } from '../../../../types/src/index';
 
 /**
  * Determines if input is an ExtendedTemplate
@@ -33,6 +34,27 @@ export class InputNormalizationStep implements PipelineStep {
       if (!Array.isArray(nodes)) {
         throw new ValidationError('Template nodes must be an array', { input });
       }
+
+      // After normalizing input, validate all nodes
+      function validateNodes(nodes: any[]): void {
+        for (const node of nodes) {
+          if (!isTemplateNode(node)) {
+            if (!("errors" in context)) {
+              (context as any).errors = [];
+            }
+            (context as any).errors.push({
+              type: 'ValidationError',
+              message: 'Invalid template node structure',
+              node,
+            });
+          }
+          // Recursively validate children if present
+          if ((node.type === 'element' || node.type === undefined || node.type === 'slot') && Array.isArray(node.children)) {
+            validateNodes(node.children);
+          }
+        }
+      }
+      validateNodes(nodes);
 
       // Update context with normalized data
       const updatedContext: RenderContext = {
