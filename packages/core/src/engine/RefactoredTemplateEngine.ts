@@ -1,12 +1,13 @@
 import type { TemplateNode, ExtendedTemplate } from '@js-template-engine/types';
-import type { TemplateOptions } from './types';
+import type { TemplateOptions } from '../types';
+import type { RenderContext } from '../types/renderContext';
 
-import { StyleManager } from './engine/StyleManager';
-import { RenderPipeline } from './engine/RenderPipeline';
-import { FileOutputManager } from './utils/FileOutputManager';
-import { ExtensionManager } from './utils/ExtensionManager';
-import { NodeTraverser } from './utils/NodeTraverser';
-import { createLogger } from './utils/logger';
+import { StyleManager } from './StyleManager';
+import { RenderPipeline } from './RenderPipeline';
+import { FileOutputManager } from '../utils/FileOutputManager';
+import { ExtensionManager } from '../utils/ExtensionManager';
+import { NodeTraverser } from '../utils/NodeTraverser';
+import { createLogger } from '../utils/logger';
 
 import {
   InputNormalizationStep,
@@ -17,27 +18,12 @@ import {
   RootHandlerStep,
   FileOutputStep,
   AfterRenderStep
-} from './engine/steps';
+} from './steps';
 
 /**
- * Determines if input is an ExtendedTemplate
+ * Refactored TemplateEngine using pipeline architecture
  */
-function isExtendedTemplate(input: unknown): input is ExtendedTemplate {
-  return (
-    typeof input === 'object' &&
-    input !== null &&
-    !Array.isArray(input) &&
-    'template' in input
-  );
-}
-
-/**
- * TemplateEngine - Refactored version using pipeline architecture
- * 
- * This engine takes template definitions and renders them to HTML/JSX
- * using a modular pipeline approach for better maintainability and testability.
- */
-export class TemplateEngine {
+export class RefactoredTemplateEngine {
   private styleManager: StyleManager;
   private extensions: any[];
   private logger: ReturnType<typeof createLogger>;
@@ -50,7 +36,7 @@ export class TemplateEngine {
   constructor(extensions: any[] = [], verbose = false) {
     this.extensions = extensions;
     this.verbose = verbose;
-    this.logger = createLogger(verbose, 'TemplateEngine');
+    this.logger = createLogger(verbose, 'RefactoredTemplateEngine');
     this.styleManager = new StyleManager();
     this.nodeTraverser = new NodeTraverser({ extensions });
     this.extensionManager = new ExtensionManager(extensions);
@@ -79,7 +65,7 @@ export class TemplateEngine {
     ancestorNodesContext: TemplateNode[] = []
   ): Promise<string> {
     // Create initial render context
-    const context = {
+    const context: RenderContext = {
       input,
       nodes: [],
       component: undefined,

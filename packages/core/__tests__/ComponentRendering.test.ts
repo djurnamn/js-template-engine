@@ -461,7 +461,7 @@ import { baz } from "bar"
       const engine = new TemplateEngine([
         {
           key: 'first',
-          nodeHandler: (node) => {
+          nodeHandler: (node: TemplateNode) => {
             extensionOrder.push('first-node');
             return node;
           },
@@ -471,7 +471,7 @@ import { baz } from "bar"
         },
         {
           key: 'second',
-          nodeHandler: (node) => {
+          nodeHandler: (node: TemplateNode) => {
             extensionOrder.push('second-node');
             return node;
           },
@@ -522,12 +522,12 @@ import { baz } from "bar"
       expect(firstAfterIndex).toBeLessThan(secondAfterIndex);
 
       // Verify counts - Based on actual debug output:
-      // - nodeHandler is called for each extension on each node (2 nodes × 2 extensions = 4 calls per extension)
-      // - onNodeVisit is called for each extension on each node (actual count is 3 calls per extension)
-      expect(extensionOrder.filter(x => x === 'first-node').length).toBe(4);
-      expect(extensionOrder.filter(x => x === 'second-node').length).toBe(4);
-      expect(extensionOrder.filter(x => x === 'first-visit').length).toBe(3);
-      expect(extensionOrder.filter(x => x === 'second-visit').length).toBe(3);
+      // - nodeHandler is called for each extension on each node (chained, so 2 nodes × 2 extensions = 2 calls per extension)
+      // - onNodeVisit is called for each extension on each node (actual count is 2 calls per extension)
+      expect(extensionOrder.filter(x => x === 'first-node').length).toBe(2);
+      expect(extensionOrder.filter(x => x === 'second-node').length).toBe(2);
+      expect(extensionOrder.filter(x => x === 'first-visit').length).toBe(2);
+      expect(extensionOrder.filter(x => x === 'second-visit').length).toBe(2);
       expect(extensionOrder.filter(x => x === 'first-before').length).toBe(1);
       expect(extensionOrder.filter(x => x === 'second-before').length).toBe(1);
       expect(extensionOrder.filter(x => x === 'first-after').length).toBe(1);
