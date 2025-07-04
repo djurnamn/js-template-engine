@@ -50,8 +50,8 @@ export interface PipelineStepResult {
   /** Whether the step was successful */
   success: boolean;
   
-  /** Error message if failed */
-  error?: string;
+  /** Error message or error object if failed */
+  error?: string | Error;
   
   /** Updated context */
   context: RenderContext;

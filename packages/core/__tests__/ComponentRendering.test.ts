@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { TemplateEngine } from '../src/engine';
+import { TemplateEngine } from '../src/engine/TemplateEngine';
 import type { ExtendedTemplate, RenderOptions, TemplateNode, Extension } from '@js-template-engine/types';
+import type { TemplateOptions } from '../src/types';
 
 describe('TemplateEngine - Component Rendering', () => {
   it('should handle ExtendedTemplate with component metadata', async () => {
@@ -29,15 +30,16 @@ describe('TemplateEngine - Component Rendering', () => {
 
     const options: RenderOptions = {
       fileExtension: '.html'
-    };
+    } as TemplateOptions;
 
     const result = await engine.render(template, options);
-    expect(result).toBe(`<div>Hello World</div>
+    expect(result.output).toBe(`<div>Hello World</div>
 <script>
           function handleClick() {
             console.log('clicked');
           }
 </script>`);
+    expect(result.errors).toEqual([]);
   });
 
   it('should handle vanilla script imports', async () => {
@@ -67,10 +69,10 @@ describe('TemplateEngine - Component Rendering', () => {
 
     const options: RenderOptions = {
       fileExtension: '.html'
-    };
+    } as TemplateOptions;
 
     const result = await engine.render(template, options);
-    expect(result).toBe(`<div>Hello World</div>
+    expect(result.output).toBe(`<div>Hello World</div>
 <script>
 import { debounce } from "lodash"
 import { format } from "date-fns"
@@ -79,6 +81,7 @@ import { format } from "date-fns"
             console.log('clicked at', format(new Date(), 'HH:mm:ss'));
           }, 300);
 </script>`);
+    expect(result.errors).toEqual([]);
   });
 
   it('should pass component metadata to rootHandler when provided', async () => {
@@ -117,7 +120,7 @@ import { format } from "date-fns"
         key: 'test',
         rootHandler: mockRootHandler
       }]
-    };
+    } as TemplateOptions;
 
     await engine.render(template, options);
     expect(mockRootHandler).toHaveBeenCalled();
@@ -163,15 +166,16 @@ import { format } from "date-fns"
 
     const options: RenderOptions = {
       fileExtension: '.html'
-    };
+    } as TemplateOptions;
 
     const result = await engine.render(template, options);
-    expect(result).toBe(`<div><header>Header</header><main>Content</main></div>
+    expect(result.output).toBe(`<div><header>Header</header><main>Content</main></div>
 <script>
           function handleLayoutChange() {
             console.log('layout changed');
           }
 </script>`);
+    expect(result.errors).toEqual([]);
   });
 
   it('should handle ExtendedTemplate with style definitions', async () => {
@@ -204,10 +208,11 @@ import { format } from "date-fns"
       styles: {
         outputFormat: 'inline'
       }
-    };
+    } as TemplateOptions;
 
     const result = await engine.render(template, options);
-    expect(result).toBe('<div style="color: red; font-size: 16px">Styled Content</div>');
+    expect(result.output).toBe('<div style="color: red; font-size: 16px">Styled Content</div>');
+    expect(result.errors).toEqual([]);
   });
 
   it('should handle ExtendedTemplate with imports', async () => {
@@ -232,14 +237,15 @@ import { format } from "date-fns"
 
     const options: RenderOptions = {
       fileExtension: '.html'
-    };
+    } as TemplateOptions;
 
     const result = await engine.render(template, options);
-    expect(result).toBe(`<div>Imported Component</div>
+    expect(result.output).toBe(`<div>Imported Component</div>
 <script>
 import { foo } from "bar"
 import { baz } from "bar"
 </script>`);
+    expect(result.errors).toEqual([]);
   });
 
   it('should handle ExtendedTemplate with version metadata', async () => {
@@ -274,7 +280,7 @@ import { baz } from "bar"
         key: 'test',
         rootHandler: mockRootHandler
       }]
-    };
+    } as TemplateOptions;
 
     await engine.render(template, options);
     expect(mockRootHandler).toHaveBeenCalled();
@@ -292,10 +298,11 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       const result = await engine.render(template, options);
-      expect(result).toBe('');
+      expect(result.output).toBe('');
+      expect(result.errors).toEqual([]);
     });
 
     it('should handle complex component props', async () => {
@@ -321,10 +328,11 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       const result = await engine.render(template, options);
-      expect(result).toMatchInlineSnapshot(`"<div>Complex Props</div>"`);
+      expect(result.output).toMatchInlineSnapshot(`"<div>Complex Props</div>"`);
+      expect(result.errors).toEqual([]);
     });
 
     it('should handle missing component name gracefully', async () => {
@@ -338,7 +346,7 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       await expect(engine.render(template, options)).resolves.not.toThrow();
     });
@@ -352,7 +360,7 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       await expect(engine.render(template, options)).resolves.not.toThrow();
     });
@@ -360,17 +368,20 @@ import { baz } from "bar"
     it('should handle non-array template', async () => {
       const engine = new TemplateEngine();
       const template = {
-        template: { type: 'element', tag: 'div' } as TemplateNode,
+        template: { type: 'element', tag: 'div' },
         component: {
           name: 'InvalidTemplateComponent'
         }
-      } as ExtendedTemplate;
+      } as unknown as ExtendedTemplate;
 
-      const options: RenderOptions = {
+      const options = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
-      await expect(engine.render(template, options)).rejects.toThrow();
+      const result = await engine.render(template, options);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toMatch(/must be an array/i);
+      expect(result.output).toBe('');
     });
   });
 
@@ -388,10 +399,11 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       const result = await engine.render(template, options);
-      expect(result).toMatchInlineSnapshot(`"<div>Array Input</div>"`);
+      expect(result.output).toMatchInlineSnapshot(`"<div>Array Input</div>"`);
+      expect(result.errors).toEqual([]);
     });
 
     it('should handle template without component metadata', async () => {
@@ -409,10 +421,11 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       const result = await engine.render(template, options);
-      expect(result).toMatchInlineSnapshot(`"<div>No Component</div>"`);
+      expect(result.output).toMatchInlineSnapshot(`"<div>No Component</div>"`);
+      expect(result.errors).toEqual([]);
     });
   });
 
@@ -450,7 +463,7 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       await engine.render(template, options);
       expect(extensionManagerSpy).toHaveBeenCalled();
@@ -497,7 +510,7 @@ import { baz } from "bar"
 
       const options: RenderOptions = {
         fileExtension: '.html'
-      };
+      } as TemplateOptions;
 
       await engine.render(template, options);
 

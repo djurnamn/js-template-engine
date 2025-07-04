@@ -1,5 +1,6 @@
 import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
 import { ExtensionManager } from '../../utils/ExtensionManager';
+import { ExtensionError } from '../errors';
 
 /**
  * Calls afterRender hooks
@@ -24,8 +25,12 @@ export class AfterRenderStep implements PipelineStep {
       }
 
       // Call afterRender hooks
-      const extensionManager = new ExtensionManager(options.extensions || []);
-      extensionManager.callAfterRender(processedNodes || [], options);
+      try {
+        const extensionManager = new ExtensionManager(options.extensions || []);
+        extensionManager.callAfterRender(processedNodes || [], options);
+      } catch (err) {
+        throw new ExtensionError('Error in afterRender hook', { extension: 'unknown', hook: 'afterRender', error: err });
+      }
 
       return {
         success: true,
@@ -35,7 +40,7 @@ export class AfterRenderStep implements PipelineStep {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof ExtensionError ? error : new ExtensionError(error instanceof Error ? error.message : String(error)),
         context
       };
     }

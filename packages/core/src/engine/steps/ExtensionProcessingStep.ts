@@ -1,6 +1,7 @@
 import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
 import { ExtensionManager } from '../../utils/ExtensionManager';
 import { NodeTraverser } from '../../utils/NodeTraverser';
+import { ExtensionError } from '../errors';
 
 /**
  * Processes extensions and applies node handlers
@@ -15,16 +16,24 @@ export class ExtensionProcessingStep implements PipelineStep {
       
       // Call beforeRender hooks for root renders
       if (isRoot) {
-        extensionManager.callBeforeRender(nodes, options);
+        try {
+          extensionManager.callBeforeRender(nodes, options);
+        } catch (err) {
+          throw new ExtensionError('Error in beforeRender hook', { extension: 'unknown', hook: 'beforeRender', error: err });
+        }
       }
 
       // For each extension, for each node, call the handler (always on the original node list)
       let processedNodes = nodes;
       if (options.extensions) {
         for (const extension of options.extensions) {
-          processedNodes = nodes.map(node =>
-            extensionManager.callNodeHandlers(node, ancestorNodesContext)
-          );
+          processedNodes = nodes.map(node => {
+            try {
+              return extensionManager.callNodeHandlers(node, ancestorNodesContext);
+            } catch (err) {
+              throw new ExtensionError('Error in nodeHandler', { extension: extension.key, node, hook: 'nodeHandler', error: err });
+            }
+          });
         }
       }
 
@@ -45,7 +54,7 @@ export class ExtensionProcessingStep implements PipelineStep {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof ExtensionError ? error : new ExtensionError(error instanceof Error ? error.message : String(error)),
         context
       };
     }

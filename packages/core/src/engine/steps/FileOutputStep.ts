@@ -1,5 +1,6 @@
 import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
 import { FileOutputManager } from '../../utils/FileOutputManager';
+import { FileOutputError } from '../errors';
 
 /**
  * Handles file output writing
@@ -32,15 +33,19 @@ export class FileOutputStep implements PipelineStep {
       }
 
       // Write output files if requested
-      await this.fileOutputManager.writeAllOutputs({
-        template: template || '',
-        styleOutput: styleOutput || '',
-        hasStyles: Boolean(styleOutput),
-        styleHandled: styleHandled || false,
-        options,
-        processedNodes: processedNodes || [],
-        extensionManager: null // We don't need this for file output
-      });
+      try {
+        await this.fileOutputManager.writeAllOutputs({
+          template: template || '',
+          styleOutput: styleOutput || '',
+          hasStyles: Boolean(styleOutput),
+          styleHandled: styleHandled || false,
+          options,
+          processedNodes: processedNodes || [],
+          extensionManager: null // We don't need this for file output
+        });
+      } catch (err) {
+        throw new FileOutputError('Error writing output files', { options, error: err });
+      }
 
       return {
         success: true,
@@ -50,7 +55,7 @@ export class FileOutputStep implements PipelineStep {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof FileOutputError ? error : new FileOutputError(error instanceof Error ? error.message : String(error)),
         context
       };
     }

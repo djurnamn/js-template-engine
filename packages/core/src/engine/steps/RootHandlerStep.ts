@@ -1,6 +1,7 @@
 import type { RenderContext, PipelineStep, PipelineStepResult } from '../../types/renderContext';
 import { ExtensionManager } from '../../utils/ExtensionManager';
 import type { RootHandlerContext } from '@js-template-engine/types';
+import { ExtensionError } from '../errors';
 
 /**
  * Applies root handlers and script injection
@@ -42,13 +43,17 @@ export class RootHandlerStep implements PipelineStep {
             };
             
             const extensionManager = new ExtensionManager([extension]);
-            const result = extensionManager.callRootHandlers(finalTemplate, options, rootContext);
-            if (result.includes(styleOutput || '')) {
-              styleHandled = true;
-            }
-            finalTemplate = result;
-            if ((extension as any).isRenderer) {
-              usedRendererExtension = true;
+            try {
+              const result = extensionManager.callRootHandlers(finalTemplate, options, rootContext);
+              if (result.includes(styleOutput || '')) {
+                styleHandled = true;
+              }
+              finalTemplate = result;
+              if ((extension as any).isRenderer) {
+                usedRendererExtension = true;
+              }
+            } catch (err) {
+              throw new ExtensionError('Error in rootHandler', { extension: extension.key, hook: 'rootHandler', error: err });
             }
           }
         }
@@ -75,7 +80,7 @@ export class RootHandlerStep implements PipelineStep {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof ExtensionError ? error : new ExtensionError(error instanceof Error ? error.message : String(error)),
         context
       };
     }
