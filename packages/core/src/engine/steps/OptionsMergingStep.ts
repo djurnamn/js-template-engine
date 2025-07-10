@@ -5,6 +5,7 @@ import type {
 } from '../../types/renderContext';
 import type { TemplateOptions } from '../../types';
 import { ExtensionManager } from '../ExtensionManager';
+import { ValidationError } from '../errors';
 
 /**
  * Merges and validates rendering options.
@@ -87,6 +88,35 @@ export class OptionsMergingStep implements PipelineStep {
         ...options,
         extensions: mergedExtensions,
       };
+
+      const rendererExtensions = mergedExtensions.filter(
+        (ext) => ext && (ext.isRenderer === true)
+      );
+      if (rendererExtensions.length > 1) {
+        // Add error to context.errors (initialize if needed)
+        if (!('errors' in context)) {
+          (context as any).errors = [];
+        }
+        (context as any).errors.push(
+          new ValidationError(
+            `Multiple renderer extensions detected: ${rendererExtensions
+              .map((ext) => ext.key || 'unknown')
+              .join(', ')}. Only one renderer extension can be used at a time.`,
+            { extensions: rendererExtensions }
+          )
+        );
+        // Set template to empty string and return failure
+        const updatedContext: RenderContext = {
+          ...context,
+          options: finalOptions,
+          template: '',
+        };
+        return {
+          success: false,
+          context: updatedContext,
+          error: (context as any).errors[(context as any).errors.length - 1],
+        };
+      }
 
       // Update context with merged options
       const updatedContext: RenderContext = {

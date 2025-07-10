@@ -8,20 +8,26 @@ const simpleTemplate = [
     tag: 'Button',
     attributes: { label: 'Click me' },
     children: [
-      { type: 'element' as const, tag: 'span', attributes: {}, children: [
-        { type: 'text' as const, content: 'Slot content' }
-      ]}
-    ]
-  }
+      {
+        type: 'element' as const,
+        tag: 'span',
+        attributes: {},
+        children: [{ type: 'text' as const, content: 'Slot content' }],
+      },
+    ],
+  },
 ];
 
 describe('Vue extension integration', () => {
   it('renders a component with slots and props', async () => {
     const engine = new TemplateEngine([new VueExtension()], false);
-    const output = await engine.render(simpleTemplate, { fileExtension: '.vue' });
+    const result = await engine.render(simpleTemplate, {
+      fileExtension: '.vue',
+    });
+    const output = result.output;
     expect(output).toContain('Click me');
     expect(output).toContain('Slot content');
     expect(output).toContain('<Button');
     expect(output).toContain('<span');
   });
-}); 
+});

@@ -8,20 +8,19 @@ const bemTemplate = [
     tag: 'button',
     attributes: {},
     extensions: {
-      bem: { block: 'button', element: 'icon', modifier: 'active' }
+      bem: { block: 'button', element: 'icon', modifier: 'active' },
     },
-    children: [
-      { type: 'text' as const, content: 'BEM Button' }
-    ]
-  }
+    children: [{ type: 'text' as const, content: 'BEM Button' }],
+  },
 ];
 
 describe('BEM extension integration', () => {
   it('renders a component with BEM class output', async () => {
     const engine = new TemplateEngine([new BemExtension()], false);
-    const output = await engine.render(bemTemplate, { fileExtension: '.html' });
+    const result = await engine.render(bemTemplate, { fileExtension: '.html' });
+    const output = result.output;
     expect(output).toContain('button__icon');
     expect(output).toContain('button__icon--active');
     expect(output).toContain('BEM Button');
   });
-}); 
+});
