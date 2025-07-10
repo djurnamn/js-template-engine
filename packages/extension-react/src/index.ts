@@ -18,6 +18,17 @@ import {
 const logger = createLogger(false, 'react-extension');
 
 /**
+ * Converts a slot name to a valid camelCase JavaScript identifier
+ */
+function normalizeSlotName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-zA-Z0-9]+(.)/g, (_, char) => char.toUpperCase())
+    .replace(/^[^a-zA-Z_$]/, '_')
+    .replace(/[^a-zA-Z0-9_$]/g, '');
+}
+
+/**
  * Determines if React import should be injected based on component configuration
  */
 function shouldInjectReact(
@@ -50,18 +61,35 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
   public key = 'react';
   public isRenderer = true;
   private logger: ReturnType<typeof createLogger>;
+  private slotNames: Set<string> = new Set();
 
   constructor(verbose = false) {
     this.logger = createLogger(verbose, 'react-extension');
   }
 
   /**
-   * Recursively transforms HTML attributes to React attributes for all element nodes.
-   * Handles expression attributes and preserves custom attributes.
+   * Recursively transforms HTML attributes to React attributes and handles slot nodes.
+   * Converts slot nodes to JSX expressions and collects slot names for prop generation.
    * @param node - The template node to process.
    * @returns The processed template node.
    */
   public nodeHandler(node: TemplateNode): TemplateNode {
+    // Handle slot nodes - transform to JSX expression
+    if (node.type === 'slot') {
+      const normalizedName = normalizeSlotName(node.name);
+      this.slotNames.add(normalizedName);
+      this.logger.info(`Transforming slot '${node.name}' to React prop '${normalizedName}'`);
+      
+      // Create a text node with JSX expression
+      const transformedNode: TemplateNode = {
+        type: 'text',
+        content: `{props.${normalizedName}}`,
+        extensions: node.extensions
+      };
+      
+      return transformedNode;
+    }
+    
     if (node.type !== 'element') return node;
 
     // Handle expression attributes first
@@ -141,24 +169,29 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     // Use component.typescript flag to determine TypeScript usage
     const useTypeScript = component.typescript ?? false;
 
+    // Combine component props with slot props
+    const allProps = { ...(component.props || {}) };
+    
+    // Add slot props as ReactNode type
+    for (const slotName of this.slotNames) {
+      allProps[slotName] = 'React.ReactNode';
+    }
+
     // Generate props interface only if TypeScript is enabled
     const propsInterface =
-      useTypeScript &&
-      component.props &&
-      Object.keys(component.props).length > 0
-        ? `\ninterface ${componentName}Props {\n${Object.entries(
-            component.props
-          )
-            .map(([key, type]) => `  ${key}: ${type}`)
+      useTypeScript && Object.keys(allProps).length > 0
+        ? `\ninterface ${componentName}Props {\n${Object.entries(allProps)
+            .map(([key, type]) => `  ${key}?: ${type}`)
             .join('\n')}\n}\n`
         : '';
 
     // Format component signature based on TypeScript flag
+    const hasProps = Object.keys(allProps).length > 0;
     const componentSignature = useTypeScript
-      ? component.props && Object.keys(component.props).length > 0
+      ? hasProps
         ? `const ${componentName}: React.FC<${componentName}Props> = (props) => {`
         : `const ${componentName}: React.FC = () => {`
-      : component.props && Object.keys(component.props).length > 0
+      : hasProps
         ? `const ${componentName} = (props) => {`
         : `const ${componentName} = () => {`;
 
@@ -176,7 +209,7 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     const exportSection = `export default ${componentName};`;
 
     // Compose sections with blank lines between them
-    return [
+    const result = [
       importSection,
       styleSection,
       interfaceSection,
@@ -191,5 +224,10 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
         return true;
       })
       .join('\n\n');
+
+    // Clear slot names for next render
+    this.slotNames.clear();
+
+    return result;
   }
 }

@@ -17,11 +17,12 @@ export type {
 /**
  * Union type representing different types of template nodes.
  * Each node type has specific properties and structure.
+ * If type is omitted, it defaults to 'element'.
  */
 export type TemplateNode =
   | {
-      /** The type of the node - element, text, or slot. */
-      type: 'element';
+      /** The type of the node - element, text, or slot. Defaults to 'element' if omitted. */
+      type?: 'element';
       /** The HTML tag name for element nodes. */
       tag: string;
       /** Static attributes for the element. */
@@ -50,8 +51,8 @@ export type TemplateNode =
       type: 'slot';
       /** The name of the slot. */
       name: string;
-      /** Child nodes of this slot. */
-      children?: TemplateNode[];
+      /** Fallback content for when no slot content is provided. */
+      fallback?: TemplateNode[];
       /** Extension-specific data for this node. */
       extensions?: Record<string, any>;
     };

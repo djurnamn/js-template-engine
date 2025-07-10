@@ -203,23 +203,40 @@ export class TemplateRenderingStep implements PipelineStep {
     } else if (node.type === 'text') {
       this.logger.info(`Adding text content: "${node.content}"`);
       return node.content;
-    } else if (
-      node.type === 'slot' &&
-      node.name &&
-      options.slots?.[node.name]
-    ) {
+    } else if (node.type === 'slot' && node.name) {
       this.logger.info(`Processing slot: ${node.name}`);
-      // Recursively render slot content
-      let slotResult = '';
-      for (const slotNode of options.slots[node.name]) {
-        slotResult += await this.renderNode(
-          slotNode,
-          options,
-          attributeFormatter,
-          ancestorNodesContext
-        );
+      
+      // Check if slot content is provided in options
+      if (options.slots?.[node.name]) {
+        // Recursively render provided slot content
+        let slotResult = '';
+        for (const slotNode of options.slots[node.name]) {
+          slotResult += await this.renderNode(
+            slotNode,
+            options,
+            attributeFormatter,
+            ancestorNodesContext
+          );
+        }
+        return slotResult;
+      } else if (node.fallback) {
+        // Render fallback content if no slot content is provided
+        this.logger.info(`Using fallback content for slot: ${node.name}`);
+        let fallbackResult = '';
+        for (const fallbackNode of node.fallback) {
+          fallbackResult += await this.renderNode(
+            fallbackNode,
+            options,
+            attributeFormatter,
+            ancestorNodesContext
+          );
+        }
+        return fallbackResult;
       }
-      return slotResult;
+      
+      // Return empty string if no content or fallback
+      this.logger.info(`No content or fallback for slot: ${node.name}`);
+      return '';
     }
 
     return '';

@@ -148,11 +148,8 @@ describe('VueExtension - nodeHandler', () => {
   it('renders named slots with proper attributes', async () => {
     const template: ExtendedTemplate = {
       template: [{
-        type: 'element',
-        tag: 'slot',
-        attributes: {
-          name: 'header'
-        }
+        type: 'slot',
+        name: 'header'
       }],
       component: {
         name: 'TestComponent'
@@ -165,11 +162,8 @@ describe('VueExtension - nodeHandler', () => {
   it('renders scoped slots with bound props', async () => {
     const template: ExtendedTemplate = {
       template: [{
-        type: 'element',
-        tag: 'slot',
-        attributes: {
-          name: 'item'
-        },
+        type: 'slot',
+        name: 'item',
         extensions: {
           vue: {
             expressionAttributes: {
@@ -185,6 +179,23 @@ describe('VueExtension - nodeHandler', () => {
     };
     const result = await engine.render(template);
     expect(result.output).toContain('<slot name="item" :item="item" :index="index"></slot>');
+  });
+
+  it('renders slots with fallback content', async () => {
+    const template: ExtendedTemplate = {
+      template: [{
+        type: 'slot',
+        name: 'header',
+        fallback: [
+          { type: 'text', content: 'Default Header' }
+        ]
+      }],
+      component: {
+        name: 'TestComponent'
+      }
+    };
+    const result = await engine.render(template);
+    expect(result.output).toContain('<slot name="header">Default Header</slot>');
   });
 
   it('merges static and dynamic class/style bindings', async () => {

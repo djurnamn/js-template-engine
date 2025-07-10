@@ -21,6 +21,9 @@ const slotsTemplate: TemplateNode[] = [
           {
             type: 'slot',
             name: 'header',
+            fallback: [
+              { type: 'text', content: 'Default Header' }
+            ]
           },
         ],
       },
@@ -33,6 +36,9 @@ const slotsTemplate: TemplateNode[] = [
           {
             type: 'slot',
             name: 'content',
+            fallback: [
+              { type: 'text', content: 'Default Content' }
+            ]
           },
         ],
       },
@@ -45,6 +51,9 @@ const slotsTemplate: TemplateNode[] = [
           {
             type: 'slot',
             name: 'footer',
+            fallback: [
+              { type: 'text', content: 'Default Footer' }
+            ]
           },
         ],
       },

@@ -41,7 +41,7 @@ describe('ReactExtension - rootHandler', () => {
       "import React from "react";
 
       interface TestComponentProps {
-        title: string
+        title?: string
       }
 
       const TestComponent: React.FC<TestComponentProps> = (props) => {
@@ -67,7 +67,7 @@ describe('ReactExtension - rootHandler', () => {
     });
 
     expect(result.output).toContain('interface TestComponentProps');
-    expect(result.output).toContain('title: string');
+    expect(result.output).toContain('title?: string');
     expect(result.output).toContain('const TestComponent: React.FC<TestComponentProps>');
   });
 

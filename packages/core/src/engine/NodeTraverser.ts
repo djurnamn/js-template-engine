@@ -50,10 +50,11 @@ export class NodeTraverser {
         }
       }
       const updatedNode = { ...node };
+      
+      // Handle element nodes and undefined type (treated as element)
       if (
-        (updatedNode.type === 'element' ||
-          updatedNode.type === undefined ||
-          updatedNode.type === 'slot') &&
+        (updatedNode.type === 'element' || updatedNode.type === undefined) &&
+        'children' in updatedNode &&
         updatedNode.children
       ) {
         updatedNode.children = this.traverseTree(updatedNode.children, [
@@ -61,6 +62,19 @@ export class NodeTraverser {
           updatedNode,
         ]);
       }
+      
+      // Handle slot nodes with fallback content
+      if (
+        updatedNode.type === 'slot' &&
+        'fallback' in updatedNode &&
+        updatedNode.fallback
+      ) {
+        updatedNode.fallback = this.traverseTree(updatedNode.fallback, [
+          ...ancestors,
+          updatedNode,
+        ]);
+      }
+      
       return updatedNode;
     });
   }

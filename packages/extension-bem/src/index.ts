@@ -40,7 +40,7 @@ export interface BemNodeExtensions {
  * Internal node type for BEM processing.
  * Extends only element TemplateNode with BEM-specific properties.
  */
-interface BemNode extends Extract<TemplateNode, { type: 'element' }> {
+interface BemNode extends Extract<TemplateNode, { type?: 'element' }> {
   /** Block name for BEM. */
   block?: string;
   /** Element name for BEM. */
@@ -72,8 +72,8 @@ interface BemNode extends Extract<TemplateNode, { type: 'element' }> {
  */
 function isElementNode(
   node: TemplateNode
-): node is Extract<TemplateNode, { type: 'element' }> {
-  return node.type === 'element';
+): node is Extract<TemplateNode, { type?: 'element' }> {
+  return node.type === 'element' || node.type === undefined;
 }
 
 /**

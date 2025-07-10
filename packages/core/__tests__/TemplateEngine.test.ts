@@ -65,7 +65,7 @@ describe('RefactoredTemplateEngine', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('should handle slots', async () => {
+  it('should handle slots with provided content', async () => {
     const engine = new TemplateEngine();
     
     const template: TemplateNode[] = [
@@ -86,6 +86,60 @@ describe('RefactoredTemplateEngine', () => {
     });
     
     expect(result.output).toBe('<div>Slot content</div>');
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should handle slots with fallback content', async () => {
+    const engine = new TemplateEngine();
+    
+    const template: TemplateNode[] = [
+      {
+        tag: 'div',
+        children: [
+          { 
+            type: 'slot', 
+            name: 'content',
+            fallback: [
+              { type: 'text', content: 'Fallback content' }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = await engine.render(template, {});
+    
+    expect(result.output).toBe('<div>Fallback content</div>');
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should prefer provided slot content over fallback', async () => {
+    const engine = new TemplateEngine();
+    
+    const template: TemplateNode[] = [
+      {
+        tag: 'div',
+        children: [
+          { 
+            type: 'slot', 
+            name: 'content',
+            fallback: [
+              { type: 'text', content: 'Fallback content' }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const slotContent: TemplateNode[] = [
+      { type: 'text', content: 'Provided content' }
+    ];
+
+    const result = await engine.render(template, {
+      slots: { content: slotContent }
+    });
+    
+    expect(result.output).toBe('<div>Provided content</div>');
     expect(result.errors).toEqual([]);
   });
 

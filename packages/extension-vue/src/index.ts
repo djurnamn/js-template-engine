@@ -71,8 +71,8 @@ export interface VueRootHandlerOptions
  */
 function isElementNode(
   node: TemplateNode
-): node is Extract<TemplateNode, { type: 'element' }> {
-  return node.type === 'element';
+): node is Extract<TemplateNode, { type?: 'element' }> {
+  return node.type === 'element' || node.type === undefined;
 }
 
 export class VueExtension
@@ -138,12 +138,32 @@ export class VueExtension
   }
 
   /**
-   * Processes Vue-specific node transformations including attributes, directives, and event handlers.
-   * Handles both static and dynamic attributes, Vue directives, and event bindings.
+   * Processes Vue-specific node transformations including attributes, directives, event handlers, and slots.
+   * Handles both static and dynamic attributes, Vue directives, event bindings, and slot transformations.
    * @param node - The template node to process.
    * @returns The processed template node with Vue-specific transformations applied.
    */
   nodeHandler(node: TemplateNode): TemplateNode {
+    // Handle slot nodes - transform to Vue slot elements
+    if (node.type === 'slot') {
+      const slotNode: TemplateNode = {
+        type: 'element',
+        tag: 'slot',
+        attributes: {
+          name: node.name
+        },
+        children: node.fallback || [],
+        extensions: node.extensions
+      };
+      
+      // Apply any Vue-specific slot extensions
+      if (node.extensions?.vue) {
+        return this.nodeHandler(slotNode);
+      }
+      
+      return slotNode;
+    }
+    
     if (!node.extensions?.vue) return node;
     if (!isElementNode(node)) return node;
 
