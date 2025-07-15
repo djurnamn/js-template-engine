@@ -5,7 +5,7 @@ import type { TemplateNode, RenderOptions } from '@js-template-engine/types';
 import config from './template.config';
 
 async function build() {
-  const engine = new TemplateEngine(config.extensions);
+  const engine = new TemplateEngine(config.extensions, config.globalOptions.verbose);
 
   const files = fs.readdirSync(config.input).filter(f => /\.(json|ts)$/.test(f));
 
@@ -26,6 +26,8 @@ async function build() {
       ...config.globalOptions,
       outputDir: config.output,
       fileExtension: '.tsx' as const,
+      extensions: config.extensions, // <-- Ensure extensions are passed
+      prettierParser: template.component?.typescript ? 'typescript' : 'babel',
     } as RenderOptions);
 
     console.log(`✅ Rendered: ${name}`);
@@ -37,4 +39,4 @@ async function build() {
 build().catch((e) => {
   console.error('❌ Build failed', e);
   process.exit(1);
-}); 
+});

@@ -10,6 +10,7 @@
   "dependencies": {
     "@js-template-engine/core": "workspace:*",
     "@js-template-engine/extension-react": "workspace:*",
+    "@js-template-engine/extension-vue": "workspace:*",
     "@js-template-engine/extension-bem": "workspace:*",
     "@js-template-engine/types": "workspace:*"
   },

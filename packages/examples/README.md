@@ -32,6 +32,13 @@ Demonstrates the style processing capabilities of the template engine.
 pnpm start:styles
 ```
 
+### Template Logic Example
+Shows all the template logic node types (comment, fragment, if, for) working with both React and Vue extensions.
+
+```bash
+pnpm start:template-logic
+```
+
 ## Running All Examples
 
 To run all examples in sequence:

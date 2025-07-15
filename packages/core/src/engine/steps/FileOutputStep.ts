@@ -57,7 +57,7 @@ export class FileOutputStep implements PipelineStep {
           styleHandled: styleHandled || false,
           options,
           processedNodes: processedNodes || [],
-          extensionManager: null, // We don't need this for file output
+          extensionManager: context.extensionManager,
         });
       } catch (err) {
         throw new FileOutputError('Error writing output files', {

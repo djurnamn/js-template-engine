@@ -174,7 +174,7 @@ export class TemplateRenderingStep implements PipelineStep {
           }
         )} />`;
       } else {
-        let result = `<${node.tag}${AttributeRenderer.renderAttributes(
+        const attributes = AttributeRenderer.renderAttributes(
           node,
           attributeFormatter,
           options,
@@ -182,10 +182,10 @@ export class TemplateRenderingStep implements PipelineStep {
             const result = this.styleManager.getInlineStyles(n);
             return result === null ? undefined : result;
           }
-        )}>`;
+        );
+        let result = `<${node.tag}${attributes}>`;
 
         if (node.children) {
-          this.logger.info(`Rendering children for node: ${node.tag}`);
           // Recursively render children
           for (const child of node.children) {
             result += await this.renderNode(
@@ -201,10 +201,8 @@ export class TemplateRenderingStep implements PipelineStep {
         return result;
       }
     } else if (node.type === 'text') {
-      this.logger.info(`Adding text content: "${node.content}"`);
       return node.content;
     } else if (node.type === 'slot' && node.name) {
-      this.logger.info(`Processing slot: ${node.name}`);
       
       // Check if slot content is provided in options
       if (options.slots?.[node.name]) {
@@ -221,7 +219,6 @@ export class TemplateRenderingStep implements PipelineStep {
         return slotResult;
       } else if (node.fallback) {
         // Render fallback content if no slot content is provided
-        this.logger.info(`Using fallback content for slot: ${node.name}`);
         let fallbackResult = '';
         for (const fallbackNode of node.fallback) {
           fallbackResult += await this.renderNode(
@@ -235,8 +232,60 @@ export class TemplateRenderingStep implements PipelineStep {
       }
       
       // Return empty string if no content or fallback
-      this.logger.info(`No content or fallback for slot: ${node.name}`);
       return '';
+    } else if (node.type === 'fragment') {
+      // Render all children without a wrapper
+      let fragmentResult = '';
+      for (const child of node.children) {
+        fragmentResult += await this.renderNode(
+          child,
+          options,
+          attributeFormatter,
+          ancestorNodesContext
+        );
+      }
+      return fragmentResult;
+    } else if (node.type === 'comment') {
+      // Check if comments should be included (default to true for plain HTML)
+      const includeComments = options.includeComments ?? true;
+      if (includeComments) {
+        return `<!-- ${node.content} -->`;
+      }
+      return '';
+    } else if (node.type === 'if') {
+      // For plain HTML, use defaultCondition or default to true (then branch)
+      const shouldRenderThen = node.defaultCondition ?? true;
+      const nodesToRender = shouldRenderThen ? node.then : (node.else || []);
+      
+      let ifResult = '';
+      for (const childNode of nodesToRender) {
+        ifResult += await this.renderNode(
+          childNode,
+          options,
+          attributeFormatter,
+          ancestorNodesContext
+        );
+      }
+      return ifResult;
+    } else if (node.type === 'for') {
+      // For plain HTML, use default items or empty array
+      const items = node.default || [];
+      
+      let forResult = '';
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        // For plain HTML, we can't do variable substitution, so just render the children
+        // Extensions will handle proper variable substitution
+        for (const childNode of node.children) {
+          forResult += await this.renderNode(
+            childNode,
+            options,
+            attributeFormatter,
+            [...ancestorNodesContext, { ...node, currentItem: item, currentIndex: i }]
+          );
+        }
+      }
+      return forResult;
     }
 
     return '';

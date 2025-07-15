@@ -138,8 +138,8 @@ export class VueExtension
   }
 
   /**
-   * Processes Vue-specific node transformations including attributes, directives, event handlers, and slots.
-   * Handles both static and dynamic attributes, Vue directives, event bindings, and slot transformations.
+   * Processes Vue-specific node transformations including attributes, directives, event handlers, slots, and control flow.
+   * Handles both static and dynamic attributes, Vue directives, event bindings, slot transformations, and special nodes.
    * @param node - The template node to process.
    * @returns The processed template node with Vue-specific transformations applied.
    */
@@ -162,6 +162,99 @@ export class VueExtension
       }
       
       return slotNode;
+    }
+    
+    // Handle fragment nodes - transform to Vue template
+    if (node.type === 'fragment') {
+      return {
+        type: 'element',
+        tag: 'template',
+        children: node.children,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle comment nodes - pass through as HTML comment
+    if (node.type === 'comment') {
+      return {
+        type: 'text',
+        content: `<!-- ${node.content} -->`,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle conditional nodes - transform to Vue v-if/v-else
+    if (node.type === 'if') {
+      const nodes: TemplateNode[] = [];
+      
+      // Create v-if element for then branch
+      if (node.then.length === 1 && (node.then[0].type === 'element' || node.then[0].type === undefined)) {
+        const thenNode = { ...node.then[0] };
+        thenNode.attributes = { ...thenNode.attributes, 'v-if': node.condition };
+        nodes.push(thenNode);
+      } else {
+        // Wrap multiple nodes in template
+        nodes.push({
+          type: 'element',
+          tag: 'template',
+          attributes: { 'v-if': node.condition },
+          children: node.then
+        });
+      }
+      
+      // Create v-else element for else branch
+      if (node.else && node.else.length > 0) {
+        if (node.else.length === 1 && (node.else[0].type === 'element' || node.else[0].type === undefined)) {
+          const elseNode = { ...node.else[0] };
+          elseNode.attributes = { ...elseNode.attributes, 'v-else': '' };
+          nodes.push(elseNode);
+        } else {
+          // Wrap multiple nodes in template
+          nodes.push({
+            type: 'element',
+            tag: 'template',
+            attributes: { 'v-else': '' },
+            children: node.else
+          });
+        }
+      }
+      
+      // Return as fragment
+      return {
+        type: 'fragment',
+        children: nodes,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle for nodes - transform to Vue v-for
+    if (node.type === 'for') {
+      const vForExpression = node.index ? 
+        `(${node.item}, ${node.index}) in ${node.items}` :
+        `${node.item} in ${node.items}`;
+      
+      if (node.children.length === 1 && (node.children[0].type === 'element' || node.children[0].type === undefined)) {
+        // Single element - add v-for directly
+        const forNode = { ...node.children[0] };
+        forNode.attributes = { 
+          ...forNode.attributes, 
+          'v-for': vForExpression,
+          ':key': node.key || (node.index || 'index')
+        };
+        return forNode;
+      } else {
+        // Multiple elements - wrap in template
+        return {
+          type: 'element',
+          tag: 'template',
+          attributes: { 
+            'v-for': vForExpression,
+            ':key': node.key || (node.index || 'index')
+          },
+          children: node.children,
+          extensions: node.extensions
+        };
+      }
     }
     
     if (!node.extensions?.vue) return node;
@@ -484,17 +577,14 @@ export class VueExtension
           propsBlock = `const props = defineProps({\n  ${runtimePropsConfig}\n});\n`;
         }
       } else {
-        if (useTypeScript) {
-          propsBlock = resolveComponentProps(context.component);
-        } else {
-          const runtimePropsConfig = runtimeProps
-            .map(
-              (p: PropDefinition) =>
-                `${p.name}: { type: ${p.type.name}, required: true }`
-            )
-            .join(',\n    ');
-          propsBlock = `  props: {\n    ${runtimePropsConfig}\n  },`;
-        }
+        // For Options API, always use runtime props syntax regardless of TypeScript
+        const runtimePropsConfig = runtimeProps
+          .map(
+            (p: PropDefinition) =>
+              `${p.name}: { type: ${p.type.name}, required: true }`
+          )
+          .join(',\n    ');
+        propsBlock = `  props: {\n    ${runtimePropsConfig}\n  },`;
       }
     }
 

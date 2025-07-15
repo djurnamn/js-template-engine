@@ -218,6 +218,9 @@ importers:
       '@js-template-engine/extension-react':
         specifier: workspace:*
         version: link:../extension-react
+      '@js-template-engine/extension-vue':
+        specifier: workspace:*
+        version: link:../extension-vue
       '@js-template-engine/types':
         specifier: workspace:*
         version: link:../types

@@ -9,12 +9,13 @@
     "build": "tsc",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "start": "pnpm start:bem && pnpm start:react && pnpm start:vue && pnpm start:slots && pnpm start:styles",
+    "start": "pnpm start:bem && pnpm start:react && pnpm start:vue && pnpm start:slots && pnpm start:styles && pnpm start:template-logic",
     "start:bem": "ts-node src/bem.ts",
     "start:react": "ts-node src/react.ts",
     "start:vue": "ts-node src/vue.ts",
     "start:slots": "ts-node src/slots.ts",
     "start:styles": "ts-node src/styles.ts",
+    "start:template-logic": "ts-node src/templateLogic.ts",
     "render": "ts-node ../cli/src/index.ts"
   },
   "dependencies": {

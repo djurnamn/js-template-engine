@@ -22,7 +22,7 @@ const engine = new TemplateEngine([new BemExtension()]);
 const template: TemplateNode[] = [
   {
     type: 'element',
-    tagName: 'div',
+    tag: 'div',
     extensions: {
       bem: {
         block: 'card'
@@ -31,7 +31,7 @@ const template: TemplateNode[] = [
     children: [
       {
         type: 'element',
-        tagName: 'div',
+        tag: 'div',
         extensions: {
           bem: {
             element: 'header'

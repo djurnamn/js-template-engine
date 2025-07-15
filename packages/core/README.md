@@ -21,7 +21,7 @@ const engine = new TemplateEngine();
 const template: TemplateNode[] = [
   {
     type: 'element',
-    tagName: 'div',
+    tag: 'div',
     attributes: {
       class: 'container'
     },

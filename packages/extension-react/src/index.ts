@@ -68,8 +68,95 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
   }
 
   /**
-   * Recursively transforms HTML attributes to React attributes and handles slot nodes.
-   * Converts slot nodes to JSX expressions and collects slot names for prop generation.
+   * Helper method to convert a TemplateNode to JSX string representation.
+   * Used for generating inline JSX in conditionals and iterations.
+   */
+  private nodeToJSX(node: TemplateNode): string {
+    // Handle new node types that need JSX transformation
+    if (node.type === 'comment') {
+      return `{/* ${node.content} */}`;
+    }
+    
+    if (node.type === 'text') {
+      return node.content;
+    }
+    
+    if (node.type === 'element' || node.type === undefined) {
+      const attrs = node.attributes ? 
+        Object.entries(node.attributes)
+          .map(([key, value]) => {
+            // Transform HTML attributes to React attributes
+            const reactKey = key === 'class' ? 'className' : key === 'for' ? 'htmlFor' : key;
+            return ` ${reactKey}="${value}"`;
+          })
+          .join('') : '';
+      const children = node.children ? 
+        node.children.map(child => this.nodeToJSX(child)).join('') : '';
+      return `<${node.tag}${attrs}>${children}</${node.tag}>`;
+    }
+    
+    // For complex node types like if/for, they should have been processed already
+    // but if we encounter them here, we need to handle them
+    if (node.type === 'if') {
+      const thenContent = node.then.length === 1 ? 
+        this.nodeToJSX(node.then[0]) : 
+        node.then.map(n => this.nodeToJSX(n)).join('');
+        
+      const elseContent = node.else && node.else.length > 0 ? 
+        (node.else.length === 1 ? 
+          this.nodeToJSX(node.else[0]) : 
+          node.else.map(n => this.nodeToJSX(n)).join('')) :
+        '';
+      
+      return node.else ? 
+        `{${node.condition} ? (${thenContent}) : (${elseContent})}` :
+        `{${node.condition} && (${thenContent})}`;
+    }
+    
+    if (node.type === 'for') {
+      const childrenContent = node.children.map(n => this.nodeToJSX(n)).join('');
+      const keyExpression = node.key || 'index';
+      return `{${node.items}.map((${node.item}, index) => (${childrenContent}))}`;
+    }
+    
+    if (node.type === 'fragment') {
+      const children = node.children ? 
+        node.children.map(child => this.nodeToJSX(child)).join('') : '';
+      return `<React.Fragment>${children}</React.Fragment>`;
+    }
+    
+    // For other node types, return empty string
+    return '';
+  }
+
+  /**
+   * Handle HTML-to-React attribute transformation after all other extensions have processed the node.
+   * This ensures attributes added by other extensions (like BEM classes) get properly transformed.
+   */
+  public onNodeVisit(node: TemplateNode): void {
+    if (node.type === 'element' || node.type === undefined) {
+      // Transform HTML attributes to React attributes
+      if (node.attributes) {
+        const transformedAttributes: Record<string, string> = {};
+        for (const [attributeKey, attributeValue] of Object.entries(node.attributes)) {
+          if (attributeKey === 'class') {
+            transformedAttributes['className'] = String(attributeValue);
+            // Don't copy the original 'class' attribute
+          } else if (attributeKey === 'for') {
+            transformedAttributes['htmlFor'] = String(attributeValue);
+            // Don't copy the original 'for' attribute
+          } else {
+            transformedAttributes[attributeKey] = String(attributeValue);
+          }
+        }
+        node.attributes = transformedAttributes;
+      }
+    }
+  }
+
+  /**
+   * Recursively transforms HTML attributes to React attributes and handles special nodes.
+   * Converts slot nodes to JSX expressions, handles fragments, conditionals, and iterations.
    * @param node - The template node to process.
    * @returns The processed template node.
    */
@@ -90,9 +177,83 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
       return transformedNode;
     }
     
-    if (node.type !== 'element') return node;
+    // Handle fragment nodes - transform to React fragment
+    if (node.type === 'fragment') {
+      this.logger.info('Transforming fragment to React fragment');
+      
+      return {
+        type: 'element',
+        tag: 'React.Fragment',
+        children: node.children,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle comment nodes - transform to JSX comment
+    if (node.type === 'comment') {
+      this.logger.info(`Transforming comment: ${node.content}`);
+      
+      return {
+        type: 'text',
+        content: `{/* ${node.content} */}`,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle conditional nodes - transform to JSX conditional
+    if (node.type === 'if') {
+      this.logger.info(`Transforming conditional: ${node.condition}`);
+      
+      // Use raw children - they will be processed by NodeTraverser later
+      const thenContent = node.then.length === 1 ? 
+        `(${this.nodeToJSX(node.then[0])})` : 
+        `(<>${node.then.map(n => this.nodeToJSX(n)).join('')}</>)`;
+        
+      let elseContent = 'null';
+      if (node.else && node.else.length > 0) {
+        elseContent = node.else.length === 1 ? 
+          `(${this.nodeToJSX(node.else[0])})` : 
+          `(<>${node.else.map(n => this.nodeToJSX(n)).join('')}</>)`;
+      }
+      
+      const conditionalExpression = node.else ? 
+        `{props.${node.condition} ? ${thenContent} : ${elseContent}}` :
+        `{props.${node.condition} && ${thenContent}}`;
+      
+      return {
+        type: 'text',
+        content: conditionalExpression,
+        extensions: node.extensions
+      };
+    }
+    
+    // Handle for nodes - transform to JSX map
+    if (node.type === 'for') {
+      this.logger.info(`Transforming iteration: ${node.items}`);
+      
+      const keyExpression = node.key || (node.index || 'index');
+      const itemVar = node.item;
+      const indexVar = node.index || 'index';
+      
+      // Use raw children - they will be processed by NodeTraverser later
+      const childrenContent = node.children.length === 1 ? 
+        this.nodeToJSX(node.children[0]) : 
+        `<>${node.children.map(n => this.nodeToJSX(n)).join('')}</>`;
+      
+      const mapExpression = `{props.${node.items}.map((${itemVar}, ${indexVar}) => (
+        <React.Fragment key={${keyExpression}}>${childrenContent}</React.Fragment>
+      ))}`;
+      
+      return {
+        type: 'text',
+        content: mapExpression,
+        extensions: node.extensions
+      };
+    }
+    
+    if (node.type !== 'element' && node.type !== undefined) return node;
 
-    // Handle expression attributes first
+    // Handle expression attributes
     if (node.extensions?.react?.expressionAttributes) {
       if (!node.expressionAttributes) node.expressionAttributes = {};
       Object.assign(
@@ -111,26 +272,7 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
       });
     }
 
-    // Transform HTML attributes to React attributes
-    const transformedAttributes: Record<string, string> = {};
-    for (const [attributeKey, attributeValue] of Object.entries(
-      node.attributes || {}
-    )) {
-      if (attributeKey === 'class') {
-        transformedAttributes['className'] = String(attributeValue);
-      } else if (attributeKey === 'for') {
-        transformedAttributes['htmlFor'] = String(attributeValue);
-      } else {
-        transformedAttributes[attributeKey] = String(attributeValue);
-      }
-    }
-    node.attributes = transformedAttributes;
-
-    // Recursively transform children
-    if (node.children) {
-      node.children = node.children.map((child) => this.nodeHandler(child));
-    }
-
+    // Children will be processed by NodeTraverser recursively
     return node;
   }
 

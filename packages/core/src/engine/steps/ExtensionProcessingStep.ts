@@ -41,31 +41,9 @@ export class ExtensionProcessingStep implements PipelineStep {
         }
       }
 
-      // For each extension, for each node, call the handler (always on the original node list)
-      let processedNodes = nodes;
-      if (options.extensions) {
-        for (const extension of options.extensions) {
-          processedNodes = nodes.map((node) => {
-            try {
-              return extensionManager.callNodeHandlers(
-                node,
-                ancestorNodesContext
-              );
-            } catch (err) {
-              throw new ExtensionError('Error in nodeHandler', {
-                extension: extension.key,
-                node,
-                hook: 'nodeHandler',
-                error: err,
-              });
-            }
-          });
-        }
-      }
-
-      // Apply onNodeVisit hooks
-      processedNodes = nodeTraverser.traverseTree(
-        processedNodes,
+      // Apply nodeHandlers and onNodeVisit hooks recursively through NodeTraverser
+      const processedNodes = nodeTraverser.traverseTree(
+        nodes,
         ancestorNodesContext
       );
 

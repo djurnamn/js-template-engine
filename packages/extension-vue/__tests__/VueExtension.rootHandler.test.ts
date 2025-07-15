@@ -66,7 +66,7 @@ describe('VueExtension - rootHandler', () => {
       export default defineComponent({
         name: "TestComponent",
           props: {
-          title: string
+          title: { type: String, required: true }
         },});
       </script>"
     `);

@@ -40,6 +40,35 @@ const myComponent = [
     },
   },
 ];
+
+// Template with slots for reusable components
+const cardTemplate = [
+  {
+    tag: 'div',
+    attributes: { class: 'card' },
+    children: [
+      {
+        tag: 'header',
+        children: [
+          {
+            type: 'slot',
+            name: 'header',
+            fallback: [{ type: 'text', content: 'Default Header' }]
+          }
+        ]
+      },
+      {
+        tag: 'main',
+        children: [
+          {
+            type: 'slot', 
+            name: 'content'
+          }
+        ]
+      }
+    ]
+  }
+];
 ```
 
 ### 3. Render with CLI
@@ -57,6 +86,116 @@ await engine.render(myComponent, {
   outputDir: 'dist/react',
   extensions: [new ReactExtension()],
 });
+```
+
+## 📝 Node Types Reference
+
+The JS Template Engine supports multiple node types for building rich, dynamic templates:
+
+### Basic Node Types
+
+Structural elements that form the foundation of templates:
+
+### Element Nodes
+Standard HTML/component elements with attributes and children:
+
+```ts
+{
+  type: 'element',  // or omit for default
+  tag: 'div',
+  attributes: { class: 'container', id: 'main' },
+  children: [/* child nodes */]
+}
+```
+
+### Text Nodes
+Simple text content:
+
+```ts
+{
+  type: 'text',
+  content: 'Hello World'
+}
+```
+
+### Slot Nodes
+Reusable content placeholders:
+
+```ts
+{
+  type: 'slot',
+  name: 'header',
+  fallback: [{ type: 'text', content: 'Default content' }]
+}
+// React: {props.header || 'Default content'}
+// Vue: <slot name="header">Default content</slot>
+```
+
+## Template Logic Node Types
+
+Advanced nodes that add logical capabilities, control flow, and semantic meaning to templates:
+
+### Comment Nodes
+Comments that render appropriately for each framework:
+
+```ts
+{
+  type: 'comment',
+  content: 'This is a helpful comment'
+}
+// React: {/* This is a helpful comment */}
+// Vue/HTML: <!-- This is a helpful comment -->
+```
+
+### Fragment Nodes
+Grouping wrapper without extra DOM elements:
+
+```ts
+{
+  type: 'fragment',
+  children: [
+    { type: 'element', tag: 'h1', children: [{ type: 'text', content: 'Title' }] },
+    { type: 'element', tag: 'p', children: [{ type: 'text', content: 'Content' }] }
+  ]
+}
+// React: <React.Fragment>...</React.Fragment>
+// Vue: Multiple elements without wrapper
+```
+
+### Conditional Nodes
+Dynamic content based on conditions:
+
+```ts
+{
+  type: 'if',
+  condition: 'isVisible',
+  then: [
+    { type: 'element', tag: 'div', children: [{ type: 'text', content: 'Visible!' }] }
+  ],
+  else: [
+    { type: 'element', tag: 'div', children: [{ type: 'text', content: 'Hidden!' }] }
+  ]
+}
+// React: {props.isVisible ? (<div>Visible!</div>) : (<div>Hidden!</div>)}
+// Vue: <div v-if="isVisible">Visible!</div><div v-else>Hidden!</div>
+```
+
+### Loop Nodes
+Iterate over collections:
+
+```ts
+{
+  type: 'for',
+  items: 'items',
+  item: 'item',
+  index: 'index',
+  key: 'item.id',
+  children: [
+    { type: 'element', tag: 'li', children: [{ type: 'text', content: 'List item' }] }
+  ]
+}
+// React: {props.items.map((item, index) => <React.Fragment key={item.id}>...</React.Fragment>)}
+// Vue: <li v-for="(item, index) in items" :key="item.id">List item</li>
 ```
 
 ## 📂 Project Structure
@@ -96,6 +235,7 @@ Want full plugin documentation? See [`docs/extending.md`](docs/extending.md)
 | Source JSON   | React Output             | HTML Output                             |
 | ------------- | ------------------------ | --------------------------------------- |
 | `button.json` | `DefaultButton` w/ props | `<button class="btn">Click me</button>` |
+| Slot template | `{props.header}` prop    | `<slot name="header">Default</slot>`    |
 
 ## 📌 Roadmap Ideas
 

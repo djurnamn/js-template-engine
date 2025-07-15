@@ -11,17 +11,6 @@ export default {
   globalOptions: {
     fileExtension: '.tsx',
     writeOutputFile: true,
-    verbose: true,
-    componentName: 'Button',
-    importStatements: [
-      "import React from 'react';"
-    ],
-    propsInterface: `
-interface ButtonProps {
-  children?: React.ReactNode;
-  onClick?: () => void;
-}
-    `,
-    props: 'props'
+    verbose: true
   }
 }; 

@@ -1,0 +1,162 @@
+{
+  "component": {
+    "name": "Navigation",
+    "props": {
+      "items": "NavItem[]",
+      "currentPath": "string"
+    },
+    "typescript": true
+  },
+  "template": [
+    {
+      "tag": "nav",
+      "attributes": {
+        "role": "navigation",
+        "aria-label": "Main navigation"
+      },
+      "children": [
+        {
+          "type": "comment",
+          "content": "Navigation items list with conditional active state"
+        },
+        {
+          "tag": "ul",
+          "children": [
+            {
+              "type": "for",
+              "items": "items",
+              "item": "navItem",
+              "index": "index",
+              "key": "navItem.href",
+              "default": [
+                {"href": "/", "label": "Home"},
+                {"href": "/about", "label": "About"},
+                {"href": "/contact", "label": "Contact"}
+              ],
+              "children": [
+                {
+                  "tag": "li",
+                  "children": [
+                    {
+                      "tag": "a",
+                      "attributes": {
+                        "href": "#"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "content": "Navigation Item"
+                        }
+                      ],
+                      "extensions": {
+                        "react": {
+                          "expressionAttributes": {
+                            "href": "navItem.href",
+                            "className": "currentPath === navItem.href ? 'nav-link nav-link--active' : 'nav-link'"
+                          }
+                        },
+                        "vue": {
+                          "expressionAttributes": {
+                            ":href": "navItem.href",
+                            ":class": "{ 'nav-link': true, 'nav-link--active': currentPath === navItem.href }"
+                          }
+                        },
+                        "bem": {
+                          "block": "navigation",
+                          "element": "link"
+                        }
+                      }
+                    },
+                    {
+                      "type": "if",
+                      "condition": "navItem.hasSubmenu",
+                      "defaultCondition": false,
+                      "then": [
+                        {
+                          "tag": "ul",
+                          "children": [
+                            {
+                              "type": "for",
+                              "items": "navItem.submenu",
+                              "item": "subItem",
+                              "index": "subIndex",
+                              "key": "subItem.href",
+                              "children": [
+                                {
+                                  "tag": "li",
+                                  "children": [
+                                    {
+                                      "tag": "a",
+                                      "attributes": {
+                                        "href": "#"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "content": "Submenu Item"
+                                        }
+                                      ],
+                                      "extensions": {
+                                        "react": {
+                                          "expressionAttributes": {
+                                            "href": "subItem.href"
+                                          }
+                                        },
+                                        "vue": {
+                                          "expressionAttributes": {
+                                            ":href": "subItem.href"
+                                          }
+                                        },
+                                        "bem": {
+                                          "block": "navigation",
+                                          "element": "sublink"
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "extensions": {
+                                    "bem": {
+                                      "block": "navigation",
+                                      "element": "subitem"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          ],
+                          "extensions": {
+                            "bem": {
+                              "block": "navigation",
+                              "element": "submenu"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "extensions": {
+                    "bem": {
+                      "block": "navigation",
+                      "element": "item"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "extensions": {
+            "bem": {
+              "block": "navigation",
+              "element": "list"
+            }
+          }
+        }
+      ],
+      "extensions": {
+        "bem": {
+          "block": "navigation"
+        }
+      }
+    }
+  ]
+}

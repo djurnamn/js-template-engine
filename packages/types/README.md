@@ -13,10 +13,9 @@ pnpm add @js-template-engine/types
 ```typescript
 import { TemplateNode, Extension, RenderOptions } from '@js-template-engine/types';
 
-// Define a template node
+// Define a template node (type defaults to 'element')
 const node: TemplateNode = {
-  type: 'element',
-  tagName: 'div',
+  tag: 'div',
   attributes: {
     class: 'container'
   },
@@ -24,6 +23,11 @@ const node: TemplateNode = {
     {
       type: 'text',
       content: 'Hello, World!'
+    },
+    {
+      type: 'slot',
+      name: 'content',
+      fallback: [{ type: 'text', content: 'Default content' }]
     }
   ]
 };
@@ -52,14 +56,25 @@ const options: RenderOptions = {
 ### Core Types
 
 ```typescript
-interface TemplateNode {
-  type?: 'element' | 'text' | 'slot';
-  tagName?: string;
-  attributes?: Record<string, string>;
-  children?: TemplateNode[];
-  content?: string;
-  extensions?: Record<string, any>;
-}
+type TemplateNode = 
+  | {
+      type?: 'element'; // Optional, defaults to 'element'
+      tag: string;
+      attributes?: Record<string, any>;
+      children?: TemplateNode[];
+      extensions?: Record<string, any>;
+    }
+  | {
+      type: 'text';
+      content: string;
+      extensions?: Record<string, any>;
+    }
+  | {
+      type: 'slot';
+      name: string;
+      fallback?: TemplateNode[]; // Default content for plain HTML
+      extensions?: Record<string, any>;
+    };
 
 interface Extension<T extends TemplateNode = TemplateNode> {
   key: string;

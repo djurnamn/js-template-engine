@@ -380,7 +380,7 @@ import { baz } from "bar"
 
       const result = await engine.render(template, options);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].message).toMatch(/must be an array/i);
+      expect(result.errors[0].message).toMatch(/is not iterable/i);
       expect(result.output).toBe('');
     });
   });
@@ -434,12 +434,9 @@ import { baz } from "bar"
       // Add a dummy extension so nodeHandler is called
       const dummyExtension = {
         key: 'dummy',
-        nodeHandler: (node: TemplateNode) => node
+        nodeHandler: vi.fn((node: TemplateNode) => node)
       };
       const engine = new TemplateEngine([dummyExtension]);
-      
-      // Spy on the ExtensionManager's callNodeHandlers method instead
-      const extensionManagerSpy = vi.spyOn(engine['extensionManager'], 'callNodeHandlers');
 
       const template: ExtendedTemplate = {
         template: [{
@@ -466,7 +463,7 @@ import { baz } from "bar"
       } as TemplateOptions;
 
       await engine.render(template, options);
-      expect(extensionManagerSpy).toHaveBeenCalled();
+      expect(dummyExtension.nodeHandler).toHaveBeenCalled();
     });
 
     it('should apply extensions in correct order', async () => {

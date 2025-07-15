@@ -44,6 +44,36 @@ export class InputNormalizationStep implements PipelineStep {
         ? { template: input.template ?? [], component: input.component }
         : { template: input ?? [], component: undefined };
 
+      // --- Add normalization for node types ---
+      function normalizeNodeTypes(nodes: any[]): void {
+        for (const node of nodes) {
+          if (node && typeof node === 'object') {
+            if (node.tag && node.type === undefined) {
+              node.type = 'element';
+            }
+            // Recursively normalize children if present
+            if (Array.isArray(node.children)) {
+              normalizeNodeTypes(node.children);
+            }
+            // Normalize slot fallback content
+            if (node.type === 'slot' && Array.isArray(node.fallback)) {
+              normalizeNodeTypes(node.fallback);
+            }
+            // Normalize if node branches
+            if (node.type === 'if') {
+              if (Array.isArray(node.then)) {
+                normalizeNodeTypes(node.then);
+              }
+              if (Array.isArray(node.else)) {
+                normalizeNodeTypes(node.else);
+              }
+            }
+          }
+        }
+      }
+      normalizeNodeTypes(nodes);
+      // --- End normalization ---
+
       // Validate template structure
       if (!Array.isArray(nodes)) {
         throw new ValidationError('Template nodes must be an array', { input });
@@ -66,10 +96,26 @@ export class InputNormalizationStep implements PipelineStep {
           if (
             (node.type === 'element' ||
               node.type === undefined ||
-              node.type === 'slot') &&
+              node.type === 'fragment' ||
+              node.type === 'for') &&
             Array.isArray(node.children)
           ) {
             validateNodes(node.children);
+          }
+          
+          // Validate slot fallback content
+          if (node.type === 'slot' && Array.isArray(node.fallback)) {
+            validateNodes(node.fallback);
+          }
+          
+          // Validate if node branches
+          if (node.type === 'if') {
+            if (Array.isArray(node.then)) {
+              validateNodes(node.then);
+            }
+            if (Array.isArray(node.else)) {
+              validateNodes(node.else);
+            }
           }
         }
       }

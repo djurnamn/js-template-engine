@@ -43,13 +43,21 @@ export class NodeTraverser {
     ancestors: TemplateNode[] = []
   ): TemplateNode[] {
     return nodes.map((node) => {
+      // Apply nodeHandler transformations first
+      let transformedNode = node;
+      for (const extension of this.extensions) {
+        if (extension.nodeHandler) {
+          transformedNode = extension.nodeHandler(transformedNode, ancestors);
+        }
+      }
+      
       // Call onNodeVisit hooks for each extension
       for (const extension of this.extensions) {
         if (extension.onNodeVisit) {
-          extension.onNodeVisit(node, ancestors);
+          extension.onNodeVisit(transformedNode, ancestors);
         }
       }
-      const updatedNode = { ...node };
+      const updatedNode = { ...transformedNode };
       
       // Handle element nodes and undefined type (treated as element)
       if (
@@ -70,6 +78,46 @@ export class NodeTraverser {
         updatedNode.fallback
       ) {
         updatedNode.fallback = this.traverseTree(updatedNode.fallback, [
+          ...ancestors,
+          updatedNode,
+        ]);
+      }
+      
+      // Handle fragment nodes
+      if (
+        updatedNode.type === 'fragment' &&
+        'children' in updatedNode &&
+        updatedNode.children
+      ) {
+        updatedNode.children = this.traverseTree(updatedNode.children, [
+          ...ancestors,
+          updatedNode,
+        ]);
+      }
+      
+      // Handle if nodes (both then and else branches)
+      if (updatedNode.type === 'if') {
+        if ('then' in updatedNode && updatedNode.then) {
+          updatedNode.then = this.traverseTree(updatedNode.then, [
+            ...ancestors,
+            updatedNode,
+          ]);
+        }
+        if ('else' in updatedNode && updatedNode.else) {
+          updatedNode.else = this.traverseTree(updatedNode.else, [
+            ...ancestors,
+            updatedNode,
+          ]);
+        }
+      }
+      
+      // Handle for nodes
+      if (
+        updatedNode.type === 'for' &&
+        'children' in updatedNode &&
+        updatedNode.children
+      ) {
+        updatedNode.children = this.traverseTree(updatedNode.children, [
           ...ancestors,
           updatedNode,
         ]);

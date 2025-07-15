@@ -55,6 +55,54 @@ export type TemplateNode =
       fallback?: TemplateNode[];
       /** Extension-specific data for this node. */
       extensions?: Record<string, any>;
+    }
+  | {
+      /** Fragment node for grouping elements without a wrapper. */
+      type: 'fragment';
+      /** Child nodes of this fragment. */
+      children: TemplateNode[];
+      /** Extension-specific data for this node. */
+      extensions?: Record<string, any>;
+    }
+  | {
+      /** Comment node for documentation and notes. */
+      type: 'comment';
+      /** The comment content. */
+      content: string;
+      /** Extension-specific data for this node. */
+      extensions?: Record<string, any>;
+    }
+  | {
+      /** Conditional node for if/else logic. */
+      type: 'if';
+      /** The condition to evaluate (prop name or expression). */
+      condition: string;
+      /** Template nodes to render when condition is true. */
+      then: TemplateNode[];
+      /** Template nodes to render when condition is false. */
+      else?: TemplateNode[];
+      /** Default condition value for plain HTML rendering. */
+      defaultCondition?: boolean;
+      /** Extension-specific data for this node. */
+      extensions?: Record<string, any>;
+    }
+  | {
+      /** Iteration node for loops. */
+      type: 'for';
+      /** The items prop name to iterate over. */
+      items: string;
+      /** The variable name for each item. */
+      item: string;
+      /** The variable name for the index (optional). */
+      index?: string;
+      /** Template nodes to render for each item. */
+      children: TemplateNode[];
+      /** Default items for plain HTML rendering. */
+      default?: any[];
+      /** Key pattern for React rendering (optional, defaults to index). */
+      key?: string;
+      /** Extension-specific data for this node. */
+      extensions?: Record<string, any>;
     };
 
 /**
@@ -186,6 +234,8 @@ export interface RenderOptions {
     /** Whether to minify the output. */
     minify?: boolean;
   };
+  /** Whether to include comments in the output (defaults to true). */
+  includeComments?: boolean;
 }
 
 /**
@@ -254,18 +304,37 @@ export type { ImportDefinition } from './Component';
 
 /**
  * Runtime type guard for TemplateNode.
- * Accepts nodes with type: 'element', 'text', 'slot', or undefined (treated as 'element').
+ * Accepts nodes with type: 'element', 'text', 'slot', 'fragment', 'comment', 'if', 'for', or undefined (treated as 'element').
  * @param node - The value to check.
  * @returns True if the value is a valid TemplateNode, otherwise false.
  */
 export function isTemplateNode(node: any): node is TemplateNode {
   if (typeof node !== 'object' || node === null) return false;
+  
   if (node.type === 'text') {
     return typeof node.content === 'string';
   }
+  
   if (node.type === 'slot') {
     return typeof node.name === 'string';
   }
+  
+  if (node.type === 'fragment') {
+    return Array.isArray(node.children);
+  }
+  
+  if (node.type === 'comment') {
+    return typeof node.content === 'string';
+  }
+  
+  if (node.type === 'if') {
+    return typeof node.condition === 'string' && Array.isArray(node.then);
+  }
+  
+  if (node.type === 'for') {
+    return typeof node.items === 'string' && typeof node.item === 'string' && Array.isArray(node.children);
+  }
+  
   // Default: treat as element if type is 'element' or undefined
   return typeof node.tag === 'string';
 }

@@ -32,6 +32,15 @@ Transforms individual nodes before they're converted to output.
 
 ```ts
 nodeHandler(node: TemplateNode): TemplateNode {
+  // Handle slot nodes for framework-specific transformation
+  if (node.type === 'slot') {
+    // React: Transform to JSX expression
+    return {
+      type: 'text',
+      content: `{props.${node.name}}`
+    };
+  }
+  
   if (node.tag === 'button') {
     node.tag = 'VButton'; // Vue-specific tag
   }
@@ -45,6 +54,7 @@ Use this to:
 * Add props or attributes
 * Inject directives
 * Merge in framework-specific config
+* **Transform slot nodes** for framework-specific patterns
 
 ### `rootHandler()`
 
@@ -99,6 +109,47 @@ export class MarkdownExtension implements Extension {
 
   rootHandler(content: string): string {
     return `# Auto-generated Markdown\n\n${content}`;
+  }
+}
+```
+
+## 🎯 Example: Slot-Aware Extension
+
+```ts
+export class CustomReactExtension implements Extension {
+  key = 'custom-react';
+  private slotNames = new Set<string>();
+
+  nodeHandler(node: TemplateNode): TemplateNode {
+    // Transform slots to React props
+    if (node.type === 'slot') {
+      const camelCaseName = this.toCamelCase(node.name);
+      this.slotNames.add(camelCaseName);
+      return {
+        type: 'text',
+        content: `{props.${camelCaseName}}`
+      };
+    }
+    return node;
+  }
+
+  rootHandler(content: string, options: any): string {
+    // Generate TypeScript interface with slot props
+    const slotProps = Array.from(this.slotNames)
+      .map(name => `  ${name}?: React.ReactNode`)
+      .join('\n');
+    
+    const propsInterface = slotProps 
+      ? `interface Props {\n${slotProps}\n}\n\n`
+      : '';
+    
+    this.slotNames.clear(); // Reset for next render
+    
+    return `${propsInterface}export const Component = (props: Props) => (\n  ${content}\n);`;
+  }
+
+  private toCamelCase(str: string): string {
+    return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
   }
 }
 ```

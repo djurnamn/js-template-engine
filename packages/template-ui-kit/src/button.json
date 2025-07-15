@@ -1,25 +1,66 @@
-[
-  {
-    "tag": "button",
-    "attributes": {
-      "type": "button"
+{
+  "component": {
+    "name": "Button",
+    "props": {
+      "children": "React.ReactNode",
+      "onClick": "() => void",
+      "icon": "boolean"
     },
-    "children": [
-      {
-        "type": "text",
-        "content": "Click me"
-      }
-    ],
-    "extensions": {
-      "react": {
-        "expressionAttributes": {
-          "onClick": "() => alert('Clicked!')"
-        }
+    "typescript": true
+  },
+  "template": [
+    {
+      "tag": "button",
+      "attributes": {
+        "type": "button"
       },
-      "bem": {
-        "block": "button",
-        "modifiers": ["primary"]
+      "children": [
+        {
+          "type": "comment",
+          "content": "Optional icon that appears before the button text"
+        },
+        {
+          "type": "if",
+          "condition": "icon",
+          "defaultCondition": false,
+          "then": [
+            {
+              "tag": "span",
+              "attributes": {
+                "role": "img",
+                "aria-label": "icon"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "content": "🚀"
+                }
+              ],
+              "extensions": {
+                "bem": {
+                  "block": "button",
+                  "element": "icon"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Click me"
+        }
+      ],
+      "extensions": {
+        "react": {
+          "expressionAttributes": {
+            "onClick": "props.onClick"
+          }
+        },
+        "bem": {
+          "block": "button",
+          "modifiers": ["primary"]
+        }
       }
     }
-  }
-] 
+  ]
+} 
