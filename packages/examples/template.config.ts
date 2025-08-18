@@ -16,7 +16,7 @@ const config: TemplateConfig = {
       options: {
         outputDir: 'output/react',
         filename: 'MyComponent',
-        fileExtension: '.tsx',
+        language: 'typescript',
         rendererKey: 'react',
         writeOutputFile: true
       }
@@ -27,7 +27,7 @@ const config: TemplateConfig = {
       options: {
         outputDir: 'output/vue',
         filename: 'MyComponent',
-        fileExtension: '.vue',
+        language: 'javascript',
         rendererKey: 'vue',
         writeOutputFile: true
       }
@@ -38,7 +38,7 @@ const config: TemplateConfig = {
       options: {
         outputDir: 'output/bem',
         filename: 'breadcrumbs',
-        fileExtension: '.html',
+        language: 'javascript',
         rendererKey: 'bem',
         writeOutputFile: true
       }
@@ -49,7 +49,7 @@ const config: TemplateConfig = {
       options: {
         outputDir: 'output/css',
         filename: 'card-css',
-        fileExtension: '.html',
+        language: 'javascript',
         writeOutputFile: true
       }
     }

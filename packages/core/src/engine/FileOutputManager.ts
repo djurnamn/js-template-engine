@@ -45,12 +45,30 @@ export class FileOutputManager {
   getOutputPath(options: TemplateOptions, extension: Extension): string {
     const baseOutputDir = options.outputDir ?? 'dist';
     const filename = options.filename ?? 'untitled';
-    const fileExtension = options.fileExtension ?? '.html';
+    const fileExtension = this.getFileExtension(options, extension);
     const isRenderingExtension = typeof extension.rootHandler === 'function';
     const outputDir = isRenderingExtension
       ? path.join(baseOutputDir, extension.key)
       : baseOutputDir;
     return path.join(outputDir, `${filename}${fileExtension}`);
+  }
+
+  /**
+   * Determines the appropriate file extension by delegating to the extension or using a default.
+   * 
+   * @param options - The template options containing language preference.
+   * @param extension - The extension being processed.
+   * @returns The appropriate file extension string.
+   */
+  private getFileExtension(options: TemplateOptions, extension: Extension): string {
+    // Ask the extension first
+    if (extension.getFileExtension) {
+      return extension.getFileExtension(options);
+    }
+    
+    // Default fallback for extensions that don't specify
+    const language = options.language ?? 'javascript';
+    return language === 'typescript' ? '.ts' : '.js';
   }
 
   /**
@@ -103,8 +121,16 @@ export class FileOutputManager {
         hasStyles &&
         options.styles?.outputFormat !== 'inline'
       ) {
-        const styleExtension =
-          options.styles?.outputFormat === 'scss' ? '.scss' : '.css';
+        const getStyleExtension = (format?: string): string => {
+          switch (format) {
+            case 'scss': return '.scss';
+            case 'less': return '.less';
+            case 'stylus': return '.styl';
+            case 'css':
+            default: return '.css';
+          }
+        };
+        const styleExtension = getStyleExtension(options.styles?.outputFormat);
         const stylePath = path.join(
           outputDir,
           `${options.filename ?? 'untitled'}${styleExtension}`

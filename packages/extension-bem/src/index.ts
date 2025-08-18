@@ -13,8 +13,6 @@ import type { BemExtension as BemTypes } from './types';
  * Options for configuring the BEM extension.
  */
 export interface BemExtensionOptions extends BaseExtensionOptions {
-  /** File extension for output files. */
-  fileExtension?: string;
   /** Separators for BEM element and modifier. */
   separator?: {
     /** Separator for elements (default: '__'). */
@@ -92,7 +90,6 @@ export class BemExtension
   isRenderer = false;
   /** Extension options. */
   options: BemExtensionOptions = {
-    fileExtension: '.html',
     separator: {
       element: '__',
       modifier: '--',
@@ -420,5 +417,12 @@ export class BemExtension
   ): TemplateNode {
     this.onNodeVisit(node, ancestorNodesContext);
     return node;
+  }
+
+  /**
+   * Determines the appropriate file extension for BEM HTML output.
+   */
+  public getFileExtension(options: { language?: 'typescript' | 'javascript' }): string {
+    return '.html';
   }
 }

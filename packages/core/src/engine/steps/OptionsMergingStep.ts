@@ -24,6 +24,34 @@ export class OptionsMergingStep implements PipelineStep {
   }
 
   /**
+   * Determines the appropriate Prettier parser by asking extensions.
+   * @param options - The merged template options.
+   * @param extensions - The active extensions.
+   * @returns The appropriate parser string for Prettier.
+   */
+  private determinePrettierParser(options: TemplateOptions, extensions: any[]): string {
+    // Ask the first extension that has a getPrettierParser method
+    for (const extension of extensions) {
+      if (extension.getPrettierParser && typeof extension.getPrettierParser === 'function') {
+        return extension.getPrettierParser(options);
+      }
+    }
+    
+    // Default fallback based on language if no extension provides a parser
+    const language = options.language ?? 'javascript';
+    if (language === 'typescript') {
+      return 'typescript';
+    }
+    
+    if (language === 'javascript') {
+      return 'babel';
+    }
+    
+    // Final fallback
+    return 'html';
+  }
+
+  /**
    * Executes the options merging step.
    * Merges default options with user-provided options and extension options.
    *
@@ -48,11 +76,10 @@ export class OptionsMergingStep implements PipelineStep {
           attribute: string,
           value: string | number | boolean
         ) => ` ${attribute}="${value}"`,
-        fileExtension: '.html',
+        language: 'javascript',
         filename: options.name ?? 'untitled',
         outputDir: 'dist',
         preferSelfClosingTags: false,
-        prettierParser: 'html',
         writeOutputFile: false,
         verbose: false,
         styles: {
@@ -88,6 +115,11 @@ export class OptionsMergingStep implements PipelineStep {
         ...options,
         extensions: mergedExtensions,
       };
+
+      // Auto-detect prettier parser if not explicitly set
+      if (!options.prettierParser) {
+        finalOptions.prettierParser = this.determinePrettierParser(finalOptions, mergedExtensions);
+      }
 
       const rendererExtensions = mergedExtensions.filter(
         (ext) => ext && (ext.isRenderer === true)

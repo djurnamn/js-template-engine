@@ -9,7 +9,7 @@ export default {
     new ReactExtension(true),
   ],
   globalOptions: {
-    fileExtension: '.tsx',
+    language: 'typescript',
     writeOutputFile: true,
     verbose: true
   }

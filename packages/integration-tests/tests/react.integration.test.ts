@@ -12,7 +12,7 @@ describe('React extension integration', () => {
   it('renders a simple component with React extension', async () => {
     const engine = new TemplateEngine([new ReactExtension()], false);
     const result = await engine.render([simpleTemplate], {
-      fileExtension: '.jsx',
+      language: 'javascript'
     });
     const output = result.output;
     expect(output).toContain('Click me');

@@ -308,8 +308,8 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
         ? `import './${componentName}.scss';`
         : null;
 
-    // Use component.typescript flag to determine TypeScript usage
-    const useTypeScript = component.typescript ?? false;
+    // Use language option to determine TypeScript usage
+    const useTypeScript = (options.language ?? 'javascript') === 'typescript';
 
     // Combine component props with slot props
     const allProps = { ...(component.props || {}) };
@@ -371,5 +371,21 @@ export class ReactExtension implements Extension<ReactExtensionOptions> {
     this.slotNames.clear();
 
     return result;
+  }
+
+  /**
+   * Determines the appropriate file extension for React components based on language preference.
+   */
+  public getFileExtension(options: { language?: 'typescript' | 'javascript' }): string {
+    const language = options.language ?? 'javascript';
+    return language === 'typescript' ? '.tsx' : '.jsx';
+  }
+
+  /**
+   * Determines the appropriate Prettier parser for React components based on language preference.
+   */
+  public getPrettierParser(options: { language?: 'typescript' | 'javascript' }): string {
+    const language = options.language ?? 'javascript';
+    return language === 'typescript' ? 'typescript' : 'babel';
   }
 }

@@ -30,8 +30,6 @@ export interface Component {
   imports?: ImportDefinition[];
   /** Extension-specific data for the component. */
   extensions?: Record<string, any>;
-  /** Whether the component uses TypeScript. */
-  typescript?: boolean;
   /** CSS/SCSS style content for the component. */
   style?: string;
 }
@@ -94,7 +92,7 @@ export function sanitizeComponentName(name: string): string {
  */
 export function resolveComponentName(
   context: RootHandlerContext,
-  options: ComponentOptions,
+  options: { name?: string; componentName?: string },
   defaultName = 'Component'
 ): string {
   const component = context.component;

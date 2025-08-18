@@ -15,7 +15,7 @@ pnpm add @js-template-engine/cli
 pnpm cli render path/to/template.json
 
 # With options
-pnpm cli render path/to/template.json --outputDir ./dist --name MyComponent --fileExtension .tsx
+pnpm cli render path/to/template.json --outputDir ./dist --name MyComponent --language typescript
 ```
 
 ### Command Options
@@ -23,7 +23,7 @@ pnpm cli render path/to/template.json --outputDir ./dist --name MyComponent --fi
 - `--config`: Path to template config file (default: './template.config')
 - `--outputDir`, `-o`: Output directory for rendered templates
 - `--name`, `-n`: Base name for output files
-- `--fileExtension`: Output file extension ('.html', '.jsx', '.tsx', '.css')
+- `--language`: Programming language for output ('typescript', 'javascript') - determines file extensions automatically
 - `--verbose`, `-v`: Enable verbose logging
 
 ## 🔌 Extension Configuration
@@ -51,7 +51,7 @@ interface CliOptions {
   config?: string;
   outputDir?: string;
   name?: string;
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  language?: 'typescript' | 'javascript';
   verbose?: boolean;
 }
 ```

@@ -166,6 +166,18 @@ export interface Extension<
    */
   onOutputWrite?: (output: string, options: T) => string;
   /**
+   * Optional method to determine the appropriate file extension for this extension.
+   * @param options - The render options containing language preference.
+   * @returns The file extension string (e.g., '.tsx', '.vue', '.html').
+   */
+  getFileExtension?: (options: RenderOptions) => string;
+  /**
+   * Optional method to determine the appropriate Prettier parser for this extension.
+   * @param options - The render options containing language preference.
+   * @returns The Prettier parser string (e.g., 'typescript', 'babel', 'vue', 'html').
+   */
+  getPrettierParser?: (options: RenderOptions) => string;
+  /**
    * Optional handler for processing the root template.
    * @param template - The template string to process.
    * @param options - The extension options.
@@ -195,8 +207,8 @@ export interface RenderOptions {
   name?: string;
   /** The output directory for generated files. */
   outputDir?: string;
-  /** The file extension for output files. */
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css' | '.ts' | '.vue';
+  /** The language for output generation (determines file extensions automatically). */
+  language?: 'typescript' | 'javascript';
   /** Whether to enable verbose logging. */
   verbose?: boolean;
   /** Array of extensions to use during rendering. */
@@ -245,6 +257,12 @@ export interface RenderOptions {
 export interface BaseExtensionOptions {
   /** Whether to enable verbose logging for this extension. */
   verbose?: boolean;
+  /** Language for output generation (determines file extensions and syntax). */
+  language?: 'typescript' | 'javascript';
+  /** Component name override. */
+  name?: string;
+  /** Alternative component name property. */
+  componentName?: string;
 }
 
 /**

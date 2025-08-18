@@ -4,8 +4,7 @@
     "props": {
       "items": "NavItem[]",
       "currentPath": "string"
-    },
-    "typescript": true
+    }
   },
   "template": [
     {

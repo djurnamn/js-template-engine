@@ -2,7 +2,7 @@
  * Type definition for style output formats.
  * Defines the supported formats for generated styles.
  */
-export type StyleOutputFormat = 'inline' | 'css' | 'scss';
+export type StyleOutputFormat = 'inline' | 'css' | 'scss' | 'less' | 'stylus';
 
 /**
  * Interface for style definitions.

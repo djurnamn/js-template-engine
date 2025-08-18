@@ -12,10 +12,8 @@ describe('FileOutputManager', () => {
   const baseOptions: TemplateOptions = {
     filename: 'testfile',
     outputDir: 'dist',
-    fileExtension: '.html',
     writeOutputFile: true,
     styles: { outputFormat: 'css', generateSourceMap: false, minify: false },
-    prettierParser: 'html',
     extensions: [],
     verbose: false,
   };
@@ -36,18 +34,18 @@ describe('FileOutputManager', () => {
   describe('getOutputPath', () => {
     it('returns correct path for rendering extension', () => {
       const result = fileOutputManager.getOutputPath(baseOptions, extension);
-      expect(result).toContain(path.join('dist', 'test', 'testfile.html'));
+      expect(result).toContain(path.join('dist', 'test', 'testfile.js'));
     });
     it('returns correct path for non-rendering extension', () => {
       const ext: Extension = { key: 'plain' };
       const result = fileOutputManager.getOutputPath(baseOptions, ext);
-      expect(result).toContain(path.join('dist', 'testfile.html'));
+      expect(result).toContain(path.join('dist', 'testfile.js'));
     });
     it('uses defaults if options are missing', () => {
       const opts = {} as TemplateOptions;
       const ext: Extension = { key: 'plain' };
       const result = fileOutputManager.getOutputPath(opts, ext);
-      expect(result).toContain(path.join('dist', 'untitled.html'));
+      expect(result).toContain(path.join('dist', 'untitled.js'));
     });
   });
 
@@ -66,7 +64,7 @@ describe('FileOutputManager', () => {
       const ensureDir = vi.spyOn(fileOutputManager, 'ensureDir').mockResolvedValue(undefined as any);
       const extManager = { callOnOutputWrite: vi.fn((out) => out) };
       const ext: Extension = { key: 'test', rootHandler: () => '' };
-      const options: TemplateOptions = { ...baseOptions, extensions: [ext] };
+      const options: TemplateOptions = { ...baseOptions, extensions: [ext], prettierParser: 'html' };
       (fileOutputManager as any).constructor.prototype.writeOutputFile = writeOutputFile;
       await fileOutputManager.writeAllOutputs({
         template: 'template',

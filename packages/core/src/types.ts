@@ -103,7 +103,7 @@ export type TemplateOptions = RenderOptions & {
     /**
      * The output format for styles.
      */
-    outputFormat?: 'css' | 'scss' | 'inline';
+    outputFormat?: import('@js-template-engine/types').StyleOutputFormat;
   };
 
   /**

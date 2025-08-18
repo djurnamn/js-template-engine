@@ -53,7 +53,7 @@ const template: ExtendedTemplate = {
 
 // Render the component
 await engine.render(template, {
-  fileExtension: '.vue',
+  language: 'javascript',
   outputDir: 'dist/vue'
 });
 ```

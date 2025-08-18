@@ -28,9 +28,7 @@ describe('TemplateEngine - Component Rendering', () => {
       }
     };
 
-    const options: RenderOptions = {
-      fileExtension: '.html'
-    } as TemplateOptions;
+    const options: RenderOptions = {} as TemplateOptions;
 
     const result = await engine.render(template, options);
     expect(result.output).toBe(`<div>Hello World</div>
@@ -67,9 +65,7 @@ describe('TemplateEngine - Component Rendering', () => {
       }
     };
 
-    const options: RenderOptions = {
-      fileExtension: '.html'
-    } as TemplateOptions;
+    const options: RenderOptions = {} as TemplateOptions;
 
     const result = await engine.render(template, options);
     expect(result.output).toBe(`<div>Hello World</div>
@@ -115,7 +111,6 @@ import { format } from "date-fns"
     };
 
     const options: RenderOptions = {
-      fileExtension: '.html',
       extensions: [{
         key: 'test',
         rootHandler: mockRootHandler
@@ -164,9 +159,7 @@ import { format } from "date-fns"
       }
     };
 
-    const options: RenderOptions = {
-      fileExtension: '.html'
-    } as TemplateOptions;
+    const options: RenderOptions = {} as TemplateOptions;
 
     const result = await engine.render(template, options);
     expect(result.output).toBe(`<div><header>Header</header><main>Content</main></div>
@@ -204,7 +197,6 @@ import { format } from "date-fns"
     };
 
     const options: RenderOptions = {
-      fileExtension: '.html',
       styles: {
         outputFormat: 'inline'
       }
@@ -235,9 +227,7 @@ import { format } from "date-fns"
       }
     };
 
-    const options: RenderOptions = {
-      fileExtension: '.html'
-    } as TemplateOptions;
+    const options: RenderOptions = {} as TemplateOptions;
 
     const result = await engine.render(template, options);
     expect(result.output).toBe(`<div>Imported Component</div>
@@ -275,7 +265,6 @@ import { baz } from "bar"
     };
 
     const options: RenderOptions = {
-      fileExtension: '.html',
       extensions: [{
         key: 'test',
         rootHandler: mockRootHandler
@@ -374,9 +363,7 @@ import { baz } from "bar"
         }
       } as unknown as ExtendedTemplate;
 
-      const options = {
-        fileExtension: '.html'
-      } as TemplateOptions;
+      const options = {} as TemplateOptions;
 
       const result = await engine.render(template, options);
       expect(result.errors.length).toBeGreaterThan(0);

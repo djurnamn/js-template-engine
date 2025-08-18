@@ -27,14 +27,9 @@ describe('ReactExtension - rootHandler', () => {
 
   it('renders a complete valid React component snapshot', async () => {
     const engine = new TemplateEngine([extension]);
-    const result = await engine.render({
-      ...reactBaseTemplate,
-      component: {
-        ...reactBaseTemplate.component,
-        typescript: true
-      }
-    }, {
+    const result = await engine.render(reactBaseTemplate, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toMatchInlineSnapshot(`
@@ -56,14 +51,9 @@ describe('ReactExtension - rootHandler', () => {
 
   it('renders props interface correctly when typescript is enabled', async () => {
     const engine = new TemplateEngine([extension]);
-    const result = await engine.render({
-      ...reactBaseTemplate,
-      component: {
-        ...reactBaseTemplate.component,
-        typescript: true
-      }
-    }, {
+    const result = await engine.render(reactBaseTemplate, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toContain('interface TestComponentProps');
@@ -73,14 +63,9 @@ describe('ReactExtension - rootHandler', () => {
 
   it('renders JavaScript component without TypeScript features when typescript is disabled', async () => {
     const engine = new TemplateEngine([extension]);
-    const result = await engine.render({
-      ...reactBaseTemplate,
-      component: {
-        ...reactBaseTemplate.component,
-        typescript: false
-      }
-    }, {
+    const result = await engine.render(reactBaseTemplate, {
       extensions: [extension],
+      language: 'javascript'
     });
 
     expect(result.output).not.toContain('interface TestComponentProps');
@@ -101,14 +86,9 @@ describe('ReactExtension - rootHandler', () => {
 
   it('wraps content in a functional React component', async () => {
     const engine = new TemplateEngine([extension]);
-    const result = await engine.render({
-      ...reactBaseTemplate,
-      component: {
-        ...reactBaseTemplate.component,
-        typescript: true
-      }
-    }, {
+    const result = await engine.render(reactBaseTemplate, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toContain('import React from "react"');
@@ -123,7 +103,6 @@ describe('ReactExtension - rootHandler', () => {
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
-        typescript: true,
         extensions: {
           react: {
             styleOutput: '.test { color: red; }'
@@ -135,6 +114,7 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toContain('import \'./TestComponent.scss\'');
@@ -145,7 +125,6 @@ describe('ReactExtension - rootHandler', () => {
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
-        typescript: true,
         extensions: {
           react: {
             styleOutput: '.test { color: red; }',
@@ -158,6 +137,7 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toContain('import \'./TestComponent.scss\'');
@@ -174,7 +154,6 @@ describe('ReactExtension - rootHandler', () => {
         }]
       }],
       component: {
-        typescript: true,
         props: {
           title: 'string'
         },
@@ -185,7 +164,8 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
-      name: 'CustomComponent'
+      name: 'CustomComponent',
+      language: 'typescript'
     });
 
     expect(result.output).toContain('const CustomComponent: React.FC<CustomComponentProps>');
@@ -203,7 +183,6 @@ describe('ReactExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         imports: [
           'import React from "react";',
           'import { useEffect } from "react";',
@@ -216,6 +195,7 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     // Verify merged imports
@@ -234,14 +214,14 @@ describe('ReactExtension - rootHandler', () => {
         }]
       }],
       component: {
-        name: 'Minimal',
-        typescript: true
+        name: 'Minimal'
       }
     };
 
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).toContain('const Minimal: React.FC = () => {');
@@ -253,14 +233,14 @@ describe('ReactExtension - rootHandler', () => {
     const template: ExtendedTemplate = {
       ...reactBaseTemplate,
       component: {
-        ...reactBaseTemplate.component,
-        typescript: true
+        ...reactBaseTemplate.component
       }
     };
 
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).not.toContain('import \'./TestComponent.scss\'');
@@ -271,7 +251,6 @@ describe('ReactExtension - rootHandler', () => {
       ...reactBaseTemplate,
       component: {
         ...reactBaseTemplate.component,
-        typescript: true,
         extensions: {
           react: {
             styleOutput: ''
@@ -283,6 +262,7 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     expect(result.output).not.toContain('import \'./TestComponent.scss\'');
@@ -300,7 +280,6 @@ describe('ReactExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         imports: [
           'import React from "react";',
           { from: './components', named: ['Button', 'Input'] },
@@ -312,6 +291,7 @@ describe('ReactExtension - rootHandler', () => {
     const engine = new TemplateEngine([extension]);
     const result = await engine.render(template, {
       extensions: [extension],
+      language: 'typescript'
     });
 
     // Verify imports are properly formatted

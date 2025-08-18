@@ -1,5 +1,5 @@
 import type { BaseExtensionOptions } from '@js-template-engine/types';
-import type { ComponentOptions } from '@js-template-engine/types/src/Component';
+import type { VueExtensionOptions } from './types';
 import { createLogger } from '@js-template-engine/core';
 import type {
   TemplateNode,
@@ -15,22 +15,6 @@ import {
 
 const logger = createLogger(false, 'vue-extension');
 
-export interface VueExtensionOptions
-  extends BaseExtensionOptions,
-    ComponentOptions {
-  scoped?: boolean;
-  script?: string;
-  composition?: boolean;
-  setup?: boolean;
-  styles?: {
-    outputFormat?: 'css' | 'scss' | 'less' | 'stylus' | 'inline';
-  };
-  attributeFormatter?: (
-    attr: string,
-    val: string | number | boolean,
-    isExpression?: boolean
-  ) => string;
-}
 
 export interface VueNodeExtensions {
   tag?: string;
@@ -82,13 +66,7 @@ export class VueExtension
   public isRenderer = true;
   private logger: ReturnType<typeof createLogger>;
 
-  options: VueExtensionOptions = {
-    attributeFormatter: (
-      attr: string,
-      val: string | number | boolean,
-      isExpression?: boolean
-    ) => ` ${attr}="${val}"`,
-  };
+  options: VueExtensionOptions = {};
 
   constructor(verbose = false) {
     this.logger = createLogger(verbose, 'vue-extension');
@@ -475,8 +453,8 @@ export class VueExtension
       context.component?.extensions?.vue?.styleOutput ||
       context.styleOutput ||
       '';
-    const styleLang =
-      context.component?.extensions?.vue?.styleLang ??
+    const styleLanguage =
+      context.component?.extensions?.vue?.styleLanguage ??
       context.component?.extensions?.vue?.styles?.outputFormat ??
       options.styles?.outputFormat ??
       'css';
@@ -492,7 +470,7 @@ export class VueExtension
       context.component?.extensions?.vue?.setup ??
       options.setup ??
       false;
-    const useTypeScript = context.component?.typescript ?? false;
+    const useTypeScript = (options.language ?? 'javascript') === 'typescript';
 
     // --- Props Handling ---
     const propsMeta = context.props || [];
@@ -613,10 +591,10 @@ export class VueExtension
 
     // --- Style Block ---
     let styleBlock = '';
-    if (styleOutput && styleOutput.trim() && styleLang !== 'inline') {
+    if (styleOutput && styleOutput.trim() && styleLanguage !== 'inline') {
       const attrs = [];
       if (isScoped) attrs.push('scoped');
-      if (styleLang && styleLang !== 'css') attrs.push(`lang="${styleLang}"`);
+      if (styleLanguage && styleLanguage !== 'css') attrs.push(`lang="${styleLanguage}"`);
       styleBlock = `<style${attrs.length ? ' ' + attrs.join(' ') : ''}>\n${styleOutput.trim()}\n</style>`;
     }
 
@@ -632,5 +610,19 @@ export class VueExtension
     return [templateBlock, scriptBlock, styleBlock]
       .filter(Boolean)
       .join('\n\n');
+  }
+
+  /**
+   * Determines the appropriate file extension for Vue components (always .vue).
+   */
+  public getFileExtension(options: { language?: 'typescript' | 'javascript' }): string {
+    return '.vue';
+  }
+
+  /**
+   * Determines the appropriate Prettier parser for Vue components (always vue).
+   */
+  public getPrettierParser(options: { language?: 'typescript' | 'javascript' }): string {
+    return 'vue';
   }
 }

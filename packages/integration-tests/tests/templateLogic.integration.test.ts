@@ -34,8 +34,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('{/* This is a test comment */}');
@@ -69,8 +68,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('<React.Fragment>');
@@ -110,8 +108,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('{props.isVisible ?');
@@ -146,8 +143,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('{props.items.map((item, index) =>');
@@ -195,8 +191,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('<React.Fragment>');
@@ -245,8 +240,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       expect(result.output).toContain('className="card card--primary"');
@@ -284,7 +278,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await vueEngine.render(template, {
-        fileExtension: '.vue'
+        language: 'javascript'
       });
 
       expect(result.output).toContain('<!-- Vue comment test -->');
@@ -317,7 +311,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await vueEngine.render(template, {
-        fileExtension: '.vue'
+        language: 'javascript'
       });
 
       expect(result.output).toContain('<header>Header</header>');
@@ -347,7 +341,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await vueEngine.render(template, {
-        fileExtension: '.vue'
+        language: 'javascript'
       });
 
       expect(result.output).toContain('v-if="isVisible"');
@@ -379,7 +373,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await vueEngine.render(template, {
-        fileExtension: '.vue'
+        language: 'javascript'
       });
 
       expect(result.output).toContain('v-for="(item, index) in items"');
@@ -425,7 +419,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await vueEngine.render(template, {
-        fileExtension: '.vue'
+        language: 'javascript'
       });
 
       // Vue BEM may format classes differently
@@ -456,8 +450,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       // Should not crash and should handle gracefully
@@ -482,8 +475,7 @@ describe('Template Logic Integration Tests', () => {
       };
 
       const result = await reactEngine.render(template, {
-        fileExtension: '.tsx',
-        prettierParser: 'typescript'
+        language: 'typescript'
       });
 
       // Should not crash and should handle gracefully

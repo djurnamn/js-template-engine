@@ -18,12 +18,11 @@ describe('ReactExtension - Slot Handling', () => {
         }]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: true
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('{props.header}');
     expect(result.output).toContain('header?: React.ReactNode');
   });
@@ -39,12 +38,11 @@ describe('ReactExtension - Slot Handling', () => {
         }]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: true
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('{props.headerContent}');
     expect(result.output).toContain('headerContent?: React.ReactNode');
   });
@@ -66,12 +64,11 @@ describe('ReactExtension - Slot Handling', () => {
         ]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: true
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('{props.header}');
     expect(result.output).toContain('{props.footer}');
     expect(result.output).toContain('header?: React.ReactNode');
@@ -90,7 +87,6 @@ describe('ReactExtension - Slot Handling', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         props: {
           title: 'string',
           visible: 'boolean'
@@ -98,7 +94,7 @@ describe('ReactExtension - Slot Handling', () => {
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('{props.content}');
     expect(result.output).toContain('title?: string');
     expect(result.output).toContain('visible?: boolean');
@@ -116,12 +112,11 @@ describe('ReactExtension - Slot Handling', () => {
         }]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: false
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('{props.header}');
     expect(result.output).not.toContain('interface TestComponentProps');
     expect(result.output).not.toContain('React.ReactNode');
@@ -138,12 +133,11 @@ describe('ReactExtension - Slot Handling', () => {
         }]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: true
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('{props._23InvalidName}');
     expect(result.output).toContain('_23InvalidName?: React.ReactNode');
   });
@@ -159,12 +153,11 @@ describe('ReactExtension - Slot Handling', () => {
         }]
       }],
       component: {
-        name: 'TestComponent',
-        typescript: true
+        name: 'TestComponent'
       }
     };
     
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('= (props) => {');
     expect(result.output).toContain('TestComponentProps');
   });

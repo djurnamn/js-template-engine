@@ -5,7 +5,7 @@ export interface CliOptions {
   config?: string;
   outputDir?: string;
   name?: string;
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  language?: 'typescript' | 'javascript';
   verbose?: boolean;
   extensions?: string[];
   _: string[];

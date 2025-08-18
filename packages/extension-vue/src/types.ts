@@ -2,6 +2,7 @@ import type {
   RenderOptions,
   BaseExtensionOptions,
 } from '@js-template-engine/types';
+import type { ComponentOptions } from '@js-template-engine/types/src/Component';
 
 export interface VueComponentOptions {
   directives?: Record<string, string>;
@@ -27,11 +28,14 @@ export namespace VueExtension {
 export type Options = VueExtension.Options;
 
 export interface VueExtensionOptions extends BaseExtensionOptions {
-  fileExtension?: '.vue';
-  scriptLang?: 'js' | 'ts';
-  styleLang?: 'css' | 'scss' | 'less' | 'stylus';
+  styleLanguage?: 'css' | 'scss' | 'less' | 'stylus';
   scoped?: boolean;
-  scriptContent?: string;
+  script?: string;
+  composition?: boolean;
+  setup?: boolean;
+  styles?: {
+    outputFormat?: 'css' | 'scss' | 'less' | 'stylus' | 'inline';
+  };
 }
 
 export interface VueNodeExtensions {

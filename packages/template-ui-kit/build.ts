@@ -25,9 +25,8 @@ async function build() {
       name,
       ...config.globalOptions,
       outputDir: config.output,
-      fileExtension: '.tsx' as const,
       extensions: config.extensions, // <-- Ensure extensions are passed
-      prettierParser: template.component?.typescript ? 'typescript' : 'babel',
+      prettierParser: config.globalOptions?.language === 'typescript' ? 'typescript' : 'babel',
     } as RenderOptions);
 
     console.log(`✅ Rendered: ${name}`);

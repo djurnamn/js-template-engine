@@ -46,7 +46,7 @@ class MyExtension implements Extension {
 const options: RenderOptions = {
   name: 'my-template',
   outputDir: './dist',
-  fileExtension: '.html',
+  language: 'javascript',
   verbose: true
 };
 ```
@@ -88,7 +88,7 @@ interface Extension<T extends TemplateNode = TemplateNode> {
 interface RenderOptions {
   name?: string;
   outputDir?: string;
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  language?: 'typescript' | 'javascript';
   verbose?: boolean;
 }
 ```

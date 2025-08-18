@@ -22,7 +22,7 @@ describe('Vue extension integration', () => {
   it('renders a component with slots and props', async () => {
     const engine = new TemplateEngine([new VueExtension()], false);
     const result = await engine.render(simpleTemplate, {
-      fileExtension: '.vue',
+      language: 'javascript'
     });
     const output = result.output;
     expect(output).toContain('Click me');

@@ -5,8 +5,7 @@
       "children": "React.ReactNode",
       "onClick": "() => void",
       "icon": "boolean"
-    },
-    "typescript": true
+    }
   },
   "template": [
     {

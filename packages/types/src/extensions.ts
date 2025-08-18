@@ -17,8 +17,6 @@ export interface Component {
   props?: Record<string, string>;
   /** JavaScript/TypeScript script content for the component. */
   script?: string;
-  /** Whether the component uses TypeScript. */
-  typescript?: boolean;
   /** Import statements for the component. */
   imports?: ImportDefinition[];
   /** Extension-specific data for the component. */

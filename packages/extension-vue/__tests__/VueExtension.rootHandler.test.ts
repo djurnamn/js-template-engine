@@ -43,14 +43,13 @@ describe('VueExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         props: {
           title: 'string'
         },
         imports: ['import { defineComponent } from "vue";']
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toMatchInlineSnapshot(`
       "<template>
       <div>Hello</div>
@@ -84,14 +83,13 @@ describe('VueExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         props: {
           title: 'string'
         },
         imports: ['import { defineComponent } from "vue";']
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('<script lang="ts">');
     expect(result.output).toContain('import { defineComponent } from "vue"');
     expect(result.output).toContain('export default defineComponent({');
@@ -109,7 +107,6 @@ describe('VueExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         props: {
           title: 'string',
           handler: '(e: Event) => void'
@@ -117,7 +114,7 @@ describe('VueExtension - rootHandler', () => {
         imports: ['import { defineComponent } from "vue";']
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('interface TestComponentProps');
     expect(result.output).toContain('title: string');
     expect(result.output).toContain('handler: (e: Event) => void');
@@ -142,7 +139,7 @@ describe('VueExtension - rootHandler', () => {
         imports: ['import { defineComponent } from "vue";']
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('props: {');
     expect(result.output).toContain('title: { type: String, required: true }');
     expect(result.output).toContain('handler: { type: Function, required: true }');
@@ -167,7 +164,7 @@ describe('VueExtension - rootHandler', () => {
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('<style>\n.test { color: red; }\n</style>');
   });
 
@@ -191,7 +188,7 @@ describe('VueExtension - rootHandler', () => {
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('<style scoped>');
   });
 
@@ -210,12 +207,12 @@ describe('VueExtension - rootHandler', () => {
         extensions: {
           vue: {
             styleOutput: '.test { color: red; }',
-            styleLang: 'scss'
+            styleLanguage: 'scss'
           }
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('<style lang="scss">');
   });
 
@@ -235,7 +232,8 @@ describe('VueExtension - rootHandler', () => {
     };
     const result = await engine.render(template, {
       extensions: [extension],
-      name: 'CustomComponent'
+      name: 'CustomComponent',
+      language: 'javascript'
     });
     expect(result.output).toContain('export default defineComponent({');
     expect(result.output).toContain('name: "CustomComponent"');
@@ -261,7 +259,7 @@ describe('VueExtension - rootHandler', () => {
         ]
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
 
     // Verify merged imports
     expect(result.output).toContain('import { computed, defineComponent, ref } from "vue";');
@@ -282,7 +280,7 @@ describe('VueExtension - rootHandler', () => {
         name: 'Minimal'
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('export default defineComponent({');
     expect(result.output).toContain('name: "Minimal"');
     expect(result.output).toContain('<div>Hello</div>');
@@ -302,7 +300,7 @@ describe('VueExtension - rootHandler', () => {
         name: 'TestComponent'
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).not.toContain('<style>');
   });
 
@@ -325,7 +323,7 @@ describe('VueExtension - rootHandler', () => {
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).not.toContain('<style>');
   });
 
@@ -341,7 +339,6 @@ describe('VueExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         extensions: {
           vue: {
             compositionAPI: true,
@@ -350,7 +347,7 @@ describe('VueExtension - rootHandler', () => {
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('<script setup lang="ts">');
     expect(result.output).not.toContain('export default defineComponent');
   });
@@ -367,7 +364,6 @@ describe('VueExtension - rootHandler', () => {
       }],
       component: {
         name: 'TestComponent',
-        typescript: true,
         extensions: {
           vue: {
             compositionAPI: true,
@@ -376,7 +372,7 @@ describe('VueExtension - rootHandler', () => {
         }
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('<script lang="ts">');
     expect(result.output).toContain('export default defineComponent({');
     expect(result.output).toContain('setup() {');
@@ -397,7 +393,7 @@ describe('VueExtension - rootHandler', () => {
         typescript: true
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'typescript' });
     expect(result.output).toContain('<script lang="ts">');
     expect(result.output).toContain('export default defineComponent({');
     expect(result.output).not.toContain('setup()');
@@ -420,7 +416,7 @@ describe('VueExtension - rootHandler', () => {
         name: 'TestComponent'
       }
     };
-    const result = await engine.render(template);
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toContain('name: "TestComponent"');
     expect(result.output).toContain('<my-component');
     expect(result.output).toContain('data-id="some-id"');

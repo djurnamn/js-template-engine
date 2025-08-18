@@ -18,7 +18,7 @@ A component library starter that uses the JS Template Engine to generate framewo
      output: './dist',
      extensions: [new ReactExtension(), new BemExtension()],
      globalOptions: {
-       fileExtension: '.tsx',
+       language: 'typescript',
        writeOutputFile: true,
        verbose: true
      }

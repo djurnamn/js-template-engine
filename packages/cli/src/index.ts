@@ -34,10 +34,11 @@ async function run() {
           describe: 'Base name for output files',
           type: 'string'
         })
-        .option('fileExtension', {
-          describe: 'Output file extension',
+        .option('language', {
+          describe: 'Programming language for output (determines file extensions automatically)',
           type: 'string',
-          choices: ['.html', '.jsx', '.tsx', '.css']
+          choices: ['typescript', 'javascript'],
+          default: 'javascript'
         })
         .option('verbose', {
           alias: 'v',
@@ -66,7 +67,7 @@ async function run() {
         await templateEngine.render(template, {
           name: argv.name,
           outputDir: argv.outputDir,
-          fileExtension: argv.fileExtension,
+          language: argv.language,
           verbose: argv.verbose
         });
       } catch (error) {

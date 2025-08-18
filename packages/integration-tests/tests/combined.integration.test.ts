@@ -22,7 +22,7 @@ describe('Combined extensions integration', () => {
       [new ReactExtension(), new BemExtension()],
       false
     );
-    const result = await engine.render(template, { fileExtension: '.jsx' });
+    const result = await engine.render(template, { language: 'javascript' });
     const output = result.output;
     expect(output).toContain('Combined Test');
     expect(output).toContain('button__icon');
@@ -37,7 +37,7 @@ describe('Combined extensions integration', () => {
       new ReactExtension(),
       new VueExtension(),
     ], false);
-    const result = await engine.render(template, { fileExtension: '.jsx' });
+    const result = await engine.render(template, { language: 'javascript' });
     expect(result.output).toBe('');
     expect(result.errors.length).toBeGreaterThan(0);
     const error = result.errors.find(e => e.name === 'ValidationError');

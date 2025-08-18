@@ -46,8 +46,8 @@ export namespace BemExtension {
  * @extends BaseExtensionOptions
  */
 export interface BemExtensionOptions extends BaseExtensionOptions {
-  /** File extension for output files. */
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css' | '.ts' | '.vue';
+  /** Style language for CSS output (determines .css vs .scss automatically). */
+  styleLanguage?: 'css' | 'scss' | 'less' | 'stylus';
 }
 
 /**

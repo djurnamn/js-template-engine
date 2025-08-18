@@ -45,7 +45,7 @@ const template: TemplateNode[] = [
 await engine.render(template, {
   name: 'MyComponent',
   outputDir: './dist',
-  fileExtension: '.tsx'
+  language: 'typescript'
 });
 ```
 

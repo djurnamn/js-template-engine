@@ -87,11 +87,11 @@ const renderCommand: CliCommand = {
         choices: ['react', 'vue', 'bem', 'none'],
         default: 'none',
       })
-      .option('fileExtension', {
-        describe: 'File extension for output files',
+      .option('language', {
+        describe: 'Programming language for output (determines file extensions automatically)',
         type: 'string',
-        choices: ['.html', '.jsx', '.tsx', '.css'],
-        default: '.html',
+        choices: ['typescript', 'javascript'],
+        default: 'javascript',
       }) as any; // Type assertion needed due to yargs type limitations
   },
   handler: async (argv: CliOptions) => {

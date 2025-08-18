@@ -5,12 +5,6 @@ import type { BaseExtensionOptions } from '@js-template-engine/types';
  * @extends BaseExtensionOptions
  */
 export interface ReactExtensionOptions extends BaseExtensionOptions {
-  /** File extension for output files. */
-  fileExtension?: '.jsx' | '.tsx';
-  /** Component name override. */
-  name?: string;
-  /** Alternative component name property. */
-  componentName?: string;
   /** Renderer key for the extension. */
   rendererKey?: string;
   /** Export type for the component. */

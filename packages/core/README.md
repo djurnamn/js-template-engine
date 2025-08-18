@@ -74,7 +74,7 @@ Options for template rendering:
 interface RenderOptions {
   name?: string;
   outputDir?: string;
-  fileExtension?: '.html' | '.jsx' | '.tsx' | '.css';
+  language?: 'typescript' | 'javascript';
   verbose?: boolean;
 }
 ```

@@ -135,7 +135,7 @@ interface TodoProps {
     styles: {
       outputFormat: 'scss'
     },
-    fileExtension: '.tsx',
+    language: 'typescript',
     importStatements: [
       "import React, { useState } from 'react';",
       "import { DefaultButton } from './components/Button';",

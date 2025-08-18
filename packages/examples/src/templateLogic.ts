@@ -87,8 +87,7 @@ const vueExample: ExtendedTemplate = {
     props: {
       items: 'Array<{ id: number; name: string }>',
       isVisible: 'boolean'
-    },
-    typescript: true
+    }
   },
   template: [
     {
@@ -154,7 +153,7 @@ const vueExample: ExtendedTemplate = {
     verbose,
     writeOutputFile: true,
     outputDir: 'output/react',
-    fileExtension: '.tsx',
+    language: 'typescript',
     importStatements: [
       "import React from 'react';"
     ]
@@ -170,7 +169,7 @@ const vueExample: ExtendedTemplate = {
     verbose,
     writeOutputFile: true,
     outputDir: 'output/vue',
-    fileExtension: '.vue'
+    language: 'javascript'
   } as RenderOptions & any);
 
   console.log('[Vue Example] Generated template-logic-vue.vue');

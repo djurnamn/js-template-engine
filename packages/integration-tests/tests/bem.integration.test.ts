@@ -17,7 +17,7 @@ const bemTemplate = [
 describe('BEM extension integration', () => {
   it('renders a component with BEM class output', async () => {
     const engine = new TemplateEngine([new BemExtension()], false);
-    const result = await engine.render(bemTemplate, { fileExtension: '.html' });
+    const result = await engine.render(bemTemplate, {});
     const output = result.output;
     expect(output).toContain('button__icon');
     expect(output).toContain('button__icon--active');

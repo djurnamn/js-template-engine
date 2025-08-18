@@ -122,7 +122,7 @@ interface TodoProps {
     writeOutputFile: true,
     verbose,
     outputDir: 'output',
-    fileExtension: '.vue',
+    language: 'javascript',
     styles: {
       outputFormat: 'scss'
     },
