@@ -84,12 +84,22 @@ export class VueExtension
     return name.replace(/[^a-zA-Z0-9_:@\-]/g, '-');
   }
 
-  sanitizeAttributeValue(value: any): string {
+  sanitizeAttributeValue(value: any, attributeName?: string): string {
     if (typeof value !== 'string') return String(value);
     // Don't sanitize if it's an object literal expression
     if (value.trim().startsWith('{') && value.trim().endsWith('}')) {
       return value;
     }
+    
+    // For class attributes, preserve valid CSS class name characters (spaces, hyphens, underscores, etc.)
+    if (attributeName === 'class') {
+      return value
+        .replace(/"/g, '&quot;') // escape quotes
+        .replace(/<script.*?>.*?<\/script>/gi, '') // remove script tags
+        .trim();
+    }
+    
+    // For other attributes, apply more restrictive sanitization
     return value
       .replace(/[^a-zA-Z0-9_\-]/g, '-') // remove special chars
       .replace(/-+/g, '-') // collapse multiple dashes
@@ -338,7 +348,7 @@ export class VueExtension
       for (const [key, value] of Object.entries(ext.attributes)) {
         if (key === 'class' || key === 'style') continue; // already handled
         const safeKey = this.sanitizeAttributeName(key);
-        const safeVal = this.sanitizeAttributeValue(value);
+        const safeVal = this.sanitizeAttributeValue(value, key);
         updatedNode.attributes[safeKey] = safeVal;
       }
     }
@@ -383,7 +393,7 @@ export class VueExtension
         key.startsWith(':') || key.startsWith('@') || key.startsWith('v-');
       const safeKey = this.sanitizeAttributeName(key);
       // Don't sanitize dynamic bindings that contain object literals
-      const safeVal = isDynamic ? value : this.sanitizeAttributeValue(value);
+      const safeVal = isDynamic ? value : this.sanitizeAttributeValue(value, key);
       delete (updatedNode.attributes as any)[key];
       (updatedNode.attributes as any)[safeKey] = safeVal;
     }
@@ -435,6 +445,7 @@ export class VueExtension
     options: VueExtensionOptions,
     context: VueRootHandlerContext
   ): string {
+    console.log(`[Vue Extension] rootHandler called! Template: ${template.substring(0, 100)}...`);
     const resolvedName = resolveComponentName(context, options) || 'Component';
     const componentName = this.sanitizeAttributeValue(resolvedName);
 
@@ -602,7 +613,7 @@ export class VueExtension
     const sanitizeTemplate = (html: string) =>
       html.replace(
         /(data-[\w-]+|class|id)="([^"]+)"/g,
-        (_, key, val) => `${key}="${this.sanitizeAttributeValue(val)}"`
+        (_, key, val) => `${key}="${this.sanitizeAttributeValue(val, key)}"`
       );
     const templateBlock = `<template>\n${sanitizeTemplate(template.trim())}\n</template>`;
 

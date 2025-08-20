@@ -5,6 +5,7 @@ export interface CliOptions {
   config?: string;
   outputDir?: string;
   name?: string;
+  componentName?: string;
   language?: 'typescript' | 'javascript';
   verbose?: boolean;
   extensions?: string[];

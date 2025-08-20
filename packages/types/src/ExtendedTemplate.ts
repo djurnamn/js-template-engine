@@ -39,15 +39,6 @@ export interface VueComponentOptions extends BaseComponentOptions {
 }
 
 /**
- * Svelte-specific component options.
- * Extends BaseComponentOptions with Svelte-specific functionality.
- */
-export interface SvelteComponentOptions extends BaseComponentOptions {
-  /** Whether to enable server-side rendering. */
-  ssr?: boolean;
-}
-
-/**
  * Interface for extended templates with component metadata.
  * Combines template nodes with component configuration and framework-specific options.
  */
@@ -72,8 +63,6 @@ export interface ExtendedTemplate {
       react?: ReactComponentOptions;
       /** Vue-specific options. */
       vue?: VueComponentOptions;
-      /** Svelte-specific options. */
-      svelte?: SvelteComponentOptions;
       /** Additional framework options. */
       [key: string]: BaseComponentOptions | undefined;
     };

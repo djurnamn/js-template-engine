@@ -1,3 +1,4 @@
+export { TemplateValidationStep } from './TemplateValidationStep';
 export { InputNormalizationStep } from './InputNormalizationStep';
 export { OptionsMergingStep } from './OptionsMergingStep';
 export { ExtensionProcessingStep } from './ExtensionProcessingStep';

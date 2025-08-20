@@ -8,7 +8,7 @@ import { StyleProcessorPlugin } from './extensions';
 export interface RootHandlerContext {
   /** The component metadata if available. */
   component?: ExtendedTemplate['component'];
-  /** The framework being used (e.g., 'react', 'vue', 'svelte'). */
+  /** The framework being used (e.g., 'react', 'vue'). */
   framework: string;
   /** The version of the framework or template. */
   version?: string;

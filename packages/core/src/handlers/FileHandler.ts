@@ -83,7 +83,7 @@ export async function getSourcePathType(
  * @param extensions - Array of extensions to use for rendering.
  * @param templateEngine - The template engine instance to use.
  * @param name - Optional name for the template.
- * @param componentName - Optional component name.
+ * @param componentName - Optional component name for framework-specific templates.
  * @param verbose - Whether to enable verbose logging.
  * @returns A promise that resolves when processing is complete.
  */

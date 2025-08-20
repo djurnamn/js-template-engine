@@ -10,6 +10,7 @@ import { NodeTraverser } from './NodeTraverser';
 import { createLogger } from '../utils/logger';
 
 import {
+  TemplateValidationStep,
   InputNormalizationStep,
   OptionsMergingStep,
   ExtensionProcessingStep,
@@ -53,6 +54,7 @@ export class TemplateEngine {
     // Initialize the rendering pipeline with all steps
     this.renderPipeline = new RenderPipeline(
       [
+        new TemplateValidationStep(), // Re-enabled with lenient validation
         new InputNormalizationStep(),
         new OptionsMergingStep(extensions),
         new ExtensionProcessingStep(),

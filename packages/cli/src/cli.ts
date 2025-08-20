@@ -42,6 +42,22 @@ function validateExtensions(
     );
     return false;
   }
+
+  // Check for potentially conflicting renderer extensions
+  const rendererExtensions = requestedExtensions.filter(ext => 
+    ['react', 'vue'].includes(ext)
+  );
+  
+  if (rendererExtensions.length > 1) {
+    console.warn(
+      '⚠️  Multiple renderer extensions detected:',
+      rendererExtensions.join(', ')
+    );
+    console.warn('   This may cause conflicts or unexpected output.');
+    console.warn('   Consider using only one renderer extension at a time.');
+    console.warn('   You can still proceed, but results may be unpredictable.\n');
+  }
+  
   return true;
 }
 
@@ -131,7 +147,7 @@ const renderCommand: CliCommand = {
         extensions,
         templateEngine,
         name,
-        undefined, // TODO: componentName is kind of React specific, probably shouldn't be an argument to processFile
+        argv.componentName,
         verbose
       );
     }
