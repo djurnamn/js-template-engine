@@ -1050,5 +1050,4 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 export default ReactFrameworkExtension;
 export { ReactFrameworkExtension as ReactExtension };
 
-// Export legacy extension for transition period
-export { ReactExtension as LegacyReactExtension } from './LegacyReactExtension';
+// Clean implementation - legacy extension removed
