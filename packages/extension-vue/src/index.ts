@@ -1,639 +1,1017 @@
-import type { BaseExtensionOptions } from '@js-template-engine/types';
-import type { VueExtensionOptions } from './types';
-import { createLogger } from '@js-template-engine/core';
+/**
+ * Vue Framework Extension
+ * 
+ * Generates Vue Single File Components with template, script, and style sections.
+ */
+
 import type {
-  TemplateNode,
-  Extension,
-  RootHandlerContext as BaseRootHandlerContext,
-} from '@js-template-engine/types';
+  FrameworkExtension,
+  ExtensionMetadata,
+  RenderContext,
+  FrameworkEventOutput,
+  FrameworkConditionalOutput,
+  FrameworkIterationOutput,
+  FrameworkSlotOutput,
+  FrameworkAttributeOutput
+} from '@js-template-engine/core';
+
+import type {
+  EventConcept,
+  ConditionalConcept,
+  IterationConcept,
+  SlotConcept,
+  AttributeConcept,
+  ComponentConcept
+} from '@js-template-engine/core';
 
 import {
-  resolveComponentName,
-  resolveComponentProps,
-  resolveComponentImports,
-} from '@js-template-engine/types';
+  EventNormalizer,
+  ComponentPropertyProcessor,
+  ScriptMergeProcessor,
+  ImportProcessor,
+  DEFAULT_MERGE_STRATEGIES
+} from '@js-template-engine/core';
 
-const logger = createLogger(false, 'vue-extension');
+import type {
+  ImportDefinition,
+  ScriptMergeStrategy,
+  PropMergeStrategy,
+  ImportMergeStrategy
+} from '@js-template-engine/core';
 
-
-export interface VueNodeExtensions {
-  tag?: string;
-  attributes?: Record<string, any>;
-  expressionAttributes?: Record<string, any>;
-  directives?: Record<string, any>;
-  events?: Record<string, string>;
-  bindAttributes?: Record<string, any>;
-  eventHandlers?: Record<string, string>;
-  slotProps?: Record<string, any>;
-}
-
-interface PropDefinition {
-  name: string;
-  type: Function;
-}
-
-interface VueRootHandlerContext extends BaseRootHandlerContext {
-  props?: PropDefinition[];
-}
-
-export interface VueRootHandlerOptions
-  extends Omit<VueExtensionOptions, 'script'> {
-  componentName?: string;
-  script?: string;
-  styleOutput?: string;
-  isSetup?: boolean;
-  isComposition?: boolean;
-  isScoped?: boolean;
-  imports?: Array<{ from: string; imports: string[] }>;
-  propsInterface?: string;
+/**
+ * Vue-specific event output interface
+ */
+export interface VueEventOutput {
+  directive: string;
+  handler: string;
+  modifiers: string[];
+  parameters: string[];
+  nodeId: string;
+  syntax: string;
 }
 
 /**
- * Type guard to check if a node is an element node.
- * @param node - The node to check.
- * @returns True if the node is an element node.
+ * Vue-specific conditional output interface
  */
-function isElementNode(
-  node: TemplateNode
-): node is Extract<TemplateNode, { type?: 'element' }> {
-  return node.type === 'element' || node.type === undefined;
+export interface VueConditionalOutput {
+  condition: string;
+  thenElements: VueElement;
+  elseElements: VueElement | null;
+  nodeId: string;
+  syntax: string;
 }
 
-export class VueExtension
-  implements Extension<VueExtensionOptions, VueNodeExtensions>
-{
-  public key = 'vue';
-  public isRenderer = true;
-  private logger: ReturnType<typeof createLogger>;
+/**
+ * Vue-specific iteration output interface
+ */
+export interface VueIterationOutput {
+  vForExpression: string;
+  keyExpression: string;
+  items: string;
+  itemVariable: string;
+  indexVariable?: string;
+  nodeId: string;
+  syntax: VueElement;
+}
 
-  options: VueExtensionOptions = {};
+/**
+ * Vue-specific slot output interface
+ */
+export interface VueSlotOutput {
+  name: string;
+  fallback: string | null;
+  nodeId: string;
+  syntax: VueElement;
+}
 
-  constructor(verbose = false) {
-    this.logger = createLogger(verbose, 'vue-extension');
-  }
+/**
+ * Vue-specific attribute output interface
+ */
+export interface VueAttributeOutput {
+  originalName: string;
+  vueName: string;
+  value: string | boolean;
+  isExpression: boolean;
+  isDirective: boolean;
+  nodeId: string;
+  syntax: string;
+}
 
-  attributeFormatter(
-    attr: string,
-    val: string | number | boolean,
-    isExpression?: boolean
-  ): string {
-    return ` ${attr}="${val}"`;
-  }
+/**
+ * Vue element interface
+ */
+export interface VueElement {
+  type: 'element';
+  tag: string;
+  attributes: Record<string, string>;
+  children?: any[];
+}
 
-  sanitizeAttributeName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9_:@\-]/g, '-');
-  }
+/**
+ * Vue attribute info interface
+ */
+export interface VueAttributeInfo {
+  name: string;
+  isDirective: boolean;
+  syntax: string;
+}
 
-  sanitizeAttributeValue(value: any, attributeName?: string): string {
-    if (typeof value !== 'string') return String(value);
-    // Don't sanitize if it's an object literal expression
-    if (value.trim().startsWith('{') && value.trim().endsWith('}')) {
-      return value;
-    }
-    
-    // For class attributes, preserve valid CSS class name characters (spaces, hyphens, underscores, etc.)
-    if (attributeName === 'class') {
-      return value
-        .replace(/"/g, '&quot;') // escape quotes
-        .replace(/<script.*?>.*?<\/script>/gi, '') // remove script tags
-        .trim();
-    }
-    
-    // For other attributes, apply more restrictive sanitization
-    return value
-      .replace(/[^a-zA-Z0-9_\-]/g, '-') // remove special chars
-      .replace(/-+/g, '-') // collapse multiple dashes
-      .replace(/^-+|-+$/g, '') // trim leading/trailing dashes
-      .replace(/"/g, '&quot;') // escape quotes
-      .replace(/<script.*?>.*?<\/script>/gi, '')
-      .trim();
-  }
+/**
+ * Vue conditional elements interface
+ */
+export interface VueConditionalElements {
+  thenElements: VueElement;
+  elseElements: VueElement | null;
+  combined: VueElement[];
+}
 
-  private dedupeImports(
-    imports: Array<{ from: string; imports: string[] }>
-  ): string[] {
-    const map = new Map<string, Set<string>>();
-    for (const imp of imports) {
-      if (!imp || typeof imp.from !== 'string' || !Array.isArray(imp.imports))
-        continue;
-      if (!map.has(imp.from)) map.set(imp.from, new Set());
-      for (const i of imp.imports) map.get(imp.from)!.add(i);
-    }
-    return Array.from(map.entries()).map(
-      ([from, symbols]) =>
-        `import { ${Array.from(symbols).sort().join(', ')} } from "${from}";`
-    );
+/**
+ * Vue reactivity info interface
+ */
+export interface VueReactivityInfo {
+  reactive: string[];
+  computed: string[];
+  watch: string[];
+}
+
+/**
+ * Vue component generation configuration
+ */
+export interface VueComponentConfig {
+  name: string;
+  imports: string[];
+  script: string;
+  props: Record<string, string>;
+  concepts: ComponentConcept;
+  context: RenderContext;
+}
+
+/**
+ * Template node interface
+ */
+export interface TemplateNode {
+  type?: string;
+  tag?: string;
+  content?: string;
+  attributes?: Record<string, any>;
+  children?: TemplateNode[];
+  [key: string]: any;
+}
+
+/**
+ * Vue Framework Extension for generating Single File Components
+ */
+export class VueFrameworkExtension implements FrameworkExtension {
+  public metadata: ExtensionMetadata & { type: 'framework' } = {
+    type: 'framework',
+    key: 'vue',
+    name: 'Vue Framework Extension',
+    version: '1.0.0'
+  };
+
+  public framework = 'vue' as const;
+
+  // Core processors
+  private eventNormalizer = new EventNormalizer();
+  private propertyProcessor: ComponentPropertyProcessor;
+  private scriptMerger: ScriptMergeProcessor;
+  private importProcessor = new ImportProcessor();
+
+  // Merge strategies
+  private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
+  private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
+  private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
+
+  constructor() {
+    this.propertyProcessor = new ComponentPropertyProcessor({
+      script: this.scriptMergeStrategy,
+      props: this.propMergeStrategy,
+      imports: this.importMergeStrategy
+    });
+    this.scriptMerger = new ScriptMergeProcessor();
   }
 
   /**
-   * Processes Vue-specific node transformations including attributes, directives, event handlers, slots, and control flow.
-   * Handles both static and dynamic attributes, Vue directives, event bindings, slot transformations, and special nodes.
-   * @param node - The template node to process.
-   * @returns The processed template node with Vue-specific transformations applied.
+   * Process event concepts to Vue directives
    */
-  nodeHandler(node: TemplateNode): TemplateNode {
-    // Handle slot nodes - transform to Vue slot elements
-    if (node.type === 'slot') {
-      const slotNode: TemplateNode = {
-        type: 'element',
-        tag: 'slot',
-        attributes: {
-          name: node.name
-        },
-        children: node.fallback || [],
-        extensions: node.extensions
-      };
-      
-      // Apply any Vue-specific slot extensions
-      if (node.extensions?.vue) {
-        return this.nodeHandler(slotNode);
-      }
-      
-      return slotNode;
+  processEvents(events: EventConcept[]): FrameworkEventOutput {
+    const processedEvents = events.map(event => {
+      // Normalize event to Vue directive format
+      const normalizedEvent = this.eventNormalizer.normalizeEvent(event, {
+        framework: 'vue',
+        preserveModifiers: true
+      });
+      const syntax = this.generateEventSyntax(event.name, event.handler, event.modifiers || []);
+
+      return {
+        directive: normalizedEvent.frameworkAttribute,
+        handler: event.handler,
+        modifiers: event.modifiers || [],
+        parameters: event.parameters || [],
+        nodeId: event.nodeId,
+        syntax
+      } as VueEventOutput;
+    });
+
+    // Generate framework event output
+    const attributes: Record<string, string> = {};
+    const imports: string[] = [];
+
+    for (const processedEvent of processedEvents) {
+      attributes[processedEvent.directive] = processedEvent.handler;
     }
+
+    return {
+      attributes,
+      imports
+    };
+  }
+
+  /**
+   * Generate Vue event syntax with modifiers
+   */
+  private generateEventSyntax(eventName: string, handler: string, modifiers: string[] = []): string {
+    const modifierString = modifiers.length > 0 ? `.${modifiers.join('.')}` : '';
+    return `@${eventName}${modifierString}="${handler}"`;
+  }
+
+  /**
+   * Process conditional concepts for Vue v-if/v-else directives
+   */
+  processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput {
+    const processedConditionals = conditionals.map(conditional => {
+      const elements = this.generateConditionalElements(conditional);
+      
+      return {
+        condition: conditional.condition,
+        thenElements: elements.thenElements,
+        elseElements: elements.elseElements,
+        nodeId: conditional.nodeId,
+        syntax: elements.combined.map(el => this.renderVueElement(el)).join('\n')
+      } as VueConditionalOutput;
+    });
+
+    const syntax = processedConditionals.map(c => c.syntax).join('\n');
+
+    return {
+      syntax,
+      imports: []
+    };
+  }
+
+  /**
+   * Generate Vue conditional elements
+   */
+  private generateConditionalElements(conditional: ConditionalConcept): VueConditionalElements {
+    const thenElements = this.processConditionalBranch(conditional.thenNodes, {
+      'v-if': conditional.condition
+    });
     
-    // Handle fragment nodes - transform to Vue template
-    if (node.type === 'fragment') {
+    const elseElements = conditional.elseNodes ?
+      this.processConditionalBranch(conditional.elseNodes, { 'v-else': '' }) : null;
+    
+    return {
+      thenElements,
+      elseElements,
+      combined: elseElements ? [thenElements, elseElements] : [thenElements]
+    };
+  }
+
+  /**
+   * Process conditional branch
+   */
+  private processConditionalBranch(nodes: TemplateNode[], directive: Record<string, string>): VueElement {
+    if (nodes.length === 1 && this.isElementNode(nodes[0])) {
+      // Single element - add directive directly
+      return {
+        type: 'element',
+        tag: nodes[0].tag || 'div',
+        attributes: { ...nodes[0].attributes, ...directive },
+        children: nodes[0].children || []
+      };
+    } else {
+      // Multiple elements - wrap in template
       return {
         type: 'element',
         tag: 'template',
-        children: node.children,
-        extensions: node.extensions
+        attributes: directive,
+        children: nodes
       };
     }
-    
-    // Handle comment nodes - pass through as HTML comment
-    if (node.type === 'comment') {
-      return {
-        type: 'text',
-        content: `<!-- ${node.content} -->`,
-        extensions: node.extensions
-      };
-    }
-    
-    // Handle conditional nodes - transform to Vue v-if/v-else
-    if (node.type === 'if') {
-      const nodes: TemplateNode[] = [];
-      
-      // Create v-if element for then branch
-      if (node.then.length === 1 && (node.then[0].type === 'element' || node.then[0].type === undefined)) {
-        const thenNode = { ...node.then[0] };
-        thenNode.attributes = { ...thenNode.attributes, 'v-if': node.condition };
-        nodes.push(thenNode);
-      } else {
-        // Wrap multiple nodes in template
-        nodes.push({
-          type: 'element',
-          tag: 'template',
-          attributes: { 'v-if': node.condition },
-          children: node.then
-        });
-      }
-      
-      // Create v-else element for else branch
-      if (node.else && node.else.length > 0) {
-        if (node.else.length === 1 && (node.else[0].type === 'element' || node.else[0].type === undefined)) {
-          const elseNode = { ...node.else[0] };
-          elseNode.attributes = { ...elseNode.attributes, 'v-else': '' };
-          nodes.push(elseNode);
-        } else {
-          // Wrap multiple nodes in template
-          nodes.push({
-            type: 'element',
-            tag: 'template',
-            attributes: { 'v-else': '' },
-            children: node.else
-          });
-        }
-      }
-      
-      // Return as fragment
-      return {
-        type: 'fragment',
-        children: nodes,
-        extensions: node.extensions
-      };
-    }
-    
-    // Handle for nodes - transform to Vue v-for
-    if (node.type === 'for') {
-      const vForExpression = node.index ? 
-        `(${node.item}, ${node.index}) in ${node.items}` :
-        `${node.item} in ${node.items}`;
-      
-      if (node.children.length === 1 && (node.children[0].type === 'element' || node.children[0].type === undefined)) {
-        // Single element - add v-for directly
-        const forNode = { ...node.children[0] };
-        forNode.attributes = { 
-          ...forNode.attributes, 
-          'v-for': vForExpression,
-          ':key': node.key || (node.index || 'index')
-        };
-        return forNode;
-      } else {
-        // Multiple elements - wrap in template
-        return {
-          type: 'element',
-          tag: 'template',
-          attributes: { 
-            'v-for': vForExpression,
-            ':key': node.key || (node.index || 'index')
-          },
-          children: node.children,
-          extensions: node.extensions
-        };
-      }
-    }
-    
-    if (!node.extensions?.vue) return node;
-    if (!isElementNode(node)) return node;
-
-    const ext = node.extensions.vue;
-    const updatedNode = { ...node, attributes: { ...node.attributes } };
-
-    // --- Process expression attributes (new format) ---
-    if (ext.expressionAttributes) {
-      for (const [key, value] of Object.entries(ext.expressionAttributes)) {
-        // Handle Vue-specific prefixes
-        if (key.startsWith('@')) {
-          // Event handlers
-          updatedNode.attributes[key] = String(value);
-        } else if (key.startsWith('v-')) {
-          // Directives
-          updatedNode.attributes[key] = String(value);
-        } else if (key.startsWith(':') || key.startsWith('v-bind:')) {
-          // Dynamic bindings
-          const attrName = key.startsWith('v-bind:') ? ':' + key.slice(7) : key;
-          updatedNode.attributes[attrName] = String(value);
-        } else {
-          // Regular dynamic attributes
-          updatedNode.attributes[`:${key}`] = String(value);
-        }
-      }
-    }
-
-    // --- Merging static and dynamic class/style bindings ---
-    // Handle class
-    let staticClass = ext.attributes?.class || updatedNode.attributes.class;
-    let dynamicClass =
-      ext.bindAttributes?.[':class'] ||
-      ext.bindAttributes?.['class'] ||
-      ext.bindAttributes?.['v-bind:class'] ||
-      ext.expressionAttributes?.[':class'] ||
-      ext.expressionAttributes?.['class'];
-
-    // Handle class bindings
-    if (staticClass !== undefined && dynamicClass !== undefined) {
-      // Emit both static and dynamic classes
-      updatedNode.attributes.class = staticClass;
-      updatedNode.attributes[':class'] = dynamicClass;
-    } else if (staticClass !== undefined) {
-      // Only static class
-      updatedNode.attributes.class = staticClass;
-      delete updatedNode.attributes[':class'];
-    } else if (dynamicClass !== undefined) {
-      // Only dynamic class
-      updatedNode.attributes[':class'] = dynamicClass;
-      delete updatedNode.attributes.class;
-    } else {
-      // No classes
-      delete updatedNode.attributes.class;
-      delete updatedNode.attributes[':class'];
-    }
-
-    // Remove handled class keys from bindAttributes
-    if (ext.bindAttributes) {
-      delete ext.bindAttributes[':class'];
-      delete ext.bindAttributes['class'];
-      delete ext.bindAttributes['v-bind:class'];
-    }
-
-    // Handle style
-    let staticStyle = ext.attributes?.style || updatedNode.attributes.style;
-    let dynamicStyle =
-      ext.bindAttributes?.[':style'] ||
-      ext.bindAttributes?.['style'] ||
-      ext.bindAttributes?.['v-bind:style'] ||
-      ext.expressionAttributes?.[':style'] ||
-      ext.expressionAttributes?.['style'];
-
-    // Handle style bindings
-    if (staticStyle !== undefined && dynamicStyle !== undefined) {
-      // Emit both static and dynamic styles
-      updatedNode.attributes.style = staticStyle;
-      updatedNode.attributes[':style'] = dynamicStyle;
-    } else if (staticStyle !== undefined) {
-      // Only static style
-      updatedNode.attributes.style = staticStyle;
-      delete updatedNode.attributes[':style'];
-    } else if (dynamicStyle !== undefined) {
-      // Only dynamic style
-      updatedNode.attributes[':style'] = dynamicStyle;
-      delete updatedNode.attributes.style;
-    } else {
-      // No styles
-      delete updatedNode.attributes.style;
-      delete updatedNode.attributes[':style'];
-    }
-
-    // Remove handled style keys from bindAttributes
-    if (ext.bindAttributes) {
-      delete ext.bindAttributes[':style'];
-      delete ext.bindAttributes['style'];
-      delete ext.bindAttributes['v-bind:style'];
-    }
-
-    // --- Other static attributes ---
-    if (ext.attributes) {
-      for (const [key, value] of Object.entries(ext.attributes)) {
-        if (key === 'class' || key === 'style') continue; // already handled
-        const safeKey = this.sanitizeAttributeName(key);
-        const safeVal = this.sanitizeAttributeValue(value, key);
-        updatedNode.attributes[safeKey] = safeVal;
-      }
-    }
-
-    // --- Dynamic bindings (other than class/style) ---
-    if (ext.bindAttributes) {
-      for (const [key, value] of Object.entries(ext.bindAttributes)) {
-        const attrName = key.startsWith('v-bind:')
-          ? ':' + key.slice(7)
-          : key.startsWith(':')
-            ? key
-            : ':' + key;
-        updatedNode.attributes[attrName] = String(value);
-      }
-    }
-
-    // --- Directives ---
-    if (ext.directives) {
-      for (const [key, value] of Object.entries(ext.directives)) {
-        updatedNode.attributes[`v-${key}`] = String(value);
-      }
-    }
-
-    // --- Event handlers ---
-    if (ext.eventHandlers) {
-      for (const [key, value] of Object.entries(ext.eventHandlers)) {
-        const safeEvent = key.replace(/[^a-zA-Z0-9_\-]/g, '');
-        updatedNode.attributes[`@${safeEvent}`] = String(value);
-      }
-    }
-
-    // --- Slot props ---
-    if (ext.slotProps) {
-      for (const [key, value] of Object.entries(ext.slotProps)) {
-        updatedNode.attributes[`:${key}`] = String(value);
-      }
-    }
-
-    // --- Sanitize only static attributes (not Vue-specific bindings) ---
-    for (const [key, value] of Object.entries(updatedNode.attributes)) {
-      const isDynamic =
-        key.startsWith(':') || key.startsWith('@') || key.startsWith('v-');
-      const safeKey = this.sanitizeAttributeName(key);
-      // Don't sanitize dynamic bindings that contain object literals
-      const safeVal = isDynamic ? value : this.sanitizeAttributeValue(value, key);
-      delete (updatedNode.attributes as any)[key];
-      (updatedNode.attributes as any)[safeKey] = safeVal;
-    }
-
-    // --- Remove unsafe inline handlers ---
-    for (const attr in updatedNode.attributes) {
-      if (/^on[a-z]+$/i.test(attr)) {
-        delete updatedNode.attributes[attr];
-      }
-    }
-
-    return updatedNode;
-  }
-
-  private transformPropsToRuntime(
-    props: Record<string, string>
-  ): PropDefinition[] {
-    return Object.entries(props).map(([name, type]) => {
-      const typeStr = type.trim().toLowerCase();
-      let constructor: Function;
-
-      switch (typeStr) {
-        case 'string':
-          constructor = String;
-          break;
-        case 'number':
-          constructor = Number;
-          break;
-        case 'boolean':
-          constructor = Boolean;
-          break;
-        case 'array':
-          constructor = Array;
-          break;
-        case 'object':
-          constructor = Object;
-          break;
-        default:
-          // For function types or any other type, use Function
-          constructor = Function;
-      }
-
-      return { name, type: constructor };
-    });
-  }
-
-  rootHandler(
-    template: string,
-    options: VueExtensionOptions,
-    context: VueRootHandlerContext
-  ): string {
-    console.log(`[Vue Extension] rootHandler called! Template: ${template.substring(0, 100)}...`);
-    const resolvedName = resolveComponentName(context, options) || 'Component';
-    const componentName = this.sanitizeAttributeValue(resolvedName);
-
-    // Combine vanilla and framework-specific script content
-    const scriptContent = [
-      context.component?.script,
-      context.component?.extensions?.vue?.script,
-      options.script,
-    ]
-      .filter(Boolean)
-      .join('\n\n')
-      .replace(/<\/?script[^>]*>/g, '')
-      .trim();
-
-    const styleOutput =
-      context.component?.extensions?.vue?.styleOutput ||
-      context.styleOutput ||
-      '';
-    const styleLanguage =
-      context.component?.extensions?.vue?.styleLanguage ??
-      context.component?.extensions?.vue?.styles?.outputFormat ??
-      options.styles?.outputFormat ??
-      'css';
-    const isScoped =
-      context.component?.extensions?.vue?.scoped ?? options.scoped ?? false;
-    const isComposition =
-      context.component?.extensions?.vue?.compositionAPI ??
-      context.component?.extensions?.vue?.composition ??
-      options.composition ??
-      false;
-    const useSetup =
-      context.component?.extensions?.vue?.setupScript ??
-      context.component?.extensions?.vue?.setup ??
-      options.setup ??
-      false;
-    const useTypeScript = (options.language ?? 'javascript') === 'typescript';
-
-    // --- Props Handling ---
-    const propsMeta = context.props || [];
-    const componentProps = context.component?.props || {};
-    const hasProps =
-      propsMeta.length > 0 || Object.keys(componentProps).length > 0;
-    const hasScriptContent = Boolean(scriptContent);
-    const hasComponentImports = Boolean(
-      context.component?.imports && context.component.imports.length > 0
-    );
-
-    // Transform component props to runtime props if needed
-    const runtimeProps = hasProps
-      ? [...propsMeta, ...this.transformPropsToRuntime(componentProps)]
-      : [];
-
-    // --- Props Interface Generation ---
-    let interfaceBlock = '';
-    if (hasProps && useTypeScript) {
-      const lines = [
-        `interface ${componentName}Props {`,
-        ...runtimeProps.map((p: PropDefinition) => {
-          let tsType: string;
-          switch (p.type) {
-            case String:
-              tsType = 'string';
-              break;
-            case Number:
-              tsType = 'number';
-              break;
-            case Boolean:
-              tsType = 'boolean';
-              break;
-            case Function:
-              tsType = '(e: Event) => void';
-              break;
-            case Array:
-              tsType = 'any[]';
-              break;
-            case Object:
-              tsType = 'Record<string, any>';
-              break;
-            default:
-              tsType = 'any';
-          }
-          return `  ${p.name}: ${tsType};`;
-        }),
-        `}`,
-      ];
-      interfaceBlock = lines.join('\n') + '\n\n';
-    }
-
-    // --- Import Handling ---
-    const defaultImports: string[] = [];
-    if (hasProps || isComposition || useSetup) {
-      defaultImports.push('import { defineComponent } from "vue";');
-      if (isComposition || useSetup) {
-        defaultImports.push(
-          'import { ref, computed, watch, onMounted } from "vue";'
-        );
-      }
-    }
-
-    const importStatements = resolveComponentImports(
-      context.component,
-      defaultImports
-    );
-
-    // --- Props Logic ---
-    let propsBlock = '';
-    if (hasProps) {
-      if (useSetup) {
-        if (useTypeScript) {
-          propsBlock = `defineProps<${componentName}Props>();\n`;
-        } else {
-          const runtimePropsConfig = runtimeProps
-            .map(
-              (p: PropDefinition) =>
-                `${p.name}: { type: ${p.type.name}, required: true }`
-            )
-            .join(',\n  ');
-          propsBlock = `const props = defineProps({\n  ${runtimePropsConfig}\n});\n`;
-        }
-      } else {
-        // For Options API, always use runtime props syntax regardless of TypeScript
-        const runtimePropsConfig = runtimeProps
-          .map(
-            (p: PropDefinition) =>
-              `${p.name}: { type: ${p.type.name}, required: true }`
-          )
-          .join(',\n    ');
-        propsBlock = `  props: {\n    ${runtimePropsConfig}\n  },`;
-      }
-    }
-
-    // --- Script Block ---
-    let scriptBlock = '';
-    const shouldRenderScript =
-      hasProps || hasScriptContent || importStatements.length > 0;
-    if (shouldRenderScript) {
-      if (useSetup) {
-        scriptBlock = `<script setup lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\n${interfaceBlock}${propsBlock}${scriptContent}\n</script>`;
-      } else {
-        const setupFn = isComposition
-          ? `\n  setup() {\n    ${scriptContent}\n  }`
-          : '';
-        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\n${interfaceBlock}export default defineComponent({\n  name: "${componentName}",\n  ${propsBlock}${setupFn ? setupFn + '\n' : ''}});\n</script>`;
-      }
-    } else {
-      // For minimal SFCs, only include a script block if we have imports
-      if (importStatements.length > 0) {
-        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\n${importStatements.join('\n')}\n\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
-      } else {
-        // For truly minimal SFCs with no imports, props, or script content, include a minimal script block
-        scriptBlock = `<script lang="${useTypeScript ? 'ts' : 'js'}">\nexport default defineComponent({\n  name: "${componentName}"\n});\n</script>`;
-      }
-    }
-
-    // --- Style Block ---
-    let styleBlock = '';
-    if (styleOutput && styleOutput.trim() && styleLanguage !== 'inline') {
-      const attrs = [];
-      if (isScoped) attrs.push('scoped');
-      if (styleLanguage && styleLanguage !== 'css') attrs.push(`lang="${styleLanguage}"`);
-      styleBlock = `<style${attrs.length ? ' ' + attrs.join(' ') : ''}>\n${styleOutput.trim()}\n</style>`;
-    }
-
-    // --- Template Block with Sanitization ---
-    const sanitizeTemplate = (html: string) =>
-      html.replace(
-        /(data-[\w-]+|class|id)="([^"]+)"/g,
-        (_, key, val) => `${key}="${this.sanitizeAttributeValue(val, key)}"`
-      );
-    const templateBlock = `<template>\n${sanitizeTemplate(template.trim())}\n</template>`;
-
-    // Only include blocks that have content
-    return [templateBlock, scriptBlock, styleBlock]
-      .filter(Boolean)
-      .join('\n\n');
   }
 
   /**
-   * Determines the appropriate file extension for Vue components (always .vue).
+   * Process iteration concepts for Vue v-for directive
    */
-  public getFileExtension(options: { language?: 'typescript' | 'javascript' }): string {
+  processIterations(iterations: IterationConcept[]): FrameworkIterationOutput {
+    const processedIterations = iterations.map(iteration => {
+      const vForExpression = this.generateVForExpression(iteration);
+      const keyExpression = iteration.keyExpression || 
+        (iteration.indexVariable || 'index');
+      
+      const element = this.generateIterationElement(iteration, vForExpression, keyExpression);
+      
+      return {
+        vForExpression,
+        keyExpression,
+        items: iteration.items,
+        itemVariable: iteration.itemVariable,
+        indexVariable: iteration.indexVariable,
+        nodeId: iteration.nodeId,
+        syntax: element
+      } as VueIterationOutput;
+    });
+
+    const syntax = processedIterations.map(i => this.renderVueElement(i.syntax)).join('\n');
+
+    return {
+      syntax,
+      imports: []
+    };
+  }
+
+  /**
+   * Generate Vue v-for expression
+   */
+  private generateVForExpression(iteration: IterationConcept): string {
+    if (iteration.indexVariable) {
+      return `(${iteration.itemVariable}, ${iteration.indexVariable}) in ${iteration.items}`;
+    } else {
+      return `${iteration.itemVariable} in ${iteration.items}`;
+    }
+  }
+
+  /**
+   * Generate iteration element
+   */
+  private generateIterationElement(
+    iteration: IterationConcept,
+    vForExpression: string,
+    keyExpression: string
+  ): VueElement {
+    const directives = {
+      'v-for': vForExpression,
+      ':key': keyExpression
+    };
+    
+    if (iteration.childNodes.length === 1 && this.isElementNode(iteration.childNodes[0])) {
+      // Single element - add v-for directly
+      const child = iteration.childNodes[0];
+      return {
+        type: 'element',
+        tag: child.tag || 'div',
+        attributes: { ...child.attributes, ...directives },
+        children: child.children || []
+      };
+    } else {
+      // Multiple elements - wrap in template
+      return {
+        type: 'element',
+        tag: 'template',
+        attributes: directives,
+        children: iteration.childNodes
+      };
+    }
+  }
+
+  /**
+   * Process slot concepts for Vue slot elements
+   */
+  processSlots(slots: SlotConcept[]): FrameworkSlotOutput {
+    const processedSlots = slots.map(slot => {
+      const fallbackContent = slot.fallback ? 
+        this.renderNodes(slot.fallback) : null;
+      
+      return {
+        name: slot.name,
+        fallback: fallbackContent,
+        nodeId: slot.nodeId,
+        syntax: this.generateSlotElement(slot.name, fallbackContent)
+      } as VueSlotOutput;
+    });
+
+    const syntax = processedSlots.map(s => this.renderVueElement(s.syntax)).join('\n');
+    const props: Record<string, string> = {};
+
+    return {
+      syntax,
+      props,
+      imports: []
+    };
+  }
+
+  /**
+   * Generate slot element
+   */
+  private generateSlotElement(name: string, fallback: string | null): VueElement {
+    const attributes: Record<string, string> = name === 'default' ? {} : { name };
+    
+    return {
+      type: 'element',
+      tag: 'slot',
+      attributes,
+      children: fallback ? this.parseNodes(fallback) : []
+    };
+  }
+
+  /**
+   * Process attribute concepts for Vue attribute and directive handling
+   */
+  processAttributes(attributes: AttributeConcept[]): FrameworkAttributeOutput {
+    const processedAttributes = attributes.map(attribute => {
+      const vueAttribute = this.processVueAttribute(attribute);
+      
+      return {
+        originalName: attribute.name,
+        vueName: vueAttribute.name,
+        value: attribute.value,
+        isExpression: attribute.isExpression,
+        isDirective: vueAttribute.isDirective,
+        nodeId: attribute.nodeId,
+        syntax: vueAttribute.syntax
+      } as VueAttributeOutput;
+    });
+
+    const attributeMap: Record<string, string> = {};
+    for (const attr of processedAttributes) {
+      if (typeof attr.value === 'string') {
+        attributeMap[attr.vueName] = attr.value;
+      } else if (typeof attr.value === 'boolean' && attr.value) {
+        attributeMap[attr.vueName] = 'true';
+      }
+    }
+
+    return {
+      attributes: attributeMap,
+      imports: []
+    };
+  }
+
+  /**
+   * Process Vue attribute
+   */
+  private processVueAttribute(attribute: AttributeConcept): VueAttributeInfo {
+    const { name, value, isExpression } = attribute;
+    
+    // Handle Vue directives
+    if (name.startsWith('v-') || name.startsWith('@') || name.startsWith(':')) {
+      return {
+        name,
+        isDirective: true,
+        syntax: `${name}="${value}"`
+      };
+    }
+    
+    // Handle dynamic bindings
+    if (isExpression) {
+      return {
+        name: `:${name}`,
+        isDirective: true,
+        syntax: `:${name}="${value}"`
+      };
+    }
+    
+    // Static attributes
+    return {
+      name,
+      isDirective: false,
+      syntax: `${name}="${value}"`
+    };
+  }
+
+  /**
+   * Render component to Vue SFC format
+   */
+  renderComponent(concepts: ComponentConcept, context: RenderContext): string {
+    // Resolve component name
+    const componentName = this.propertyProcessor.resolveComponentName(
+      { framework: 'vue', component: context.component },
+      { common: context.component },
+      'Component' // default
+    );
+
+    // Generate SFC sections
+    const templateSection = this.generateTemplateSection(concepts);
+    const scriptSection = this.generateScriptSection(concepts, context, componentName);
+    const styleSection = this.generateStyleSection(context);
+    
+    return this.assembleSFC(templateSection, scriptSection, styleSection);
+  }
+
+  /**
+   * Assemble SFC sections
+   */
+  private assembleSFC(template: string, script: string, style: string): string {
+    const sections = [template, script, style].filter(Boolean);
+    return sections.join('\n\n');
+  }
+
+  /**
+   * Generate template section
+   */
+  private generateTemplateSection(concepts: ComponentConcept): string {
+    const templateContent = this.renderTemplate(concepts);
+    return `<template>\n  ${this.indentTemplate(templateContent)}\n</template>`;
+  }
+
+  /**
+   * Indent template content
+   */
+  private indentTemplate(content: string): string {
+    return content.split('\n').map(line => 
+      line.trim() ? `  ${line}` : line
+    ).join('\n');
+  }
+
+  /**
+   * Generate script section
+   */
+  private generateScriptSection(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    componentName: string
+  ): string {
+    const useTypeScript = (context.options?.language || 'javascript') === 'typescript';
+    const useComposition = context.component?.extensions?.vue?.composition ?? 
+      context.options?.composition ?? false;
+    const useSetup = context.component?.extensions?.vue?.setup ?? 
+      context.options?.setup ?? false;
+    
+    if (useSetup) {
+      return this.generateSetupScript(concepts, context, componentName, useTypeScript);
+    } else if (useComposition) {
+      return this.generateCompositionScript(concepts, context, componentName, useTypeScript);
+    } else {
+      return this.generateOptionsScript(concepts, context, componentName, useTypeScript);
+    }
+  }
+
+  /**
+   * Generate setup script
+   */
+  private generateSetupScript(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    _componentName: string,
+    useTypeScript: boolean
+  ): string {
+    // Merge imports and scripts
+    const imports = this.importProcessor.mergeImports(
+      this.getDefaultVueImports(concepts, true),
+      context.component?.imports || [],
+      { strategy: this.importMergeStrategy }
+    );
+    
+    const scriptResult = this.scriptMerger.mergeScripts(
+      context.component?.script || '',
+      context.component?.extensions?.vue?.script || '',
+      this.scriptMergeStrategy
+    );
+    const script = scriptResult.content;
+    
+    // Generate props definition
+    const propsDefinition = this.generateSetupProps(concepts, context, useTypeScript);
+    
+    const lang = useTypeScript ? ' lang="ts"' : '';
+    const importStatements = this.formatImports(imports);
+    
+    return `<script setup${lang}>
+${importStatements.join('\n')}
+
+${propsDefinition}
+
+${script}
+</script>`;
+  }
+
+  /**
+   * Generate composition script
+   */
+  private generateCompositionScript(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    componentName: string,
+    useTypeScript: boolean
+  ): string {
+    // Use composition API but not setup syntax
+    return this.generateOptionsScript(concepts, context, componentName, useTypeScript);
+  }
+
+  /**
+   * Generate options script
+   */
+  private generateOptionsScript(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    componentName: string,
+    useTypeScript: boolean
+  ): string {
+    const imports = this.importProcessor.mergeImports(
+      this.getDefaultVueImports(concepts, false),
+      context.component?.imports || [],
+      { strategy: this.importMergeStrategy }
+    );
+    
+    const scriptResult = this.scriptMerger.mergeScripts(
+      context.component?.script || '',
+      context.component?.extensions?.vue?.script || '',
+      this.scriptMergeStrategy
+    );
+    const script = scriptResult.content;
+    
+    const props = this.generateOptionsProps(concepts, context);
+    const lang = useTypeScript ? ' lang="ts"' : '';
+    const importStatements = this.formatImports(imports);
+    
+    // Generate TypeScript interface for Options API
+    const propsInterface = useTypeScript && Object.keys(this.mergeAllProps(concepts, context)).length > 0 ?
+      this.generatePropsInterface(`${componentName}Props`, this.mergeAllProps(concepts, context)) + '\n\n' : '';
+    
+    return `<script${lang}>
+${importStatements.join('\n')}
+
+${propsInterface}export default defineComponent({
+  name: '${componentName}',${props ? `\n  ${props},` : ''}${script ? `\n  setup() {\n    ${this.indentScript(script)}\n  }` : ''}
+});
+</script>`;
+  }
+
+  /**
+   * Generate setup props
+   */
+  private generateSetupProps(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    useTypeScript: boolean
+  ): string {
+    const props = this.mergeAllProps(concepts, context);
+    
+    if (Object.keys(props).length === 0) {
+      return '';
+    }
+    
+    if (useTypeScript) {
+      // TypeScript interface approach
+      const interfaceName = `${this.getComponentName(context)}Props`;
+      const propsInterface = this.generatePropsInterface(interfaceName, props);
+      return `${propsInterface}\n\ndefineProps<${interfaceName}>();`;
+    } else {
+      // Runtime props definition
+      const runtimeProps = this.generateRuntimeProps(props);
+      return `const props = defineProps(${runtimeProps});`;
+    }
+  }
+
+  /**
+   * Generate options props
+   */
+  private generateOptionsProps(concepts: ComponentConcept, context: RenderContext): string {
+    const props = this.mergeAllProps(concepts, context);
+    
+    if (Object.keys(props).length === 0) {
+      return '';
+    }
+    
+    const runtimeProps = this.generateRuntimeProps(props);
+    return `props: ${runtimeProps}`;
+  }
+
+  /**
+   * Generate style section
+   */
+  private generateStyleSection(context: RenderContext): string {
+    const styleOutput = context.styleOutput || 
+      context.component?.extensions?.vue?.styleOutput || '';
+      
+    if (!styleOutput.trim()) {
+      return '';
+    }
+    
+    const styleLanguage = context.component?.extensions?.vue?.styleLanguage ?? 'css';
+    const isScoped = context.component?.extensions?.vue?.scoped ?? false;
+    
+    const attributes = [];
+    if (styleLanguage !== 'css') {
+      attributes.push(`lang="${styleLanguage}"`);
+    }
+    if (isScoped) {
+      attributes.push('scoped');
+    }
+    
+    const attrString = attributes.length > 0 ? ` ${attributes.join(' ')}` : '';
+    
+    return `<style${attrString}>\n${styleOutput.trim()}\n</style>`;
+  }
+
+  /**
+   * Get default Vue imports
+   */
+  private getDefaultVueImports(concepts: ComponentConcept, isComposition: boolean): ImportDefinition[] {
+    const imports: ImportDefinition[] = [
+      { from: 'vue', named: ['defineComponent'] }
+    ];
+    
+    if (isComposition) {
+      const compositionImports = this.analyzeCompositionImports(concepts);
+      if (compositionImports.length > 0) {
+        imports.push({
+          from: 'vue',
+          named: compositionImports
+        });
+      }
+    }
+    
+    return imports;
+  }
+
+  /**
+   * Analyze composition imports
+   */
+  private analyzeCompositionImports(_concepts: ComponentConcept): string[] {
+    const imports = new Set<string>();
+    // Analyze script for Vue composition imports
+    return Array.from(imports);
+  }
+
+  /**
+   * Merge all props
+   */
+  private mergeAllProps(concepts: ComponentConcept, context: RenderContext): Record<string, string> {
+    const props: Record<string, string> = {};
+    
+    // Add slot props
+    for (const slot of concepts.slots) {
+      const propName = slot.name === 'default' ? 'children' : slot.name;
+      props[propName] = 'any';
+    }
+    
+    // Merge with component props
+    if (context.component?.props) {
+      Object.assign(props, context.component.props);
+    }
+    
+    return props;
+  }
+
+  /**
+   * Generate props interface
+   */
+  private generatePropsInterface(interfaceName: string, props: Record<string, string>): string {
+    const propEntries = Object.entries(props).map(([key, type]) =>
+      `  ${key}?: ${type};`
+    ).join('\n');
+
+    return `interface ${interfaceName} {\n${propEntries}\n}`;
+  }
+
+  /**
+   * Generate runtime props
+   */
+  private generateRuntimeProps(props: Record<string, string>): string {
+    const propEntries = Object.entries(props).map(([key, type]) => {
+      const propType = this.getVueRuntimeType(type);
+      return `  ${key}: { type: ${propType}, required: false }`;
+    }).join(',\n');
+
+    return `{\n${propEntries}\n}`;
+  }
+
+  /**
+   * Get Vue runtime type
+   */
+  private getVueRuntimeType(type: string): string {
+    const lowerType = type.toLowerCase();
+    switch (lowerType) {
+      case 'string': return 'String';
+      case 'number': return 'Number';
+      case 'boolean': return 'Boolean';
+      case 'array': return 'Array';
+      case 'object': return 'Object';
+      case 'function': return 'Function';
+      default: return 'Object';
+    }
+  }
+
+  /**
+   * Get component name
+   */
+  private getComponentName(context: RenderContext): string {
+    return context.component?.name || 'Component';
+  }
+
+  /**
+   * Indent script content
+   */
+  private indentScript(script: string): string {
+    return script.split('\n').map(line => 
+      line.trim() ? `    ${line}` : line
+    ).join('\n');
+  }
+
+  /**
+   * Format imports to string array
+   */
+  private formatImports(imports: ImportDefinition[]): string[] {
+    return imports.map(imp => {
+      const parts: string[] = [];
+
+      if (imp.default && imp.named) {
+        parts.push(`${imp.default}, { ${imp.named.join(', ')} }`);
+      } else if (imp.default) {
+        parts.push(imp.default);
+      } else if (imp.named) {
+        parts.push(`{ ${imp.named.join(', ')} }`);
+      } else if (imp.namespace) {
+        parts.push(`* as ${imp.namespace}`);
+      }
+
+      const typePrefix = imp.typeOnly ? 'type ' : '';
+      return `import ${typePrefix}${parts.join('')} from '${imp.from}';`;
+    });
+  }
+
+  /**
+   * Render template from concepts
+   */
+  private renderTemplate(concepts: ComponentConcept): string {
+    const parts: string[] = [];
+
+    // Process events to get event attributes
+    let eventAttributes: Record<string, string> = {};
+    if (concepts.events.length > 0) {
+      const eventOutput = this.processEvents(concepts.events);
+      eventAttributes = eventOutput.attributes;
+    }
+
+    // Process attributes
+    let staticAttributes: Record<string, string> = {};
+    if (concepts.attributes.length > 0) {
+      const attributeOutput = this.processAttributes(concepts.attributes);
+      staticAttributes = attributeOutput.attributes;
+    }
+
+    // Combine all attributes that should be applied to elements
+    const allAttributes = { ...staticAttributes, ...eventAttributes };
+
+    // Add styling classes if present
+    if (concepts.styling) {
+      const staticClasses = concepts.styling.staticClasses.join(' ');
+      if (staticClasses) {
+        allAttributes['class'] = staticClasses;
+      }
+
+      // Add inline styles
+      if (Object.keys(concepts.styling.inlineStyles).length > 0) {
+        const styleObj = Object.entries(concepts.styling.inlineStyles)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('; ');
+        allAttributes['style'] = styleObj;
+      }
+    }
+
+    // Process conditionals
+    if (concepts.conditionals.length > 0) {
+      const conditionalOutput = this.processConditionals(concepts.conditionals);
+      parts.push(conditionalOutput.syntax);
+    }
+
+    // Process iterations  
+    if (concepts.iterations.length > 0) {
+      const iterationOutput = this.processIterations(concepts.iterations);
+      parts.push(iterationOutput.syntax);
+    }
+
+    // Process slots
+    if (concepts.slots.length > 0) {
+      const slotOutput = this.processSlots(concepts.slots);
+      parts.push(slotOutput.syntax);
+    }
+
+    // If we have events, attributes, or styling without other concepts, create a root element
+    if (parts.length === 0 && Object.keys(allAttributes).length > 0) {
+      let attributeString = '';
+      for (const [name, value] of Object.entries(allAttributes)) {
+        attributeString += ` ${name}="${value}"`;
+      }
+      return `<div${attributeString}>Component content</div>`;
+    }
+
+    // If we have processed concepts, we need to apply attributes to them
+    if (parts.length > 0 && Object.keys(allAttributes).length > 0) {
+      // For now, create a wrapper div with the attributes
+      let attributeString = '';
+      for (const [name, value] of Object.entries(allAttributes)) {
+        attributeString += ` ${name}="${value}"`;
+      }
+      return `<div${attributeString}>\n  ${parts.join('\n  ')}\n</div>`;
+    }
+
+    // If we have processed concepts without attributes
+    if (parts.length > 0) {
+      return parts.join('\n');
+    }
+
+    // Default fallback for completely empty component
+    return '<div>Component content</div>';
+  }
+
+  /**
+   * Render template nodes to string
+   */
+  private renderNodes(nodes: any[]): string {
+    if (!nodes || nodes.length === 0) return '';
+    return nodes.map(node => this.renderSingleNode(node)).join('');
+  }
+
+  /**
+   * Render a single template node
+   */
+  private renderSingleNode(node: any): string {
+    if (typeof node === 'string') return node;
+
+    switch (node.type) {
+      case 'text':
+        return node.content || '';
+      case 'element':
+        return this.renderElementNode(node);
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Render an element node
+   */
+  private renderElementNode(node: any): string {
+    const tag = node.tag || 'div';
+    
+    let children = '';
+    if (node.children && node.children.length > 0) {
+      children = this.renderNodes(node.children);
+    } else if (node.content) {
+      children = node.content;
+    }
+    
+    let attributes = '';
+    if (node.attributes) {
+      for (const [name, value] of Object.entries(node.attributes)) {
+        if (typeof value === 'boolean' && value) {
+          attributes += ` ${name}`;
+        } else if (typeof value === 'string' || typeof value === 'number') {
+          attributes += ` ${name}="${value}"`;
+        }
+      }
+    }
+
+    // Self-closing tags
+    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 
+                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    
+    if (selfClosingTags.includes(tag.toLowerCase()) && !children) {
+      return `<${tag}${attributes} />`;
+    }
+
+    return `<${tag}${attributes}>${children}</${tag}>`;
+  }
+
+  /**
+   * Render Vue element
+   */
+  private renderVueElement(element: VueElement): string {
+    return this.renderElementNode(element);
+  }
+
+  /**
+   * Check if node is an element node
+   */
+  private isElementNode(node: any): boolean {
+    return node && (node.type === 'element' || node.tag);
+  }
+
+  /**
+   * Parse nodes from string
+   */
+  private parseNodes(content: string): TemplateNode[] {
+    // Simple text node implementation
+    return [{ type: 'text', content }];
+  }
+
+  /**
+   * Get file extension for Vue components
+   */
+  public getFileExtension(_options: { language?: 'typescript' | 'javascript' }): string {
     return '.vue';
   }
 
   /**
-   * Determines the appropriate Prettier parser for Vue components (always vue).
+   * Get Prettier parser for Vue components
    */
-  public getPrettierParser(options: { language?: 'typescript' | 'javascript' }): string {
+  public getPrettierParser(_options: { language?: 'typescript' | 'javascript' }): string {
     return 'vue';
   }
 }
+
+// Main exports
+export default VueFrameworkExtension;
+export { VueFrameworkExtension as VueExtension };
