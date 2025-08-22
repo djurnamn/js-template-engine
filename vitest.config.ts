@@ -26,6 +26,7 @@ export default defineConfig({
       '@js-template-engine/extension-react': resolve(__dirname, './packages/extension-react/src'),
       '@js-template-engine/extension-vue': resolve(__dirname, './packages/extension-vue/src'),
       '@js-template-engine/extension-svelte': resolve(__dirname, './packages/extension-svelte/src'),
+      '@js-template-engine/extension-bem': resolve(__dirname, './packages/extension-bem/src'),
     },
   },
 }); 

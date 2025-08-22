@@ -389,6 +389,28 @@ export class ProcessingPipeline {
       // Extract concepts using analyzer
       const concepts = this.analyzer.extractConcepts(template);
 
+      // Process styling extensions if specified
+      let processedConcepts = concepts;
+      if (options.extensions?.includes('bem')) {
+        const bemExtension = this.registry.getStyling('bem');
+        if (bemExtension) {
+          extensionsUsed.push('bem');
+          
+          // If we have a framework extension, coordinate BEM with it
+          if (options.framework) {
+            const frameworkExtension = this.registry.getFramework(options.framework);
+            if (frameworkExtension && 'coordinateWithFramework' in bemExtension) {
+              processedConcepts = (bemExtension as any).coordinateWithFramework(frameworkExtension, concepts);
+            }
+          } else {
+            // Process BEM styles independently
+            const styleOutput = bemExtension.processStyles(concepts.styling);
+            // Add style output to context
+            (options as any).styleOutput = styleOutput.styles;
+          }
+        }
+      }
+
       // Get framework extension if specified
       let output = '';
       if (options.framework) {
@@ -396,12 +418,14 @@ export class ProcessingPipeline {
         if (frameworkExtension) {
           extensionsUsed.push(options.framework);
           
-          // Render component using framework extension
+          // Render component using framework extension with processed concepts
           const renderContext = {
             component: options.component,
-            options: options
+            options: options,
+            concepts: processedConcepts,
+            styleOutput: (options as any).styleOutput
           };
-          output = frameworkExtension.renderComponent(concepts, renderContext);
+          output = frameworkExtension.renderComponent(processedConcepts, renderContext);
         } else {
           this.errorCollector.addError({
             message: `Framework extension '${options.framework}' not found`,

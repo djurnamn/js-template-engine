@@ -7,6 +7,15 @@ import type {
   BaseExtensionOptions,
   RootHandlerContext,
 } from '@js-template-engine/types';
+import type {
+  StylingExtension,
+  ExtensionMetadata,
+  FrameworkExtension,
+  StylingConcept,
+  ComponentConcept,
+  RenderContext,
+  StyleOutput
+} from '@js-template-engine/core';
 import type { BemExtension as BemTypes } from './types';
 
 /**
@@ -75,13 +84,24 @@ function isElementNode(
 }
 
 /**
- * BEM extension for the template engine.
- * Handles BEM class generation and SCSS output.
- * @implements Extension<BemExtensionOptions, BemNodeExtensions>
+ * BEM Extension
+ * 
+ * Generates BEM classes and SCSS output for component styling.
  */
 export class BemExtension
-  implements Extension<BemExtensionOptions, BemNodeExtensions>
+  implements Extension<BemExtensionOptions, BemNodeExtensions>, StylingExtension
 {
+  /** Extension metadata */
+  public metadata: ExtensionMetadata & { type: 'styling' } = {
+    type: 'styling',
+    key: 'bem',
+    name: 'BEM Extension',
+    version: '1.0.0'
+  };
+
+  /** Styling approach */
+  public styling = 'bem' as const;
+
   /** Extension key. */
   public readonly key = 'bem' as const;
   /** Logger instance. */
@@ -417,6 +437,206 @@ export class BemExtension
   ): TemplateNode {
     this.onNodeVisit(node, ancestorNodesContext);
     return node;
+  }
+
+  /**
+   * Process styling concepts through BEM methodology
+   */
+  processStyles(concepts: StylingConcept): StyleOutput {
+    // Generate BEM classes from styling concepts
+    const bemClasses = this.generateBemClassesFromConcepts(concepts);
+    
+    // Generate SCSS with existing functionality
+    const scssOutput = this.generateScssFromClasses(bemClasses);
+    
+    return {
+      styles: scssOutput,
+      imports: []
+    };
+  }
+
+  /**
+   * Coordinate BEM styling with framework extensions
+   */
+  coordinateWithFramework(
+    frameworkExtension: FrameworkExtension, 
+    concepts: ComponentConcept
+  ): ComponentConcept {
+    // Process BEM classes based on styling concepts
+    const bemClasses = this.generateBemClassesFromConcepts(concepts.styling);
+    
+    // Apply classes to styling concepts before framework processing
+    const updatedConcepts = { ...concepts };
+    updatedConcepts.styling = {
+      ...concepts.styling,
+      staticClasses: [...concepts.styling.staticClasses, ...bemClasses],
+    };
+    
+    return updatedConcepts;
+  }
+
+  /**
+   * Generate BEM classes from styling concepts
+   */
+  private generateBemClassesFromConcepts(styling: StylingConcept): string[] {
+    const classes: string[] = [];
+    
+    // Extract BEM patterns from static classes
+    for (const className of styling.staticClasses) {
+      if (this.isBemClass(className)) {
+        classes.push(className);
+      }
+    }
+    
+    return classes;
+  }
+
+  /**
+   * Check if a class name follows BEM convention
+   */
+  private isBemClass(className: string): boolean {
+    // BEM pattern check: block, block__element, block--modifier, or block__element--modifier
+    // Must start with letter, can contain letters, numbers, hyphens
+    // Element separator: exactly two underscores
+    // Modifier separator: exactly two hyphens  
+    return /^[a-zA-Z][a-zA-Z0-9-]*(__[a-zA-Z][a-zA-Z0-9-]*)?(--[a-zA-Z][a-zA-Z0-9-]*)?$/.test(className) &&
+           !className.includes('___') && // No triple underscores
+           !className.includes('---') && // No triple hyphens
+           !className.endsWith('__') && // No trailing underscores
+           !className.endsWith('--') && // No trailing hyphens
+           !className.startsWith('__') && // No leading underscores
+           !className.startsWith('--');  // No leading hyphens
+  }
+
+  /**
+   * Generate SCSS from BEM classes
+   */
+  private generateScssFromClasses(classes: string[]): string {
+    if (classes.length === 0) return '';
+    
+    const scssLines: string[] = [];
+    const processedBlocks = new Set<string>();
+    
+    for (const className of classes) {
+      const blockName = this.extractBlockName(className);
+      if (blockName && !processedBlocks.has(blockName)) {
+        processedBlocks.add(blockName);
+        scssLines.push(`.${blockName} {`);
+        
+        // Add basic styling structure
+        scssLines.push('  /* Add your styling here */');
+        
+        // Add element and modifier rules
+        for (const relatedClass of classes) {
+          if (relatedClass.startsWith(blockName)) {
+            if (relatedClass.includes('__')) {
+              const elementName = relatedClass.split('__')[1].split('--')[0];
+              scssLines.push(`  &__${elementName} {`);
+              scssLines.push('    /* Element styles */');
+              scssLines.push('  }');
+            }
+            if (relatedClass.includes('--')) {
+              const modifierName = relatedClass.split('--')[1];
+              scssLines.push(`  &--${modifierName} {`);
+              scssLines.push('    /* Modifier styles */');
+              scssLines.push('  }');
+            }
+          }
+        }
+        
+        scssLines.push('}');
+        scssLines.push('');
+      }
+    }
+    
+    return scssLines.join('\n');
+  }
+
+  /**
+   * Extract block name from BEM class
+   */
+  private extractBlockName(className: string): string | null {
+    const match = className.match(/^([a-zA-Z][a-zA-Z0-9-]*)/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Process template with BEM styling
+   */
+  processTemplate(template: TemplateNode[], context: RenderContext): { 
+    output: TemplateNode[];
+    concepts: ComponentConcept;
+    metadata: any;
+  } {
+    // Extract styling concepts from template
+    const stylingConcepts = this.extractStylingConcepts(template);
+    
+    // Generate BEM classes
+    const styleOutput = this.processStyles(stylingConcepts);
+    
+    // Coordinate with framework extensions if present
+    if (context.frameworkExtension) {
+      const coordinatedConcepts = this.coordinateWithFramework(
+        context.frameworkExtension as FrameworkExtension,
+        context.concepts as ComponentConcept
+      );
+      (context as any).concepts = coordinatedConcepts;
+    }
+    
+    return {
+      output: template,
+      concepts: context.concepts as ComponentConcept,
+      metadata: {
+        bemClasses: this.generateBemClassesFromConcepts(stylingConcepts),
+        scssOutput: styleOutput.styles
+      }
+    };
+  }
+
+  /**
+   * Extract styling concepts from template nodes
+   */
+  private extractStylingConcepts(template: TemplateNode[]): StylingConcept {
+    const staticClasses: string[] = [];
+    const dynamicClasses: string[] = [];
+    const inlineStyles: Record<string, string> = {};
+    
+    const traverse = (nodes: TemplateNode[]) => {
+      for (const node of nodes) {
+        if (node.type === 'element' || !node.type) {
+          // Extract classes from attributes
+          if (node.attributes?.class) {
+            const classes = String(node.attributes.class).split(/\s+/).filter(Boolean);
+            staticClasses.push(...classes);
+          }
+          
+          // Extract inline styles
+          if (node.attributes?.style && typeof node.attributes.style === 'string') {
+            const styleDeclarations = node.attributes.style.split(';').filter(Boolean);
+            for (const declaration of styleDeclarations) {
+              const [property, value] = declaration.split(':').map(s => s.trim());
+              if (property && value) {
+                inlineStyles[property] = value;
+              }
+            }
+          }
+          
+          // Process children
+          if (node.children) {
+            traverse(node.children);
+          }
+        }
+      }
+    };
+    
+    traverse(template);
+    
+    return {
+      nodeId: 'root',
+      staticClasses,
+      dynamicClasses,
+      inlineStyles
+    };
   }
 
   /**
