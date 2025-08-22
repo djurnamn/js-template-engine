@@ -1046,8 +1046,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   }
 }
 
-// Export the new concept-driven extension
+// Main exports
 export default ReactFrameworkExtension;
 export { ReactFrameworkExtension as ReactExtension };
 
-// Clean implementation - legacy extension removed

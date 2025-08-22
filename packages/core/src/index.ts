@@ -1,8 +1,4 @@
-// Export the main template engine (THE implementation)
-export { TemplateEngine } from './engine/TemplateEngine';
-
-// Export legacy engine for backwards compatibility
-export { LegacyTemplateEngine } from './engine/LegacyTemplateEngine';
+// Core processing pipeline
 
 // Export core components for advanced usage
 export { ExtensionRegistry } from './registry/ExtensionRegistry';

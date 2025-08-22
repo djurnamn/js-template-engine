@@ -5,7 +5,7 @@
 import { EventExtractor } from '../../src/extractors/EventExtractor';
 import { EventNormalizer } from '../../src/normalization/EventNormalizer';
 import { ErrorCollector } from '../../src/metadata';
-import type { TemplateNode } from '../../src/engine/TemplateEngine';
+import type { TemplateNode } from '@js-template-engine/types';
 import type { EventExtractionOptions } from '../../src/extractors/EventExtractor';
 
 describe('EventExtractor', () => {
