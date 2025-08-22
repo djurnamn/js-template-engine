@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { TemplateNode, Extension } from '@js-template-engine/types';
 import { createLogger } from '../utils/logger';
-import { TemplateEngine } from '../engine/TemplateEngine';
+import { LegacyTemplateEngine } from '../engine/LegacyTemplateEngine';
 
 /**
  * Reads and parses a JSON file containing template nodes.
@@ -91,7 +91,7 @@ export async function processFile(
   sourcePath: string,
   outputDir: string,
   extensions: Extension[],
-  templateEngine: TemplateEngine,
+  templateEngine: LegacyTemplateEngine,
   name?: string,
   componentName?: string,
   verbose = false
@@ -133,7 +133,7 @@ export async function processDirectory(
   sourceDir: string,
   outputDir: string,
   extensions: Extension[],
-  templateEngine: TemplateEngine,
+  templateEngine: LegacyTemplateEngine,
   verbose = false
 ): Promise<void> {
   const logger = createLogger(verbose, 'processDirectory');

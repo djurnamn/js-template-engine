@@ -1,18 +1,25 @@
-// Export legacy engine (will be deprecated)
+// Export the main template engine (THE implementation)
 export { TemplateEngine } from './engine/TemplateEngine';
 
-// Export new concept-driven engine (recommended)
-export { ConceptEngine } from './integration/ConceptEngine';
+// Export legacy engine for backwards compatibility
+export { LegacyTemplateEngine } from './engine/LegacyTemplateEngine';
 
 // Export core components for advanced usage
 export { ExtensionRegistry } from './registry/ExtensionRegistry';
-export { ProcessingPipeline } from './pipeline/ProcessingPipeline';
+export * from './pipeline';
 export { TemplateAnalyzer } from './analyzer/TemplateAnalyzer';
 export { ErrorCollector, PerformanceTracker, NodeIdGenerator, MetadataValidator } from './metadata';
 
 // Export type definitions
 export * from './concepts';
 export * from './extensions';
+
+// Core processing exports - Processing capabilities
+export * from './processors';
+export * from './extractors';
+export * from './validation';
+export * from './normalization';
+export * from './examples/TemplateProcessingExamples';
 
 // Export handlers
 export * from './handlers/FileHandler';

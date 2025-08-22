@@ -1,476 +1,540 @@
 /**
- * Processing pipeline orchestrator for the concept-driven extension system.
+ * Advanced Processing Pipeline
+ *
+ * Integrates advanced processors with the ProcessingPipeline:
+ * - ComponentPropertyProcessor for template property merging
+ * - Advanced extractors for comprehensive concept extraction
+ * - ConceptValidator for comprehensive validation
+ * - EventNormalizer for cross-framework consistency
  */
 
-import type { ComponentConcept } from '../concepts';
-import type { FrameworkExtension, StylingExtension, UtilityExtension } from '../extensions';
+import {
+  LegacyProcessingPipeline,
+  type LegacyProcessingOptions,
+  type LegacyProcessingResult,
+} from './LegacyProcessingPipeline';
 import { ExtensionRegistry } from '../registry/ExtensionRegistry';
 import { TemplateAnalyzer } from '../analyzer/TemplateAnalyzer';
 import { ErrorCollector, PerformanceTracker } from '../metadata';
 
-/**
- * Template node interface (avoiding circular dependency).
- */
-interface TemplateNode {
-  type?: 'element' | 'text' | 'comment' | 'if' | 'for' | 'slot' | 'fragment';
-  tag?: string;
-  content?: string;
-  attributes?: Record<string, any>;
-  expressionAttributes?: Record<string, any>;
-  children?: TemplateNode[];
-  
-  // Conditional node properties
-  condition?: string;
-  then?: TemplateNode[];
-  else?: TemplateNode[];
-  
-  // Loop node properties
-  items?: string;
-  item?: string;
-  index?: string;
-  key?: string;
-  
-  // Slot node properties
-  name?: string;
-  fallback?: TemplateNode[];
-  
-  // Extension data
-  extensions?: Record<string, any>;
-}
+// advanced processing processors
+import {
+  ComponentPropertyProcessor,
+  ImportProcessor,
+  ScriptMergeProcessor,
+  ComponentNameResolver,
+  type ComponentResolutionStrategy,
+  type ComponentDefinition,
+  DEFAULT_MERGE_STRATEGIES,
+} from '../processors';
+
+import { EventExtractor, StylingExtractor } from '../extractors';
+
+import {
+  ConceptValidator,
+  FrameworkConsistencyChecker,
+  type ValidationOptions,
+  type ValidationResult,
+} from '../validation';
+
+import {
+  EventNormalizer,
+  type EventNormalizationOptions,
+} from '../normalization';
+
+import type { ComponentConcept } from '../concepts';
 
 /**
- * Processing options for the pipeline.
+ * Advanced processing options extending base options.
  */
-export interface ProcessingOptions {
-  /** Active framework extension key */
-  framework?: string;
-  /** Active styling extension key */
-  styling?: string;
-  /** Active utility extension keys */
-  utilities?: string[];
-  /** Component metadata */
-  component?: {
-    name?: string;
-    props?: Record<string, string>;
-    imports?: string[];
-    [key: string]: any;
+export interface ProcessingOptions extends LegacyProcessingOptions {
+  /** Component property merge strategies */
+  mergeStrategies?: ComponentResolutionStrategy;
+  /** Validation options */
+  validation?: ValidationOptions;
+  /** Event normalization options */
+  eventNormalization?: EventNormalizationOptions;
+  /** Advanced extraction options */
+  extraction?: {
+    useEventExtractor?: boolean;
+    useStylingExtractor?: boolean;
+    normalizeEvents?: boolean;
+    validateConcepts?: boolean;
   };
-  /** Additional context */
-  [key: string]: any;
+  /** Component definition for property merging */
+  componentDefinition?: ComponentDefinition;
 }
 
 /**
- * Active extensions for processing.
+ * Advanced processing result with additional features.
  */
-export interface ActiveExtensions {
-  /** Framework extension */
-  framework?: FrameworkExtension;
-  /** Styling extension */
-  styling?: StylingExtension;
-  /** Utility extensions */
-  utilities: UtilityExtension[];
-}
-
-/**
- * Processed concepts after extension processing.
- */
-export interface ProcessedConcepts {
-  /** Processed events */
-  events: any; // FrameworkEventOutput
-  /** Processed styling */
-  styling: any; // StyleOutput | null
-  /** Processed conditionals */
-  conditionals: any; // FrameworkConditionalOutput
-  /** Processed iterations */
-  iterations: any; // FrameworkIterationOutput
-  /** Processed slots */
-  slots: any; // FrameworkSlotOutput
-  /** Processed attributes */
-  attributes: any; // FrameworkAttributeOutput
-}
-
-/**
- * Processing result.
- */
-export interface ProcessingResult {
-  /** Final rendered output */
-  output: string;
-  /** Processed concepts */
-  concepts: ProcessedConcepts;
-  /** Processing metadata */
-  metadata: ProcessingMetadata;
-  /** Collected errors and warnings */
-  errors: ErrorCollector;
-  /** Performance metrics */
-  performance: any; // PerformanceMetrics
-}
-
-/**
- * Processing metadata.
- */
-export interface ProcessingMetadata {
-  /** Extensions used */
-  extensionsUsed: string[];
-  /** Concepts found */
-  conceptsFound: {
-    events: number;
-    styling: boolean;
-    conditionals: number;
-    iterations: number;
-    slots: number;
-    attributes: number;
+export interface ProcessingResult extends LegacyProcessingResult {
+  /** Validation results */
+  validation?: ValidationResult;
+  /** Component properties after merging */
+  componentProperties?: any; // ComponentProperties
+  /** Framework consistency report */
+  consistencyReport?: any; // ConsistencyReport
+  /** Advanced processing metadata */
+  advancedMetadata?: {
+    /** Whether processing was used */
+    processing: boolean;
+    /** Processors used */
+    processorsUsed: string[];
+    /** Validation score */
+    validationScore?: number;
+    /** Events normalized count */
+    eventsNormalized: number;
+    /** Properties merged */
+    propertiesMerged: boolean;
   };
-  /** Processing timestamp */
-  timestamp: Date;
 }
 
 /**
- * Main processing pipeline orchestrator.
+ * Advanced processing pipeline with comprehensive features.
  */
-export class ProcessingPipeline {
-  private registry: ExtensionRegistry;
-  private analyzer: TemplateAnalyzer;
-  private errorCollector: ErrorCollector;
-  private performanceTracker: PerformanceTracker;
+export class ProcessingPipeline extends LegacyProcessingPipeline {
+  private componentPropertyProcessor: ComponentPropertyProcessor;
+  private importProcessor: ImportProcessor;
+  private scriptMergeProcessor: ScriptMergeProcessor;
+  private componentNameResolver: ComponentNameResolver;
+  private eventExtractor: EventExtractor;
+  private stylingExtractor: StylingExtractor;
+  private conceptValidator: ConceptValidator;
+  private frameworkConsistencyChecker: FrameworkConsistencyChecker;
+  private eventNormalizer: EventNormalizer;
+  private advancedErrorCollector: ErrorCollector;
 
   constructor(
     registry: ExtensionRegistry,
     analyzer?: TemplateAnalyzer,
     errorCollector?: ErrorCollector
   ) {
-    this.registry = registry;
-    this.analyzer = analyzer || new TemplateAnalyzer();
-    this.errorCollector = errorCollector || new ErrorCollector();
-    this.performanceTracker = new PerformanceTracker();
+    super(registry, analyzer, errorCollector);
+
+    // Initialize advanced processors
+    this.advancedErrorCollector = new ErrorCollector();
+    this.componentPropertyProcessor = new ComponentPropertyProcessor(
+      DEFAULT_MERGE_STRATEGIES,
+      this.advancedErrorCollector
+    );
+    this.importProcessor = new ImportProcessor(this.advancedErrorCollector);
+    this.scriptMergeProcessor = new ScriptMergeProcessor(
+      this.advancedErrorCollector
+    );
+    this.componentNameResolver = new ComponentNameResolver(
+      this.advancedErrorCollector
+    );
+    this.eventExtractor = new EventExtractor(this.advancedErrorCollector);
+    this.stylingExtractor = new StylingExtractor(this.advancedErrorCollector);
+    this.conceptValidator = new ConceptValidator(this.advancedErrorCollector);
+    this.frameworkConsistencyChecker = new FrameworkConsistencyChecker(
+      this.advancedErrorCollector
+    );
+    this.eventNormalizer = new EventNormalizer(
+      undefined,
+      this.advancedErrorCollector
+    );
   }
 
   /**
-   * Main processing method that orchestrates the entire flow.
+   * Advanced processing method with comprehensive features.
    */
   async process(
-    template: TemplateNode[],
-    options: ProcessingOptions
+    template: any[], // TemplateNode[]
+    options: ProcessingOptions = {}
   ): Promise<ProcessingResult> {
-    this.performanceTracker.start();
-    this.errorCollector.clear();
-    this.analyzer.clearErrors();
+    const performanceTracker = this.getPerformanceTracker();
+    performanceTracker.start();
+
+    this.advancedErrorCollector.clear();
+    const processorsUsed: string[] = [];
+    let eventsNormalized = 0;
+    let propertiesMerged = false;
 
     try {
-      // Step 1: Analyze template and extract concepts
-      this.performanceTracker.startExtension('analyzer');
-      const concepts = this.analyzer.extractConcepts(template);
-      this.performanceTracker.endExtension('analyzer');
+      // Step 1: Process component properties if definition provided
+      let componentProperties;
+      if (options.componentDefinition) {
+        performanceTracker.startExtension('component-property-processor');
+        processorsUsed.push('ComponentPropertyProcessor');
 
-      // Merge analyzer errors
-      const analyzerErrors = this.analyzer.getErrors();
-      analyzerErrors.getErrors().forEach(error => this.errorCollector.addError(error));
-
-      // Step 2: Get active extensions
-      const activeExtensions = this.getActiveExtensions(options);
-
-      // Step 3: Process concepts with extensions
-      const processedConcepts = await this.processConcepts(concepts, activeExtensions);
-
-      // Step 4: Render final output
-      const output = await this.renderOutput(processedConcepts, activeExtensions, options);
-
-      // Step 5: Generate metadata
-      const metadata = this.generateMetadata(concepts, activeExtensions);
-
-      return {
-        output,
-        concepts: processedConcepts,
-        metadata,
-        errors: this.errorCollector,
-        performance: this.performanceTracker.getMetrics()
-      };
-
-    } catch (error) {
-      this.errorCollector.addSimpleError(
-        `Pipeline processing failed: ${error instanceof Error ? error.message : String(error)}`,
-        'root',
-        'pipeline'
-      );
-
-      // Return error result
-      return {
-        output: '',
-        concepts: this.createEmptyProcessedConcepts(),
-        metadata: this.generateEmptyMetadata(),
-        errors: this.errorCollector,
-        performance: this.performanceTracker.getMetrics()
-      };
-    }
-  }
-
-  /**
-   * Get active extensions based on options.
-   */
-  private getActiveExtensions(options: ProcessingOptions): ActiveExtensions {
-    const activeExtensions: ActiveExtensions = {
-      utilities: []
-    };
-
-    // Get framework extension
-    if (options.framework) {
-      const framework = this.registry.getFramework(options.framework);
-      if (framework) {
-        activeExtensions.framework = framework;
-      } else {
-        this.errorCollector.addWarning(
-          `Framework extension '${options.framework}' not found`,
-          'root',
-          'pipeline'
-        );
-      }
-    }
-
-    // Get styling extension
-    if (options.styling) {
-      const styling = this.registry.getStyling(options.styling);
-      if (styling) {
-        activeExtensions.styling = styling;
-      } else {
-        this.errorCollector.addWarning(
-          `Styling extension '${options.styling}' not found`,
-          'root',
-          'pipeline'
-        );
-      }
-    }
-
-    // Get utility extensions
-    if (options.utilities) {
-      for (const utilityKey of options.utilities) {
-        const utility = this.registry.getUtility(utilityKey);
-        if (utility) {
-          activeExtensions.utilities.push(utility);
-        } else {
-          this.errorCollector.addWarning(
-            `Utility extension '${utilityKey}' not found`,
-            'root',
-            'pipeline'
+        // Update merge strategies if provided
+        if (options.mergeStrategies) {
+          this.componentPropertyProcessor = new ComponentPropertyProcessor(
+            options.mergeStrategies,
+            this.advancedErrorCollector
           );
         }
+
+        const renderOptions = {
+          framework: options.framework || 'react',
+          component: options.component,
+        };
+
+        componentProperties =
+          this.componentPropertyProcessor.mergeComponentProperties(
+            options.componentDefinition,
+            renderOptions
+          );
+        propertiesMerged = true;
+
+        // Update options with merged component name
+        if (!options.component?.name && componentProperties.name) {
+          options.component = {
+            ...options.component,
+            name: componentProperties.name,
+          };
+        }
+
+        performanceTracker.endExtension('component-property-processor');
       }
-    }
 
-    return activeExtensions;
-  }
+      // Step 2: Enhanced concept extraction if enabled
+      let concepts: ComponentConcept;
 
-  /**
-   * Process concepts with active extensions.
-   */
-  private async processConcepts(
-    concepts: ComponentConcept,
-    extensions: ActiveExtensions
-  ): Promise<ProcessedConcepts> {
-    const processed: ProcessedConcepts = {
-      events: null,
-      styling: null,
-      conditionals: null,
-      iterations: null,
-      slots: null,
-      attributes: null
-    };
+      if (
+        options.extraction?.useEventExtractor ||
+        options.extraction?.useStylingExtractor
+      ) {
+        performanceTracker.startExtension('enhanced-extraction');
 
-    // Process with utility extensions first (they modify concepts)
-    let modifiedConcepts = concepts;
-    for (const utility of extensions.utilities) {
-      this.performanceTracker.startExtension(utility.metadata.key);
-      try {
-        modifiedConcepts = utility.process(modifiedConcepts);
-        this.performanceTracker.incrementConceptCount();
-      } catch (error) {
-        this.errorCollector.addSimpleError(
-          `Utility extension '${utility.metadata.key}' failed: ${error instanceof Error ? error.message : String(error)}`,
-          'root',
-          utility.metadata.key
+        // Use base analyzer for initial extraction
+        concepts = this.getAnalyzer().extractConcepts(template);
+
+        // Enhance events if requested
+        if (options.extraction.useEventExtractor) {
+          processorsUsed.push('EventExtractor');
+          const eventExtractionOptions = {
+            framework: options.framework as 'vue' | 'react' | 'svelte',
+            normalizeEvents: options.extraction.normalizeEvents ?? true,
+            validateEvents: options.extraction.validateConcepts ?? true,
+          };
+
+          const eventResult = this.eventExtractor.extractEvents(
+            template,
+            eventExtractionOptions
+          );
+          concepts.events = eventResult.events;
+          eventsNormalized = eventResult.normalizedCount;
+        }
+
+        // Enhance styling if requested
+        if (options.extraction.useStylingExtractor) {
+          processorsUsed.push('StylingExtractor');
+          const stylingExtractionOptions = {
+            framework: options.framework as 'vue' | 'react' | 'svelte',
+            validateCSS: options.extraction.validateConcepts ?? true,
+            cssFrameworkDetection: true,
+          };
+
+          const stylingResult = this.stylingExtractor.extractStyling(
+            template,
+            stylingExtractionOptions
+          );
+          concepts.styling = stylingResult.styling;
+        }
+
+        performanceTracker.endExtension('enhanced-extraction');
+      } else {
+        // Use standard extraction
+        concepts = this.getAnalyzer().extractConcepts(template);
+      }
+
+      // Step 3: Event normalization if enabled
+      if (options.extraction?.normalizeEvents && options.framework) {
+        performanceTracker.startExtension('event-normalization');
+        processorsUsed.push('EventNormalizer');
+
+        const normalizationOptions: EventNormalizationOptions = {
+          framework: options.framework as 'vue' | 'react' | 'svelte',
+          validateEvents: true,
+          ...options.eventNormalization,
+        };
+
+        const normalizedEvents = this.eventNormalizer.normalizeEvents(
+          concepts.events,
+          normalizationOptions
         );
+        eventsNormalized += normalizedEvents.filter(
+          (ne) => ne.wasNormalized
+        ).length;
+
+        // Update concepts with normalized events
+        concepts.events = normalizedEvents.map((ne) => ({
+          ...ne.original,
+          name: ne.commonName,
+          modifiers: ne.modifiers,
+        }));
+
+        performanceTracker.endExtension('event-normalization');
       }
-      this.performanceTracker.endExtension(utility.metadata.key);
-    }
 
-    // Process with framework extension
-    if (extensions.framework) {
-      const framework = extensions.framework;
-      this.performanceTracker.startExtension(framework.metadata.key);
+      // Step 4: Concept validation if enabled
+      let validation: ValidationResult | undefined;
+      if (options.extraction?.validateConcepts) {
+        performanceTracker.startExtension('concept-validation');
+        processorsUsed.push('ConceptValidator');
 
-      try {
-        processed.events = framework.processEvents(modifiedConcepts.events);
-        processed.conditionals = framework.processConditionals(modifiedConcepts.conditionals);
-        processed.iterations = framework.processIterations(modifiedConcepts.iterations);
-        processed.slots = framework.processSlots(modifiedConcepts.slots);
-        processed.attributes = framework.processAttributes(modifiedConcepts.attributes);
-        
-        // Count concepts processed
-        this.performanceTracker.incrementConceptCount();
-      } catch (error) {
-        this.errorCollector.addSimpleError(
-          `Framework extension '${framework.metadata.key}' failed: ${error instanceof Error ? error.message : String(error)}`,
-          'root',
-          framework.metadata.key
+        const validationOptions: ValidationOptions = {
+          framework: options.framework as 'vue' | 'react' | 'svelte',
+          checkAccessibility: true,
+          checkPerformance: true,
+          checkBestPractices: true,
+          enableCrossConceptValidation: true,
+          ...options.validation,
+        };
+
+        validation = this.conceptValidator.validateComponent(
+          concepts,
+          validationOptions
         );
+        performanceTracker.endExtension('concept-validation');
       }
 
-      this.performanceTracker.endExtension(framework.metadata.key);
-    }
+      // Step 5: Framework consistency check if multiple frameworks need to be supported
+      let consistencyReport;
+      if (options.validation?.enableCrossConceptValidation) {
+        performanceTracker.startExtension('consistency-check');
+        processorsUsed.push('FrameworkConsistencyChecker');
 
-    // Process with styling extension
-    if (extensions.styling) {
-      const styling = extensions.styling;
-      this.performanceTracker.startExtension(styling.metadata.key);
-
-      try {
-        processed.styling = styling.processStyles(modifiedConcepts.styling);
-        this.performanceTracker.incrementConceptCount();
-      } catch (error) {
-        this.errorCollector.addSimpleError(
-          `Styling extension '${styling.metadata.key}' failed: ${error instanceof Error ? error.message : String(error)}`,
-          'root',
-          styling.metadata.key
-        );
+        consistencyReport =
+          this.frameworkConsistencyChecker.checkConsistency(concepts);
+        performanceTracker.endExtension('consistency-check');
       }
 
-      this.performanceTracker.endExtension(styling.metadata.key);
-    }
+      // Step 6: Process with base pipeline
+      const baseResult = await super.process(template, options);
 
-    return processed;
-  }
-
-  /**
-   * Render final output using the framework extension.
-   */
-  private async renderOutput(
-    processedConcepts: ProcessedConcepts,
-    extensions: ActiveExtensions,
-    options: ProcessingOptions
-  ): Promise<string> {
-    if (!extensions.framework) {
-      this.errorCollector.addWarning('No framework extension available for rendering', 'root', 'pipeline');
-      return '';
-    }
-
-    const framework = extensions.framework;
-    this.performanceTracker.startExtension(`${framework.metadata.key}-render`);
-
-    try {
-      // Reconstruct component concept for rendering
-      const conceptsForRendering: ComponentConcept = {
-        events: [], // Events are already processed into framework-specific format
-        styling: { // Use original styling concept structure
-          nodeId: 'root',
-          staticClasses: [],
-          dynamicClasses: [],
-          inlineStyles: {},
-          styleBindings: {}
-        },
-        conditionals: [],
-        iterations: [],
-        slots: [],
-        attributes: [],
-        metadata: options.component || {}
-      };
-
-      const renderContext = {
-        component: options.component,
-        options: options,
-        processedConcepts: processedConcepts
-      };
-
-      const output = framework.renderComponent(conceptsForRendering, renderContext);
-      this.performanceTracker.endExtension(`${framework.metadata.key}-render`);
-      
-      return output;
-    } catch (error) {
-      this.errorCollector.addSimpleError(
-        `Framework rendering failed: ${error instanceof Error ? error.message : String(error)}`,
-        'root',
-        framework.metadata.key
+      // Step 7: Merge advanced processing errors with base errors
+      const mergedErrors = this.mergeErrorCollectors(
+        baseResult.errors,
+        this.advancedErrorCollector
       );
-      this.performanceTracker.endExtension(`${framework.metadata.key}-render`);
-      return '';
+
+      // Step 8: Create enhanced result
+      const enhancedResult: ProcessingResult = {
+        ...baseResult,
+        errors: mergedErrors,
+        validation,
+        componentProperties,
+        consistencyReport,
+        advancedMetadata: {
+          processing: true,
+          processorsUsed,
+          validationScore: validation?.score,
+          eventsNormalized,
+          propertiesMerged,
+        },
+      };
+
+      return enhancedResult;
+    } catch (error) {
+      this.advancedErrorCollector.addSimpleError(
+        `Enhanced pipeline processing failed: ${error instanceof Error ? error.message : String(error)}`,
+        'root',
+        'enhanced-pipeline'
+      );
+
+      // Return enhanced error result
+      const baseResult = await super.process(template, options);
+      return {
+        ...baseResult,
+        errors: this.mergeErrorCollectors(
+          baseResult.errors,
+          this.advancedErrorCollector
+        ),
+        advancedMetadata: {
+          processing: false,
+          processorsUsed,
+          eventsNormalized: 0,
+          propertiesMerged: false,
+        },
+      };
     }
   }
 
   /**
-   * Generate processing metadata.
+   * Process with automatic advanced processing feature detection.
    */
-  private generateMetadata(
-    concepts: ComponentConcept,
-    extensions: ActiveExtensions
-  ): ProcessingMetadata {
-    const extensionsUsed: string[] = [];
-    
-    if (extensions.framework) {
-      extensionsUsed.push(extensions.framework.metadata.key);
-    }
-    if (extensions.styling) {
-      extensionsUsed.push(extensions.styling.metadata.key);
-    }
-    extensions.utilities.forEach(utility => {
-      extensionsUsed.push(utility.metadata.key);
-    });
-
-    return {
-      extensionsUsed,
-      conceptsFound: {
-        events: concepts.events.length,
-        styling: concepts.styling.staticClasses.length > 0 || 
-                 concepts.styling.dynamicClasses.length > 0 || 
-                 Object.keys(concepts.styling.inlineStyles).length > 0,
-        conditionals: concepts.conditionals.length,
-        iterations: concepts.iterations.length,
-        slots: concepts.slots.length,
-        attributes: concepts.attributes.length
+  async processWithAutoEnhancement(
+    template: any[], // TemplateNode[]
+    options: ProcessingOptions = {}
+  ): Promise<ProcessingResult> {
+    // Auto-enable advanced processing features based on template complexity and options
+    const enhancedOptions: ProcessingOptions = {
+      ...options,
+      extraction: {
+        useEventExtractor: this.shouldUseEventExtractor(template),
+        useStylingExtractor: this.shouldUseStylingExtractor(template),
+        normalizeEvents: !!options.framework,
+        validateConcepts: true,
       },
-      timestamp: new Date()
-    };
-  }
-
-  /**
-   * Create empty processed concepts.
-   */
-  private createEmptyProcessedConcepts(): ProcessedConcepts {
-    return {
-      events: null,
-      styling: null,
-      conditionals: null,
-      iterations: null,
-      slots: null,
-      attributes: null
-    };
-  }
-
-  /**
-   * Generate empty metadata for error cases.
-   */
-  private generateEmptyMetadata(): ProcessingMetadata {
-    return {
-      extensionsUsed: [],
-      conceptsFound: {
-        events: 0,
-        styling: false,
-        conditionals: 0,
-        iterations: 0,
-        slots: 0,
-        attributes: 0
+      validation: {
+        framework: options.framework as 'vue' | 'react' | 'svelte',
+        checkAccessibility: true,
+        checkPerformance: true,
+        checkBestPractices: true,
+        enableCrossConceptValidation: true,
       },
-      timestamp: new Date()
     };
+
+    return this.process(template, enhancedOptions);
   }
 
   /**
-   * Get error collector for external access.
+   * Create component properties example for date/dayjs scenario.
    */
-  getErrorCollector(): ErrorCollector {
-    return this.errorCollector;
+  createDateComponentExample(): {
+    definition: ComponentDefinition;
+    options: ProcessingOptions;
+    result: any; // ComponentProperties
+  } {
+    const definition: ComponentDefinition = {
+      common: {
+        name: 'DateComponent',
+        imports: [{ from: 'dayjs', default: 'dayjs' }],
+        script: `const formatDate = (date) => dayjs(date).format('YYYY-MM-DD');
+const twoDaysFromDate = (date) => dayjs(date).add(2, 'day').toDate();`,
+        props: {
+          date: 'Date',
+          title: 'string',
+        },
+      },
+      framework: {
+        imports: [{ from: 'react', named: ['useState', 'useEffect'] }],
+        script: `const [date, setDate] = useState(initialDate);
+useEffect(() => console.log('Date changed:', date), [date]);
+const onDateChange = (newDate) => setDate(newDate);`,
+        props: {
+          onDateChange: '(date: Date) => void',
+        },
+      },
+    };
+
+    const options: ProcessingOptions = {
+      framework: 'react',
+      componentDefinition: definition,
+      mergeStrategies: {
+        script: { mode: 'merge', includeComments: true },
+        props: { mode: 'merge', conflictResolution: 'warn' },
+        imports: { mode: 'merge', deduplication: true, grouping: true },
+      },
+    };
+
+    const renderOptions = { framework: 'react', component: {} };
+    const result = this.componentPropertyProcessor.mergeComponentProperties(
+      definition,
+      renderOptions
+    );
+
+    return { definition, options, result };
   }
 
   /**
-   * Get performance tracker for external access.
+   * Helper method to determine if enhanced event extraction should be used.
    */
-  getPerformanceTracker(): PerformanceTracker {
-    return this.performanceTracker;
+  private shouldUseEventExtractor(template: any[]): boolean {
+    // Use enhanced extractor if template has complex event patterns
+    const templateStr = JSON.stringify(template);
+    return (
+      templateStr.includes('@') ||
+      templateStr.includes('on:') ||
+      templateStr.includes('onClick')
+    );
+  }
+
+  /**
+   * Helper method to determine if enhanced styling extraction should be used.
+   */
+  private shouldUseStylingExtractor(template: any[]): boolean {
+    // Use enhanced extractor if template has complex styling
+    const templateStr = JSON.stringify(template);
+    return (
+      templateStr.includes('class') ||
+      templateStr.includes('style') ||
+      templateStr.includes('className')
+    );
+  }
+
+  /**
+   * Merge error collectors from base and advanced processing processing.
+   */
+  private mergeErrorCollectors(
+    baseErrors: ErrorCollector,
+    advancedErrors: ErrorCollector
+  ): ErrorCollector {
+    const merged = new ErrorCollector();
+
+    // Copy base errors
+    baseErrors.getErrors().forEach((error) => merged.addError(error));
+    baseErrors
+      .getErrorsBySeverity('warning')
+      .forEach((warning) =>
+        merged.addWarning(warning.message, warning.nodeId, warning.extension)
+      );
+
+    // Copy advanced processing errors
+    advancedErrors.getErrors().forEach((error) => merged.addError(error));
+    advancedErrors
+      .getErrorsBySeverity('warning')
+      .forEach((warning) =>
+        merged.addWarning(warning.message, warning.nodeId, warning.extension)
+      );
+
+    return merged;
+  }
+
+  /**
+   * Get access to advanced processing processors for external use.
+   */
+  getComponentPropertyProcessor(): ComponentPropertyProcessor {
+    return this.componentPropertyProcessor;
+  }
+
+  getImportProcessor(): ImportProcessor {
+    return this.importProcessor;
+  }
+
+  getScriptMergeProcessor(): ScriptMergeProcessor {
+    return this.scriptMergeProcessor;
+  }
+
+  getComponentNameResolver(): ComponentNameResolver {
+    return this.componentNameResolver;
+  }
+
+  getEventExtractor(): EventExtractor {
+    return this.eventExtractor;
+  }
+
+  getStylingExtractor(): StylingExtractor {
+    return this.stylingExtractor;
+  }
+
+  getConceptValidator(): ConceptValidator {
+    return this.conceptValidator;
+  }
+
+  getFrameworkConsistencyChecker(): FrameworkConsistencyChecker {
+    return this.frameworkConsistencyChecker;
+  }
+
+  getEventNormalizer(): EventNormalizer {
+    return this.eventNormalizer;
+  }
+
+  /**
+   * Get advanced processing error collector.
+   */
+  getAdvancedErrorCollector(): ErrorCollector {
+    return this.advancedErrorCollector;
+  }
+
+  /**
+   * Get base analyzer for external access.
+   */
+  getAnalyzer(): TemplateAnalyzer {
+    return (this as any).analyzer; // Access protected member
   }
 }

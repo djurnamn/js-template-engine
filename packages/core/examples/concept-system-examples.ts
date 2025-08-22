@@ -3,7 +3,7 @@
  * These examples show real-world usage patterns and best practices.
  */
 
-import { ConceptEngine } from '../src/integration/ConceptEngine';
+import { TemplateEngine } from '../src/engine/TemplateEngine';
 import type { FrameworkExtension, StylingExtension, UtilityExtension } from '../src/extensions';
 
 // ===== MOCK EXTENSIONS FOR EXAMPLES =====
@@ -141,7 +141,7 @@ export async function basicExample() {
   console.log('\n=== BASIC EXAMPLE ===');
   
   // Create engine with default configuration
-  const engine = new ConceptEngine({
+  const engine = new TemplateEngine({
     defaultFramework: 'react',
     defaultStyling: 'bem'
   });
@@ -187,7 +187,7 @@ export async function basicExample() {
 export async function complexTemplateExample() {
   console.log('\n=== COMPLEX TEMPLATE EXAMPLE ===');
   
-  const engine = new ConceptEngine();
+  const engine = new TemplateEngine();
   engine.registerFramework(ReactExtension);
   engine.registerStyling(BemExtension);
   engine.registerUtility(LinterExtension);
@@ -347,7 +347,7 @@ export default {
     }
   };
   
-  const engine = new ConceptEngine();
+  const engine = new TemplateEngine();
   engine.registerFramework(ReactExtension);
   engine.registerFramework(VueExtension);
   engine.registerStyling(BemExtension);
@@ -389,7 +389,7 @@ export default {
 export async function analysisExample() {
   console.log('\n=== TEMPLATE ANALYSIS EXAMPLE ===');
   
-  const engine = new ConceptEngine();
+  const engine = new TemplateEngine();
   
   const template = [
     {
@@ -468,7 +468,7 @@ export async function analysisExample() {
 export async function errorHandlingExample() {
   console.log('\n=== ERROR HANDLING EXAMPLE ===');
   
-  const engine = new ConceptEngine({
+  const engine = new TemplateEngine({
     verboseErrors: true
   });
   
@@ -529,7 +529,7 @@ export async function errorHandlingExample() {
 export async function performanceExample() {
   console.log('\n=== PERFORMANCE MONITORING EXAMPLE ===');
   
-  const engine = new ConceptEngine({
+  const engine = new TemplateEngine({
     enablePerformanceTracking: true
   });
   
@@ -590,7 +590,7 @@ export async function configurationExample() {
   console.log('\n=== CONFIGURATION EXAMPLE ===');
   
   // Custom engine configuration
-  const engine = new ConceptEngine({
+  const engine = new TemplateEngine({
     defaultFramework: 'react',
     defaultStyling: 'bem',
     defaultUtilities: ['linter'],

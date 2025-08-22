@@ -1,13 +1,13 @@
 /**
- * Tests for ConceptEngine integration layer.
+ * Tests for TemplateEngine integration layer.
  */
 
-import { ConceptEngine } from '../../src/integration/ConceptEngine';
+import { TemplateEngine } from '../../src/engine/TemplateEngine';
 import type { FrameworkExtension, StylingExtension, UtilityExtension } from '../../src/extensions';
 import { vi } from 'vitest';
 
-describe('ConceptEngine', () => {
-  let engine: ConceptEngine;
+describe('TemplateEngine Integration', () => {
+  let engine: TemplateEngine;
 
   // Mock extensions
   const createMockFrameworkExtension = (key: string): FrameworkExtension => ({
@@ -52,7 +52,7 @@ describe('ConceptEngine', () => {
   });
 
   beforeEach(() => {
-    engine = new ConceptEngine();
+    engine = new TemplateEngine();
   });
 
   describe('Extension Registration', () => {
@@ -130,7 +130,7 @@ describe('ConceptEngine', () => {
     });
 
     it('should use default framework when configured', async () => {
-      const engine = new ConceptEngine({ defaultFramework: 'react' });
+      const engine = new TemplateEngine({ defaultFramework: 'react' });
       const reactExt = createMockFrameworkExtension('react');
       engine.registerFramework(reactExt);
 
@@ -149,7 +149,7 @@ describe('ConceptEngine', () => {
     });
 
     it('should override defaults with render options', async () => {
-      const engine = new ConceptEngine({ 
+      const engine = new TemplateEngine({ 
         defaultFramework: 'react',
         defaultStyling: 'bem'
       });
@@ -181,7 +181,7 @@ describe('ConceptEngine', () => {
     });
 
     it('should render with multiple utility extensions', async () => {
-      const engine = new ConceptEngine({
+      const engine = new TemplateEngine({
         defaultFramework: 'react',
         defaultUtilities: ['linter', 'optimizer']
       });
@@ -449,7 +449,7 @@ describe('ConceptEngine', () => {
     });
 
     it('should clone engine with override options', () => {
-      const engine = new ConceptEngine({
+      const engine = new TemplateEngine({
         defaultFramework: 'react',
         verboseErrors: false
       });
@@ -506,7 +506,7 @@ describe('ConceptEngine', () => {
 
   describe('Configuration Options', () => {
     it('should initialize with custom analyzer options', () => {
-      const customEngine = new ConceptEngine({
+      const customEngine = new TemplateEngine({
         analyzerOptions: {
           extractEvents: false,
           extractStyling: false,
@@ -521,7 +521,7 @@ describe('ConceptEngine', () => {
     it('should handle verbose error reporting', async () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
-      const engine = new ConceptEngine({ verboseErrors: true });
+      const engine = new TemplateEngine({ verboseErrors: true });
       const reactExt = createMockFrameworkExtension('react');
       engine.registerFramework(reactExt);
 
@@ -542,8 +542,8 @@ describe('ConceptEngine', () => {
     });
 
     it('should handle performance tracking configuration', () => {
-      const engineWithTracking = new ConceptEngine({ enablePerformanceTracking: true });
-      const engineWithoutTracking = new ConceptEngine({ enablePerformanceTracking: false });
+      const engineWithTracking = new TemplateEngine({ enablePerformanceTracking: true });
+      const engineWithoutTracking = new TemplateEngine({ enablePerformanceTracking: false });
 
       expect(engineWithTracking.getStatus().config.enablePerformanceTracking).toBe(true);
       expect(engineWithoutTracking.getStatus().config.enablePerformanceTracking).toBe(false);

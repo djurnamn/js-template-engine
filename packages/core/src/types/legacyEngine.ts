@@ -6,7 +6,7 @@ import { ExtendedTemplate } from '@js-template-engine/types';
  * Interface for the main template engine.
  * Defines the core rendering functionality.
  */
-export interface TemplateEngine {
+export interface LegacyTemplateEngine {
   /**
    * Renders template nodes or extended template to output string.
    * @param input - The template nodes or extended template to render.
@@ -27,14 +27,14 @@ export interface TemplateEngine {
  * Constructor interface for creating template engine instances.
  * Defines the signature for template engine constructors.
  */
-export interface TemplateEngineConstructor {
+export interface LegacyTemplateEngineConstructor {
   /**
    * Creates a new template engine instance.
    * @param extensions - Optional array of extensions to use.
    * @param verbose - Whether to enable verbose logging.
    * @returns A new template engine instance.
    */
-  new (extensions?: Extension[], verbose?: boolean): TemplateEngine;
+  new (extensions?: Extension[], verbose?: boolean): LegacyTemplateEngine;
 }
 
 export type { Extension } from '@js-template-engine/types';
