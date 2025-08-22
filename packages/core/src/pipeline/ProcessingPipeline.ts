@@ -8,11 +8,6 @@
  * - EventNormalizer for cross-framework consistency
  */
 
-import {
-  LegacyProcessingPipeline,
-  type LegacyProcessingOptions,
-  type LegacyProcessingResult,
-} from './LegacyProcessingPipeline';
 import { ExtensionRegistry } from '../registry/ExtensionRegistry';
 import { TemplateAnalyzer } from '../analyzer/TemplateAnalyzer';
 import { ErrorCollector, PerformanceTracker } from '../metadata';
@@ -45,9 +40,15 @@ import {
 import type { ComponentConcept } from '../concepts';
 
 /**
- * Advanced processing options extending base options.
+ * Processing options for template processing pipeline.
  */
-export interface ProcessingOptions extends LegacyProcessingOptions {
+export interface ProcessingOptions {
+  /** Target framework */
+  framework?: string;
+  /** Extensions to use */
+  extensions?: string[];
+  /** Component metadata */
+  component?: any;
   /** Component property merge strategies */
   mergeStrategies?: ComponentResolutionStrategy;
   /** Validation options */
@@ -66,15 +67,28 @@ export interface ProcessingOptions extends LegacyProcessingOptions {
 }
 
 /**
- * Advanced processing result with additional features.
+ * Result from template processing pipeline.
  */
-export interface ProcessingResult extends LegacyProcessingResult {
+export interface ProcessingResult {
+  /** Generated output */
+  output: string;
+  /** Processing errors */
+  errors: ErrorCollector;
+  /** Processing metadata */
+  metadata: {
+    /** Processing time in milliseconds */
+    processingTime: number;
+    /** Extensions used */
+    extensionsUsed: string[];
+    /** Performance metrics */
+    performance: Record<string, number>;
+  };
   /** Validation results */
   validation?: ValidationResult;
   /** Component properties after merging */
-  componentProperties?: any; // ComponentProperties
+  componentProperties?: any;
   /** Framework consistency report */
-  consistencyReport?: any; // ConsistencyReport
+  consistencyReport?: any;
   /** Advanced processing metadata */
   advancedMetadata?: {
     /** Whether processing was used */
@@ -91,9 +105,12 @@ export interface ProcessingResult extends LegacyProcessingResult {
 }
 
 /**
- * Advanced processing pipeline with comprehensive features.
+ * Processing pipeline with comprehensive features.
  */
-export class ProcessingPipeline extends LegacyProcessingPipeline {
+export class ProcessingPipeline {
+  private registry: ExtensionRegistry;
+  private analyzer: TemplateAnalyzer;
+  private errorCollector: ErrorCollector;
   private componentPropertyProcessor: ComponentPropertyProcessor;
   private importProcessor: ImportProcessor;
   private scriptMergeProcessor: ScriptMergeProcessor;
@@ -104,13 +121,17 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
   private frameworkConsistencyChecker: FrameworkConsistencyChecker;
   private eventNormalizer: EventNormalizer;
   private advancedErrorCollector: ErrorCollector;
+  private performanceTracker: PerformanceTracker;
 
   constructor(
     registry: ExtensionRegistry,
     analyzer?: TemplateAnalyzer,
     errorCollector?: ErrorCollector
   ) {
-    super(registry, analyzer, errorCollector);
+    this.registry = registry;
+    this.analyzer = analyzer || new TemplateAnalyzer();
+    this.errorCollector = errorCollector || new ErrorCollector();
+    this.performanceTracker = new PerformanceTracker();
 
     // Initialize advanced processors
     this.advancedErrorCollector = new ErrorCollector();
@@ -144,8 +165,7 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
     template: any[], // TemplateNode[]
     options: ProcessingOptions = {}
   ): Promise<ProcessingResult> {
-    const performanceTracker = this.getPerformanceTracker();
-    performanceTracker.start();
+    this.performanceTracker.start();
 
     this.advancedErrorCollector.clear();
     const processorsUsed: string[] = [];
@@ -156,7 +176,7 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
       // Step 1: Process component properties if definition provided
       let componentProperties;
       if (options.componentDefinition) {
-        performanceTracker.startExtension('component-property-processor');
+        this.performanceTracker.startExtension('component-property-processor');
         processorsUsed.push('ComponentPropertyProcessor');
 
         // Update merge strategies if provided
@@ -187,7 +207,7 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
           };
         }
 
-        performanceTracker.endExtension('component-property-processor');
+        this.performanceTracker.endExtension('component-property-processor');
       }
 
       // Step 2: Enhanced concept extraction if enabled
@@ -197,10 +217,10 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
         options.extraction?.useEventExtractor ||
         options.extraction?.useStylingExtractor
       ) {
-        performanceTracker.startExtension('enhanced-extraction');
+        this.performanceTracker.startExtension('enhanced-extraction');
 
         // Use base analyzer for initial extraction
-        concepts = this.getAnalyzer().extractConcepts(template);
+        concepts = this.analyzer.extractConcepts(template);
 
         // Enhance events if requested
         if (options.extraction.useEventExtractor) {
@@ -235,15 +255,15 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
           concepts.styling = stylingResult.styling;
         }
 
-        performanceTracker.endExtension('enhanced-extraction');
+        this.performanceTracker.endExtension('enhanced-extraction');
       } else {
         // Use standard extraction
-        concepts = this.getAnalyzer().extractConcepts(template);
+        concepts = this.analyzer.extractConcepts(template);
       }
 
       // Step 3: Event normalization if enabled
       if (options.extraction?.normalizeEvents && options.framework) {
-        performanceTracker.startExtension('event-normalization');
+        this.performanceTracker.startExtension('event-normalization');
         processorsUsed.push('EventNormalizer');
 
         const normalizationOptions: EventNormalizationOptions = {
@@ -267,13 +287,13 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
           modifiers: ne.modifiers,
         }));
 
-        performanceTracker.endExtension('event-normalization');
+        this.performanceTracker.endExtension('event-normalization');
       }
 
       // Step 4: Concept validation if enabled
       let validation: ValidationResult | undefined;
       if (options.extraction?.validateConcepts) {
-        performanceTracker.startExtension('concept-validation');
+        this.performanceTracker.startExtension('concept-validation');
         processorsUsed.push('ConceptValidator');
 
         const validationOptions: ValidationOptions = {
@@ -289,22 +309,22 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
           concepts,
           validationOptions
         );
-        performanceTracker.endExtension('concept-validation');
+        this.performanceTracker.endExtension('concept-validation');
       }
 
       // Step 5: Framework consistency check if multiple frameworks need to be supported
       let consistencyReport;
       if (options.validation?.enableCrossConceptValidation) {
-        performanceTracker.startExtension('consistency-check');
+        this.performanceTracker.startExtension('consistency-check');
         processorsUsed.push('FrameworkConsistencyChecker');
 
         consistencyReport =
           this.frameworkConsistencyChecker.checkConsistency(concepts);
-        performanceTracker.endExtension('consistency-check');
+        this.performanceTracker.endExtension('consistency-check');
       }
 
       // Step 6: Process with base pipeline
-      const baseResult = await super.process(template, options);
+      const baseResult = await this.processTemplate(template, options);
 
       // Step 7: Merge advanced processing errors with base errors
       const mergedErrors = this.mergeErrorCollectors(
@@ -337,7 +357,7 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
       );
 
       // Return enhanced error result
-      const baseResult = await super.process(template, options);
+      const baseResult = await this.processTemplate(template, options);
       return {
         ...baseResult,
         errors: this.mergeErrorCollectors(
@@ -352,6 +372,102 @@ export class ProcessingPipeline extends LegacyProcessingPipeline {
         },
       };
     }
+  }
+
+  /**
+   * Core template processing pipeline implementation.
+   */
+  private async processTemplate(
+    template: any[],
+    options: ProcessingOptions = {}
+  ): Promise<ProcessingResult> {
+    const startTime = Date.now();
+    const extensionsUsed: string[] = [];
+    this.errorCollector.clear();
+
+    try {
+      // Extract concepts using analyzer
+      const concepts = this.analyzer.extractConcepts(template);
+
+      // Get framework extension if specified
+      let output = '';
+      if (options.framework) {
+        const frameworkExtension = this.registry.getFramework(options.framework);
+        if (frameworkExtension) {
+          extensionsUsed.push(options.framework);
+          
+          // Render component using framework extension
+          const renderContext = {
+            component: options.component,
+            options: options
+          };
+          output = frameworkExtension.renderComponent(concepts, renderContext);
+        } else {
+          this.errorCollector.addError({
+            message: `Framework extension '${options.framework}' not found`,
+            nodeId: 'root',
+            extension: 'pipeline',
+            severity: 'error'
+          });
+        }
+      }
+
+      // If no framework specified or extension not found, create basic output
+      if (!output) {
+        output = this.createBasicOutput(template);
+      }
+
+      const processingTime = Date.now() - startTime;
+
+      return {
+        output,
+        errors: this.errorCollector,
+        metadata: {
+          processingTime,
+          extensionsUsed,
+          performance: { total: processingTime }
+        }
+      };
+    } catch (error) {
+      this.errorCollector.addError({
+        message: `Template processing failed: ${error instanceof Error ? error.message : String(error)}`,
+        nodeId: 'root',
+        extension: 'pipeline',
+        severity: 'error'
+      });
+
+      const processingTime = Date.now() - startTime;
+      return {
+        output: '',
+        errors: this.errorCollector,
+        metadata: {
+          processingTime,
+          extensionsUsed,
+          performance: { total: processingTime }
+        }
+      };
+    }
+  }
+
+  /**
+   * Create basic output from template nodes when no framework extension is available.
+   */
+  private createBasicOutput(template: any[]): string {
+    return template.map(node => {
+      if (typeof node === 'string') return node;
+      if (node.type === 'text') return node.content || '';
+      if (node.type === 'element') {
+        const tag = node.tag || 'div';
+        const attrs = node.attributes ? 
+          Object.entries(node.attributes)
+            .map(([key, value]) => `${key}="${value}"`)
+            .join(' ') : '';
+        const children = node.children ? 
+          this.createBasicOutput(node.children) : '';
+        return `<${tag}${attrs ? ' ' + attrs : ''}>${children}</${tag}>`;
+      }
+      return '';
+    }).join('');
   }
 
   /**
@@ -532,9 +648,9 @@ const onDateChange = (newDate) => setDate(newDate);`,
   }
 
   /**
-   * Get base analyzer for external access.
+   * Get analyzer for external access.
    */
   getAnalyzer(): TemplateAnalyzer {
-    return (this as any).analyzer; // Access protected member
+    return this.analyzer;
   }
 }

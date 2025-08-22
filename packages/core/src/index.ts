@@ -15,10 +15,6 @@ export * from './processors';
 export * from './extractors';
 export * from './validation';
 export * from './normalization';
-export * from './examples/TemplateProcessingExamples';
-
-// Export handlers
-export * from './handlers/FileHandler';
 
 // Export helpers
 export { createLogger } from './utils/logger';
