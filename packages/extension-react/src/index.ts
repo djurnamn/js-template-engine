@@ -1,8 +1,7 @@
 /**
- * React Framework Extension - Concept-Driven Implementation
+ * React Framework Extension
  * 
- * Production-quality React framework extension that leverages the Phase 1 & Phase 2 
- * concept-driven foundation to generate real, compilable JSX/TypeScript components.
+ * Generates React components with JSX/TypeScript syntax.
  */
 
 import type {
@@ -111,10 +110,10 @@ export interface ReactComponentConfig {
 }
 
 /**
- * React Framework Extension implementing the concept-driven architecture
+ * React Framework Extension for generating JSX components
  */
 export class ReactFrameworkExtension implements FrameworkExtension {
-  public metadata: ExtensionMetadata = {
+  public metadata: ExtensionMetadata & { type: 'framework' } = {
     type: 'framework',
     key: 'react',
     name: 'React Framework Extension',
@@ -123,7 +122,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
   public framework = 'react' as const;
 
-  // Phase 2 integration processors
+  // Core processors
   private eventNormalizer = new EventNormalizer();
   private propertyProcessor: ComponentPropertyProcessor;
   private scriptMerger: ScriptMergeProcessor;
@@ -144,11 +143,11 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   }
 
   /**
-   * Process event concepts using Phase 2 event normalization
+   * Process event concepts to React event handlers
    */
   processEvents(events: EventConcept[]): FrameworkEventOutput {
     const processedEvents = events.map(event => {
-      // Use Phase 2 normalization: 'click' → 'onClick'
+      // Normalize event to React format: 'click' → 'onClick'
       const normalizedEvent = this.eventNormalizer.normalizeEvent(event, {
         framework: 'react',
         preserveModifiers: true
@@ -582,34 +581,17 @@ export class ReactFrameworkExtension implements FrameworkExtension {
       // ARIA attributes (keep kebab-case)
       // React handles aria-* and data-* attributes as-is
       
-      // SVG attributes (common ones)
+      // SVG and additional attributes
       'allowfullscreen': 'allowFullScreen',
-      'autofocus': 'autoFocus',
-      'autoplay': 'autoPlay',
-      'contenteditable': 'contentEditable',
-      'crossorigin': 'crossOrigin',
       'datetime': 'dateTime',
-      'formaction': 'formAction',
-      'formenctype': 'formEncType',
-      'formmethod': 'formMethod',
-      'formnovalidate': 'formNoValidate',
-      'formtarget': 'formTarget',
       'frameborder': 'frameBorder',
       'marginheight': 'marginHeight',
       'marginwidth': 'marginWidth',
-      'maxlength': 'maxLength',
       'mediagroup': 'mediaGroup',
-      'minlength': 'minLength',
-      'novalidate': 'noValidate',
       'radiogroup': 'radioGroup',
-      'readonly': 'readOnly',
-      'rowspan': 'rowSpan',
-      'spellcheck': 'spellCheck',
       'srcdoc': 'srcDoc',
       'srclang': 'srcLang',
-      'srcset': 'srcSet',
-      'tabindex': 'tabIndex',
-      'usemap': 'useMap'
+      'srcset': 'srcSet'
     };
 
     // Return transformed name or original if no transformation needed
@@ -682,17 +664,17 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   }
 
   /**
-   * Render component using Phase 2 property resolution and merging
+   * Render component to React JSX format
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
-    // Use Phase 2 component property resolution
+    // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'react', component: context.component },
       { common: context.component },
       'Component' // default
     );
 
-    // Use Phase 2 import merging with React-specific defaults
+    // Merge imports with React-specific defaults
     const defaultImports = this.getDefaultReactImports(concepts);
     const imports = this.importProcessor.mergeImports(
       defaultImports,
@@ -700,7 +682,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
       { strategy: this.importMergeStrategy }
     );
 
-    // Use Phase 2 script merging
+    // Merge script content
     const scriptResult = this.scriptMerger.mergeScripts(
       context.component?.script || '',
       context.component?.extensions?.react?.script || '',
@@ -708,7 +690,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     );
     const script = scriptResult.content;
 
-    // Use Phase 2 props merging
+    // Merge component props
     const slotProps = this.extractSlotProps(concepts.slots);
     const props = this.propertyProcessor.mergeProps(
       context.component?.props || {},
@@ -749,7 +731,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   /**
    * Analyze hook usage (simplified implementation)
    */
-  private analyzeHookUsage(concepts: ComponentConcept): string[] {
+  private analyzeHookUsage(_concepts: ComponentConcept): string[] {
     const hooks: string[] = [];
     // TODO: Enhance based on script analysis
     // For now, just return empty array
@@ -869,7 +851,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     // Process events to get event attributes
     if (concepts.events.length > 0) {
-      const eventOutput = this.processEvents(concepts.events);
+      this.processEvents(concepts.events);
       // Events are processed and included in individual elements
     }
 

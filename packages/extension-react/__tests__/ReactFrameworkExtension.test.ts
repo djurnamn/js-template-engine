@@ -1,7 +1,7 @@
 /**
- * Comprehensive tests for ReactFrameworkExtension - Concept-Driven Implementation
+ * React Framework Extension Tests
  * 
- * Tests all concept processors and ensures TypeScript/JSX compilation validation
+ * Tests all concept processors and JSX component generation.
  */
 
 import { ReactFrameworkExtension } from '../src';
