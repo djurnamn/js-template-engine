@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { TemplateEngine } from '@js-template-engine/core';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
 import { BemExtension } from '@js-template-engine/extension-bem';
@@ -102,26 +102,26 @@ export class DocumentationGenerator {
 
   private async generateCodeExample(template: any, componentName: string, framework: string): Promise<string> {
     try {
-      // Set up template engine with appropriate extension
-      const extensions: any[] = [];
+      // Set up ProcessingPipeline with appropriate extension
+      const registry = new ExtensionRegistry();
       
       if (framework === 'react') {
-        extensions.push(new ReactExtension(true));
+        registry.registerFramework(new ReactExtension());
       } else if (framework === 'vue') {
-        extensions.push(new VueExtension(true));
+        registry.registerFramework(new VueExtension());
       }
       
       // Add BEM extension for styling
-      extensions.push(new BemExtension(true));
+      registry.registerStyling(new BemExtension());
 
-      const engine = new TemplateEngine(extensions, true);
+      const pipeline = new ProcessingPipeline(registry);
 
       // Generate component
-      const result = await engine.render(template, {
-        name: componentName,
-        outputDir: '',
-        language: this.config.capabilities.typescript ? 'typescript' : 'javascript',
-        writeOutputFile: false,
+      const result = await pipeline.process(template, {
+        framework: framework,
+        component: {
+          name: componentName
+        }
       });
 
       return result.output || `// Failed to generate ${framework} example`;

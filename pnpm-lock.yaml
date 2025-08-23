@@ -35,15 +35,18 @@ importers:
       '@js-template-engine/extension-react':
         specifier: workspace:*
         version: link:../extension-react
+      '@js-template-engine/extension-svelte':
+        specifier: workspace:*
+        version: link:../extension-svelte
       '@js-template-engine/extension-vue':
         specifier: workspace:*
         version: link:../extension-vue
       '@js-template-engine/types':
         specifier: workspace:*
         version: link:../types
-      yargs:
-        specifier: ^17.0.0
-        version: 17.7.2
+      commander:
+        specifier: ^12.1.0
+        version: 12.1.0
     devDependencies:
       '@types/jest':
         specifier: ^29.0.0
@@ -51,9 +54,6 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.17.46
-      '@types/yargs':
-        specifier: ^17.0.0
-        version: 17.0.33
       jest:
         specifier: ^29.0.0
         version: 29.7.0(@types/node@20.17.46)(ts-node@10.9.2(@types/node@20.17.46)(typescript@5.8.3))
@@ -184,12 +184,18 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^1.3.1
+        version: 1.6.1(vitest@1.6.1(@types/node@22.15.16)(@vitest/ui@3.2.4(vitest@1.6.1)))
       rimraf:
         specifier: ^5.0.5
         version: 5.0.10
       typescript:
         specifier: ^5.3.3
         version: 5.8.3
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@22.15.16)(@vitest/ui@3.2.4(vitest@1.6.1))
 
   packages/extension-react:
     dependencies:

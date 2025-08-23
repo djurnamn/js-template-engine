@@ -273,9 +273,10 @@ async function createBuildScripts(
   targetDir: string,
   options: InitOptions
 ): Promise<void> {
-  const buildScript = `import { TemplateEngine } from '@js-template-engine/core';
+  const buildScript = `import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
+import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import fs from 'fs-extra';
 import path from 'path';
@@ -297,21 +298,24 @@ async function build() {
   for (const framework of config.capabilities.frameworks) {
     console.log(\`📦 Building \${framework} components...\`);
     
-    const extensions = [];
+    // Create extension registry
+    const registry = new ExtensionRegistry();
     
     // Add styling extensions first
     if (config.capabilities.styling.includes('bem')) {
-      extensions.push(new BemExtension());
+      registry.registerStyling(new BemExtension());
     }
     
-    // Add framework extension last to handle transformations after styling
+    // Add framework extension
     if (framework === 'react') {
-      extensions.push(new ReactExtension());
+      registry.registerFramework(new ReactExtension());
     } else if (framework === 'vue') {
-      extensions.push(new VueExtension());
+      registry.registerFramework(new VueExtension());
+    } else if (framework === 'svelte') {
+      registry.registerFramework(new SvelteExtension());
     }
     
-    const engine = new TemplateEngine(extensions);
+    const pipeline = new ProcessingPipeline(registry);
     
     // Process each component
     const componentsDir = 'src/components';
@@ -330,13 +334,23 @@ async function build() {
           template = module.default || module;
         }
         
-        await engine.render(template, {
-          name: componentName,
-          outputDir: \`dist/\${framework}\`,
-          language: config.capabilities.typescript ? 'typescript' : 'javascript',
-          writeOutputFile: true,
-          extensions,
+        const result = await pipeline.process(template, {
+          framework: framework,
+          component: {
+            name: componentName
+          }
         });
+        
+        // Write output
+        const outputDir = \`dist/\${framework}\`;
+        await fs.ensureDir(outputDir);
+        const ext = config.capabilities.typescript ? 
+                   (framework === 'vue' ? '.vue' : 
+                    framework === 'svelte' ? '.svelte' : '.tsx') :
+                   (framework === 'vue' ? '.vue' : 
+                    framework === 'svelte' ? '.svelte' : '.jsx');
+        const outputPath = path.join(outputDir, \`\${componentName}\${ext}\`);
+        await fs.writeFile(outputPath, result.output);
       }
     }
   }
@@ -511,7 +525,7 @@ import enquirer from 'enquirer';
 const { prompt } = enquirer;
 import fs from 'fs-extra';
 import path from 'path';
-import { TemplateEngine } from '@js-template-engine/core';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 ${extensionImports}
 // @ts-ignore
 import config from '../create-ui-kit.config.js';
@@ -816,19 +830,19 @@ Need help? Visit: https://docs.js-template-engine.dev/create-ui-kit
       // Ensure output directory exists
       await fs.ensureDir(outputDir);
       
-      // Set up template engine with selected framework and styling
-      const extensions: any[] = [];
+      // Set up ProcessingPipeline with selected framework and styling
+      const registry = new ExtensionRegistry();
       
       // Add styling extensions first
       if (styling === 'bem') {
         const { BemExtension } = await import('@js-template-engine/extension-bem');
-        extensions.push(new BemExtension(true));
+        registry.registerStyling(new BemExtension());
       }
       
-      // Add framework extensions last
-${extensionInit}
+      // Add framework extensions
+${extensionInit.replace('extensions.push(new', 'registry.registerFramework(new')}
       
-      const engine = new TemplateEngine(extensions, true);
+      const pipeline = new ProcessingPipeline(registry);
       let successCount = 0;
       let skippedCount = 0;
       
@@ -840,17 +854,16 @@ ${extensionInit}
           const template = await fs.readJson(templatePath);
           
           // Generate component
-          const result = await engine.render(template, {
-            name: componentName,
-            outputDir: outputDir,
-            language: useTypeScript ? 'typescript' : 'javascript',
-            writeOutputFile: false, // We'll handle file writing with conflict detection
-            extensions: extensions,
-            prettierParser: useTypeScript ? 'typescript' : 'babel',
+          const result = await pipeline.process(template, {
+            framework: framework,
+            component: {
+              name: componentName
+            }
           });
           
           // Determine file extension based on framework and language
           const fileExt = framework === 'vue' ? '.vue' : 
+                         framework === 'svelte' ? '.svelte' :
                          useTypeScript ? (framework === 'react' ? '.tsx' : '.ts') :
                          (framework === 'react' ? '.jsx' : '.js');
           
