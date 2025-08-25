@@ -1,13 +1,21 @@
-import { describe, it, expect } from 'vitest';
-import { TemplateEngine } from '@js-template-engine/core';
-import { ReactExtension } from '@js-template-engine/extension-react';
-import { VueExtension } from '@js-template-engine/extension-vue';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
+import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import type { ExtendedTemplate } from '@js-template-engine/types';
 
 describe('Template Logic Integration Tests', () => {
   describe('React Extension with Template Logic', () => {
-    const reactEngine = new TemplateEngine([new BemExtension(), new ReactExtension()], false);
+    let reactRegistry: ExtensionRegistry;
+    let reactPipeline: ProcessingPipeline;
+
+    beforeEach(() => {
+      reactRegistry = new ExtensionRegistry();
+      reactRegistry.registerFramework(new ReactFrameworkExtension(false));
+      reactRegistry.registerStyling(new BemExtension(false));
+      reactPipeline = new ProcessingPipeline(reactRegistry);
+    });
 
     it('renders comment nodes correctly', async () => {
       const template: ExtendedTemplate = {
@@ -33,13 +41,15 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
       expect(result.output).toContain('{/* This is a test comment */}');
       expect(result.output).toContain('Hello World');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders fragment nodes correctly', async () => {
@@ -67,15 +77,17 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
-      expect(result.output).toContain('<React.Fragment>');
+      expect(result.output).toContain('<>');
       expect(result.output).toContain('<h1>Title</h1>');
       expect(result.output).toContain('<p>Content</p>');
-      expect(result.output).toContain('</React.Fragment>');
-      expect(result.errors).toEqual([]);
+      expect(result.output).toContain('</>');
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders conditional nodes correctly', async () => {
@@ -107,14 +119,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
-      expect(result.output).toContain('{props.isVisible ?');
+      expect(result.output).toContain('{isVisible ?');
       expect(result.output).toContain('Visible content');
       expect(result.output).toContain('Hidden content');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders for loop nodes correctly', async () => {
@@ -142,14 +156,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
-      expect(result.output).toContain('{props.items.map((item, index) =>');
+      expect(result.output).toContain('{items.map((item, index) =>');
       expect(result.output).toContain('<React.Fragment key={item.id}>');
       expect(result.output).toContain('List item');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('handles nested new node types', async () => {
@@ -190,15 +206,17 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
       expect(result.output).toContain('<React.Fragment>');
       expect(result.output).toContain('{/* List container */}');
-      expect(result.output).toContain('{props.items.map(');
+      expect(result.output).toContain('{items.map(');
       expect(result.output).toContain('{item.visible &&');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('integrates with BEM extension correctly', async () => {
@@ -239,20 +257,31 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await reactPipeline.process(template.template, {
+        framework: 'react',
+        extensions: ['bem'],
+        language: 'typescript',
+        component: template.component
       });
 
       expect(result.output).toContain('className="card card--primary"');
       expect(result.output).toContain('{/* Card content */}');
-      expect(result.output).toContain('{props.showTitle &&');
+      expect(result.output).toContain('{showTitle &&');
       // Note: BEM classes may not be applied to conditional children - this is expected behavior
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
   });
 
   describe('Vue Extension with Template Logic', () => {
-    const vueEngine = new TemplateEngine([new BemExtension(), new VueExtension()], false);
+    let vueRegistry: ExtensionRegistry;
+    let vuePipeline: ProcessingPipeline;
+
+    beforeEach(() => {
+      vueRegistry = new ExtensionRegistry();
+      vueRegistry.registerFramework(new VueFrameworkExtension(false));
+      vueRegistry.registerStyling(new BemExtension(false));
+      vuePipeline = new ProcessingPipeline(vueRegistry);
+    });
 
     it('renders comment nodes correctly', async () => {
       const template: ExtendedTemplate = {
@@ -277,13 +306,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await vueEngine.render(template, {
-        language: 'javascript'
+      const result = await vuePipeline.process(template.template, {
+        framework: 'vue',
+        extensions: ['bem'],
+        language: 'javascript',
+        component: template.component
       });
 
       expect(result.output).toContain('<!-- Vue comment test -->');
       expect(result.output).toContain('Hello Vue');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders fragment nodes correctly', async () => {
@@ -310,13 +342,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await vueEngine.render(template, {
-        language: 'javascript'
+      const result = await vuePipeline.process(template.template, {
+        framework: 'vue',
+        extensions: ['bem'],
+        language: 'javascript',
+        component: template.component
       });
 
       expect(result.output).toContain('<header>Header</header>');
       expect(result.output).toContain('<main>Main</main>');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders conditional nodes with Vue directives', async () => {
@@ -340,13 +375,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await vueEngine.render(template, {
-        language: 'javascript'
+      const result = await vuePipeline.process(template.template, {
+        framework: 'vue',
+        extensions: ['bem'],
+        language: 'javascript',
+        component: template.component
       });
 
       expect(result.output).toContain('v-if="isVisible"');
       expect(result.output).toContain('Visible in Vue');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('renders for loop nodes with Vue directives', async () => {
@@ -372,13 +410,16 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await vueEngine.render(template, {
-        language: 'javascript'
+      const result = await vuePipeline.process(template.template, {
+        framework: 'vue',
+        extensions: ['bem'],
+        language: 'javascript',
+        component: template.component
       });
 
       expect(result.output).toContain('v-for="(item, index) in items"');
       expect(result.output).toContain('Vue list item');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
 
     it('integrates with BEM extension correctly', async () => {
@@ -418,8 +459,11 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await vueEngine.render(template, {
-        language: 'javascript'
+      const result = await vuePipeline.process(template.template, {
+        framework: 'vue',
+        extensions: ['bem'],
+        language: 'javascript',
+        component: template.component
       });
 
       // Vue BEM may format classes differently
@@ -427,12 +471,19 @@ describe('Template Logic Integration Tests', () => {
       expect(result.output).toContain('class="hero__title"');
       expect(result.output).toContain('<!-- Hero section -->');
       expect(result.output).toContain('v-if="hasTitle"');
-      expect(result.errors).toEqual([]);
+      expect(result.errors.getErrors().length).toBe(0);
     });
   });
 
   describe('Error Handling for New Node Types', () => {
-    const reactEngine = new TemplateEngine([new ReactExtension()], false);
+    let errorTestRegistry: ExtensionRegistry;
+    let errorTestPipeline: ProcessingPipeline;
+
+    beforeEach(() => {
+      errorTestRegistry = new ExtensionRegistry();
+      errorTestRegistry.registerFramework(new ReactFrameworkExtension(false));
+      errorTestPipeline = new ProcessingPipeline(errorTestRegistry);
+    });
 
     it('handles malformed if nodes gracefully', async () => {
       const template: ExtendedTemplate = {
@@ -449,13 +500,15 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await errorTestPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
       // Should not crash and should handle gracefully
       expect(result.output).toBeDefined();
-      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toBeDefined();
     });
 
     it('handles malformed for nodes gracefully', async () => {
@@ -474,13 +527,15 @@ describe('Template Logic Integration Tests', () => {
         }
       };
 
-      const result = await reactEngine.render(template, {
-        language: 'typescript'
+      const result = await errorTestPipeline.process(template.template, {
+        framework: 'react',
+        language: 'typescript',
+        component: template.component
       });
 
       // Should not crash and should handle gracefully
       expect(result.output).toBeDefined();
-      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toBeDefined();
     });
   });
 });

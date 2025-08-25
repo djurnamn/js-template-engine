@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { InitCommand } from 'create-ui-kit';
 import fs from 'fs-extra';
 import path from 'path';
@@ -11,13 +11,36 @@ const TEST_PROJECT_PATH = path.join(TEST_OUTPUT_DIR, TEST_PROJECT_NAME);
 describe('Create UI Kit - End-to-End Integration', () => {
   beforeEach(async () => {
     // Clean up any existing test directory
-    await fs.remove(TEST_OUTPUT_DIR);
-    await fs.ensureDir(TEST_OUTPUT_DIR);
+    try {
+      await fs.remove(TEST_OUTPUT_DIR);
+      await fs.ensureDir(TEST_OUTPUT_DIR);
+    } catch (error) {
+      console.warn('Failed to setup test directory in beforeEach:', error);
+      // Try to ensure directory exists at minimum
+      try {
+        await fs.ensureDir(TEST_OUTPUT_DIR);
+      } catch (ensureError) {
+        throw new Error(`Unable to setup test directory: ${ensureError}`);
+      }
+    }
   });
 
   afterEach(async () => {
-    // Clean up test directory
-    await fs.remove(TEST_OUTPUT_DIR);
+    // Clean up test directory after each test
+    try {
+      await fs.remove(TEST_OUTPUT_DIR);
+    } catch (error) {
+      console.warn('Failed to clean up test directory in afterEach:', error);
+    }
+  });
+
+  afterAll(async () => {
+    // Final cleanup to ensure tmp directory is always removed
+    try {
+      await fs.remove(TEST_OUTPUT_DIR);
+    } catch (error) {
+      console.warn('Failed to clean up test directory in afterAll:', error);
+    }
   });
 
   describe('Author Workflow', () => {

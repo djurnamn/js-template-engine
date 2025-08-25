@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { TemplateEngine } from '@js-template-engine/core';
-import { ReactExtension } from '@js-template-engine/extension-react';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
 
 const simpleTemplate = {
   type: 'element' as const,
@@ -10,12 +10,17 @@ const simpleTemplate = {
 
 describe('React extension integration', () => {
   it('renders a simple component with React extension', async () => {
-    const engine = new TemplateEngine([new ReactExtension()], false);
-    const result = await engine.render([simpleTemplate], {
+    const registry = new ExtensionRegistry();
+    registry.registerFramework(new ReactFrameworkExtension(false));
+    const pipeline = new ProcessingPipeline(registry);
+    
+    const result = await pipeline.process([simpleTemplate], {
+      framework: 'react',
       language: 'javascript'
     });
-    const output = result.output;
-    expect(output).toContain('Click me');
-    expect(output).toContain('Button');
+    
+    expect(result.errors.getErrors().length).toBe(0);
+    expect(result.output).toContain('Click me');
+    expect(result.output).toContain('Button');
   });
 });

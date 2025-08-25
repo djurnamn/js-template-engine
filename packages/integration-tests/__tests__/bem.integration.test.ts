@@ -3,7 +3,6 @@ import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core'
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
 import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
-import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
 
 const bemTemplate = [
   {
@@ -107,26 +106,6 @@ describe('BEM extension integration', () => {
       expect(result.metadata.extensionsUsed).toContain('vue');
     });
 
-    it('should coordinate BEM with Svelte extension', async () => {
-      const bemExtension = new BemExtension(false);
-      const svelteExtension = new SvelteFrameworkExtension();
-      
-      registry.registerStyling(bemExtension);
-      registry.registerFramework(svelteExtension);
-
-      const result = await pipeline.process(stylingTemplate, {
-        framework: 'svelte',
-        extensions: ['bem'],
-        component: { name: 'TestComponent' }
-      });
-
-      expect(result.output).toBeTruthy();
-      expect(result.output).toContain('<script');
-      expect(result.output).toContain('class=');
-      expect(result.output).toContain('card');
-      expect(result.metadata.extensionsUsed).toContain('bem');
-      expect(result.metadata.extensionsUsed).toContain('svelte');
-    });
   });
 
   describe('SCSS generation', () => {

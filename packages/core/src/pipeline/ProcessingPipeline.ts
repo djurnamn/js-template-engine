@@ -389,24 +389,18 @@ export class ProcessingPipeline {
       // Extract concepts using analyzer
       const concepts = this.analyzer.extractConcepts(template);
 
-      // Process styling extensions if specified
+      // Process styling extensions generically by type
       let processedConcepts = concepts;
-      if (options.extensions?.includes('bem')) {
-        const bemExtension = this.registry.getStyling('bem');
-        if (bemExtension) {
-          extensionsUsed.push('bem');
-          
-          // If we have a framework extension, coordinate BEM with it
-          if (options.framework) {
-            const frameworkExtension = this.registry.getFramework(options.framework);
-            if (frameworkExtension && 'coordinateWithFramework' in bemExtension) {
-              processedConcepts = (bemExtension as any).coordinateWithFramework(frameworkExtension, concepts);
-            }
-          } else {
-            // Process BEM styles independently
-            const styleOutput = bemExtension.processStyles(concepts.styling);
+      if (options.extensions?.length) {
+        for (const extensionKey of options.extensions) {
+          const stylingExtension = this.registry.getStyling(extensionKey);
+          if (stylingExtension) {
+            extensionsUsed.push(extensionKey);
+            const styleResult = stylingExtension.processStyles(concepts.styling);
+            // Update concepts with processed styling
+            processedConcepts.styling = styleResult.updatedStyling || processedConcepts.styling;
             // Add style output to context
-            (options as any).styleOutput = styleOutput.styles;
+            (options as any).styleOutput = styleResult.styles;
           }
         }
       }
@@ -677,4 +671,5 @@ const onDateChange = (newDate) => setDate(newDate);`,
   getAnalyzer(): TemplateAnalyzer {
     return this.analyzer;
   }
+
 }

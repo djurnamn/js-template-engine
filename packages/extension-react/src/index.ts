@@ -1026,6 +1026,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     return `<${tag}${attributes}>${children}</${tag}>`;
   }
+
 }
 
 // Main exports

@@ -110,6 +110,8 @@ export interface StyleOutput {
   styles: string;
   /** Required imports */
   imports?: string[];
+  /** Updated styling concepts with generated classes */
+  updatedStyling?: StylingConcept;
 }
 
 /**

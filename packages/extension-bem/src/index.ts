@@ -10,7 +10,6 @@ import type {
 import type {
   StylingExtension,
   ExtensionMetadata,
-  FrameworkExtension,
   StylingConcept,
   ComponentConcept,
   RenderContext,
@@ -449,31 +448,19 @@ export class BemExtension
     // Generate SCSS with existing functionality
     const scssOutput = this.generateScssFromClasses(bemClasses);
     
+    // Update styling concepts with generated BEM classes
+    const updatedStyling: StylingConcept = {
+      ...concepts,
+      staticClasses: [...concepts.staticClasses, ...bemClasses]
+    };
+    
     return {
       styles: scssOutput,
-      imports: []
+      imports: [],
+      updatedStyling
     };
   }
 
-  /**
-   * Coordinate BEM styling with framework extensions
-   */
-  coordinateWithFramework(
-    frameworkExtension: FrameworkExtension, 
-    concepts: ComponentConcept
-  ): ComponentConcept {
-    // Process BEM classes based on styling concepts
-    const bemClasses = this.generateBemClassesFromConcepts(concepts.styling);
-    
-    // Apply classes to styling concepts before framework processing
-    const updatedConcepts = { ...concepts };
-    updatedConcepts.styling = {
-      ...concepts.styling,
-      staticClasses: [...concepts.styling.staticClasses, ...bemClasses],
-    };
-    
-    return updatedConcepts;
-  }
 
   /**
    * Generate BEM classes from styling concepts
@@ -492,20 +479,31 @@ export class BemExtension
   }
 
   /**
-   * Check if a class name follows BEM convention
+   * Check if a class name follows BEM convention using configured separators
    */
   private isBemClass(className: string): boolean {
-    // BEM pattern check: block, block__element, block--modifier, or block__element--modifier
-    // Must start with letter, can contain letters, numbers, hyphens
-    // Element separator: exactly two underscores
-    // Modifier separator: exactly two hyphens  
-    return /^[a-zA-Z][a-zA-Z0-9-]*(__[a-zA-Z][a-zA-Z0-9-]*)?(--[a-zA-Z][a-zA-Z0-9-]*)?$/.test(className) &&
-           !className.includes('___') && // No triple underscores
-           !className.includes('---') && // No triple hyphens
-           !className.endsWith('__') && // No trailing underscores
-           !className.endsWith('--') && // No trailing hyphens
-           !className.startsWith('__') && // No leading underscores
-           !className.startsWith('--');  // No leading hyphens
+    const elementSep = this.options.separator?.element || '__';
+    const modifierSep = this.options.separator?.modifier || '--';
+    
+    // Build regex dynamically based on user configuration
+    const escapedElementSep = elementSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedModifierSep = modifierSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    const pattern = new RegExp(`^[a-zA-Z][a-zA-Z0-9-]*(${escapedElementSep}[a-zA-Z][a-zA-Z0-9-]*)?(${escapedModifierSep}[a-zA-Z][a-zA-Z0-9-]*)?$`);
+    
+    // Check basic pattern and avoid invalid structures
+    if (!pattern.test(className)) return false;
+    
+    // Validate no triple separators or leading/trailing separators
+    const tripleSep = elementSep + elementSep + elementSep;
+    const tripleModSep = modifierSep + modifierSep + modifierSep;
+    
+    return !className.includes(tripleSep) &&
+           !className.includes(tripleModSep) &&
+           !className.endsWith(elementSep) &&
+           !className.endsWith(modifierSep) &&
+           !className.startsWith(elementSep) &&
+           !className.startsWith(modifierSep);
   }
 
   /**
@@ -574,13 +572,15 @@ export class BemExtension
     // Generate BEM classes
     const styleOutput = this.processStyles(stylingConcepts);
     
-    // Coordinate with framework extensions if present
-    if (context.frameworkExtension) {
-      const coordinatedConcepts = this.coordinateWithFramework(
-        context.frameworkExtension as FrameworkExtension,
-        context.concepts as ComponentConcept
-      );
-      (context as any).concepts = coordinatedConcepts;
+    // Update concepts with generated BEM classes
+    const bemClasses = this.generateBemClassesFromConcepts(stylingConcepts);
+    if (context.concepts) {
+      const updatedConcepts = context.concepts as ComponentConcept;
+      updatedConcepts.styling = {
+        ...updatedConcepts.styling,
+        staticClasses: [...updatedConcepts.styling.staticClasses, ...bemClasses]
+      };
+      (context as any).concepts = updatedConcepts;
     }
     
     return {

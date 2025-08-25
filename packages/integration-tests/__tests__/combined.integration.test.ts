@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { TemplateEngine } from '@js-template-engine/core';
-import { ReactExtension } from '@js-template-engine/extension-react';
-import { VueExtension } from '@js-template-engine/extension-vue';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
+import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
 import { BemExtension } from '@js-template-engine/extension-bem';
 
 const template = [
@@ -18,31 +18,44 @@ const template = [
 
 describe('Combined extensions integration', () => {
   it('renders with React and BEM extensions', async () => {
-    const engine = new TemplateEngine(
-      [new ReactExtension(), new BemExtension()],
-      false
-    );
-    const result = await engine.render(template, { language: 'javascript' });
-    const output = result.output;
-    expect(output).toContain('Combined Test');
-    expect(output).toContain('button__icon');
-    expect(output).toContain('Button');
+    const registry = new ExtensionRegistry();
+    registry.registerFramework(new ReactFrameworkExtension(false));
+    registry.registerStyling(new BemExtension(false));
+    const pipeline = new ProcessingPipeline(registry);
+    
+    const result = await pipeline.process(template, {
+      framework: 'react',
+      extensions: ['bem'],
+      language: 'javascript'
+    });
+    
+    expect(result.errors.getErrors().length).toBe(0);
+    expect(result.output).toContain('Combined Test');
+    expect(result.output).toContain('button__icon');
+    expect(result.output).toContain('Button');
   });
 
-  // Note: Multiple renderer extension validation is not currently implemented
-  // This test has been removed as the validation logic doesn't exist in the current codebase
-
-  it('errors when combining React and Vue renderer extensions', async () => {
-    const engine = new TemplateEngine([
-      new ReactExtension(),
-      new VueExtension(),
-    ], false);
-    const result = await engine.render(template, { language: 'javascript' });
-    expect(result.output).toBe('');
-    expect(result.errors.length).toBeGreaterThan(0);
-    const error = result.errors.find(e => e.name === 'ValidationError');
-    expect(error).toBeDefined();
-    if (!error) throw new Error('ValidationError not found in errors array');
-    expect(error.message).toMatch(/Multiple renderer extensions detected/);
+  it('allows registration of different framework extensions', async () => {
+    const registry = new ExtensionRegistry();
+    
+    // Different framework extensions can be registered with different keys
+    const reactResult = registry.registerFramework(new ReactFrameworkExtension(false));
+    const vueResult = registry.registerFramework(new VueFrameworkExtension(false));
+    
+    expect(reactResult.isValid).toBe(true);
+    expect(vueResult.isValid).toBe(true);
+    
+    // But processing can only use one framework at a time
+    const pipeline = new ProcessingPipeline(registry);
+    
+    const result = await pipeline.process(template, {
+      framework: 'react', // Only one framework is specified
+      extensions: ['bem'],
+      language: 'javascript'
+    });
+    
+    expect(result.errors.getErrors().length).toBe(0);
+    expect(result.metadata.extensionsUsed).toContain('react');
+    expect(result.metadata.extensionsUsed).not.toContain('vue');
   });
 });

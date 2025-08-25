@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { TemplateEngine } from '@js-template-engine/core';
-import { VueExtension } from '@js-template-engine/extension-vue';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
 
 const simpleTemplate = [
   {
@@ -20,14 +20,19 @@ const simpleTemplate = [
 
 describe('Vue extension integration', () => {
   it('renders a component with slots and props', async () => {
-    const engine = new TemplateEngine([new VueExtension()], false);
-    const result = await engine.render(simpleTemplate, {
+    const registry = new ExtensionRegistry();
+    registry.registerFramework(new VueFrameworkExtension(false));
+    const pipeline = new ProcessingPipeline(registry);
+    
+    const result = await pipeline.process(simpleTemplate, {
+      framework: 'vue',
       language: 'javascript'
     });
-    const output = result.output;
-    expect(output).toContain('Click me');
-    expect(output).toContain('Slot content');
-    expect(output).toContain('<Button');
-    expect(output).toContain('<span');
+    
+    expect(result.errors.getErrors().length).toBe(0);
+    expect(result.output).toContain('Click me');
+    expect(result.output).toContain('Slot content');
+    expect(result.output).toContain('<Button');
+    expect(result.output).toContain('<span');
   });
 });
