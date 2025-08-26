@@ -10,7 +10,11 @@ import type {
   IterationConcept,
   SlotConcept,
   AttributeConcept,
-  ComponentMetadata
+  ComponentMetadata,
+  StructuralConcept,
+  TextConcept,
+  CommentConcept,
+  FragmentConcept
 } from '../concepts';
 import { NodeIdGenerator, ErrorCollector } from '../metadata';
 
@@ -97,6 +101,7 @@ export class TemplateAnalyzer {
    */
   extractConcepts(template: TemplateNode[]): ComponentConcept {
     const concepts: ComponentConcept = {
+      structure: [],
       events: [],
       styling: this.createEmptyStylingConcept('root'),
       conditionals: [],
@@ -106,10 +111,97 @@ export class TemplateAnalyzer {
       metadata: this.extractMetadata(template)
     };
 
-    // Traverse template and extract concepts
+    // Extract structural concepts first
+    concepts.structure = this.extractStructuralConcepts(template, []);
+
+    // Traverse template and extract behavioral concepts
     this.traverseNodes(template, concepts, []);
 
     return concepts;
+  }
+
+  /**
+   * Extract structural concepts from template nodes.
+   */
+  private extractStructuralConcepts(
+    nodes: TemplateNode[],
+    pathStack: number[]
+  ): (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[] {
+    return nodes.map((node, index) => {
+      const currentPath = [...pathStack, index];
+      const nodeId = NodeIdGenerator.generateNodeId(currentPath);
+
+      switch (node.type) {
+        case 'text':
+          return {
+            nodeId,
+            type: 'text',
+            content: node.content || ''
+          } as TextConcept;
+
+        case 'comment':
+          return {
+            nodeId,
+            type: 'comment',
+            content: node.content || ''
+          } as CommentConcept;
+
+        case 'fragment':
+          return {
+            nodeId,
+            type: 'fragment',
+            children: this.extractStructuralConcepts(node.children || [], currentPath)
+          } as FragmentConcept;
+
+        case 'element':
+        case undefined: // Default to element
+          const tag = node.tag || 'div';
+          const children = this.extractStructuralConcepts(node.children || [], currentPath);
+          
+          return {
+            nodeId,
+            type: 'element',
+            tag,
+            children,
+            isSelfClosing: this.isSelfClosingTag(tag)
+          } as StructuralConcept;
+
+        // For special nodes like if/for/slot, we'll handle them as behavioral concepts
+        // but still need to extract their structural children
+        case 'if':
+        case 'for': 
+        case 'slot':
+          // These will be handled as behavioral concepts, but we still extract their structure
+          // For now, treat them as fragments with their children
+          return {
+            nodeId,
+            type: 'fragment',
+            children: this.extractStructuralConcepts(node.children || [], currentPath)
+          } as FragmentConcept;
+
+        default:
+          // Unknown node type, treat as fragment
+          this.errorCollector.addWarning(
+            `Unknown node type for structural extraction: ${node.type}`,
+            nodeId,
+            'analyzer'
+          );
+          return {
+            nodeId,
+            type: 'fragment',
+            children: this.extractStructuralConcepts(node.children || [], currentPath)
+          } as FragmentConcept;
+      }
+    });
+  }
+
+  /**
+   * Check if a tag is self-closing.
+   */
+  private isSelfClosingTag(tag: string): boolean {
+    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    return selfClosingTags.includes(tag.toLowerCase());
   }
 
   /**

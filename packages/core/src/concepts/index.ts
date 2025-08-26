@@ -90,6 +90,50 @@ export interface AttributeConcept extends BaseConcept {
 }
 
 /**
+ * Structural concept for template element hierarchy and content.
+ */
+export interface StructuralConcept extends BaseConcept {
+  /** Element tag name */
+  tag: string;
+  /** Child elements and content */
+  children: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[];
+  /** Whether this is a self-closing element */
+  isSelfClosing?: boolean;
+  /** Type identifier */
+  type: 'element';
+}
+
+/**
+ * Text content concept.
+ */
+export interface TextConcept extends BaseConcept {
+  /** Text content */
+  content: string;
+  /** Type identifier */
+  type: 'text';
+}
+
+/**
+ * Comment content concept.
+ */
+export interface CommentConcept extends BaseConcept {
+  /** Comment content */
+  content: string;
+  /** Type identifier */
+  type: 'comment';
+}
+
+/**
+ * Fragment concept for multiple root elements.
+ */
+export interface FragmentConcept extends BaseConcept {
+  /** Child elements in fragment */
+  children: (StructuralConcept | TextConcept | CommentConcept)[];
+  /** Type identifier */
+  type: 'fragment';
+}
+
+/**
  * Component metadata.
  */
 export interface ComponentMetadata {
@@ -107,6 +151,8 @@ export interface ComponentMetadata {
  * Main component concept container.
  */
 export interface ComponentConcept {
+  /** Template structure and content */
+  structure: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[];
   /** Event handlers */
   events: EventConcept[];
   /** Styling information */
