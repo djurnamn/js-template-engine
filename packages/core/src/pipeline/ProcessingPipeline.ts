@@ -396,9 +396,12 @@ export class ProcessingPipeline {
           const stylingExtension = this.registry.getStyling(extensionKey);
           if (stylingExtension) {
             extensionsUsed.push(extensionKey);
-            const styleResult = stylingExtension.processStyles(concepts.styling);
+            const styleResult = stylingExtension.processStyles(
+              concepts.styling
+            );
             // Update concepts with processed styling
-            processedConcepts.styling = styleResult.updatedStyling || processedConcepts.styling;
+            processedConcepts.styling =
+              styleResult.updatedStyling || processedConcepts.styling;
             // Add style output to context
             (options as any).styleOutput = styleResult.styles;
           }
@@ -408,24 +411,29 @@ export class ProcessingPipeline {
       // Get framework extension if specified
       let output = '';
       if (options.framework) {
-        const frameworkExtension = this.registry.getFramework(options.framework);
+        const frameworkExtension = this.registry.getFramework(
+          options.framework
+        );
         if (frameworkExtension) {
           extensionsUsed.push(options.framework);
-          
+
           // Render component using framework extension with processed concepts
           const renderContext = {
             component: options.component,
             options: options,
             concepts: processedConcepts,
-            styleOutput: (options as any).styleOutput
+            styleOutput: (options as any).styleOutput,
           };
-          output = frameworkExtension.renderComponent(processedConcepts, renderContext);
+          output = frameworkExtension.renderComponent(
+            processedConcepts,
+            renderContext
+          );
         } else {
           this.errorCollector.addError({
             message: `Framework extension '${options.framework}' not found`,
             nodeId: 'root',
             extension: 'pipeline',
-            severity: 'error'
+            severity: 'error',
           });
         }
       }
@@ -443,15 +451,15 @@ export class ProcessingPipeline {
         metadata: {
           processingTime,
           extensionsUsed,
-          performance: { total: processingTime }
-        }
+          performance: { total: processingTime },
+        },
       };
     } catch (error) {
       this.errorCollector.addError({
         message: `Template processing failed: ${error instanceof Error ? error.message : String(error)}`,
         nodeId: 'root',
         extension: 'pipeline',
-        severity: 'error'
+        severity: 'error',
       });
 
       const processingTime = Date.now() - startTime;
@@ -461,8 +469,8 @@ export class ProcessingPipeline {
         metadata: {
           processingTime,
           extensionsUsed,
-          performance: { total: processingTime }
-        }
+          performance: { total: processingTime },
+        },
       };
     }
   }
@@ -471,21 +479,25 @@ export class ProcessingPipeline {
    * Create basic output from template nodes when no framework extension is available.
    */
   private createBasicOutput(template: any[]): string {
-    return template.map(node => {
-      if (typeof node === 'string') return node;
-      if (node.type === 'text') return node.content || '';
-      if (node.type === 'element') {
-        const tag = node.tag || 'div';
-        const attrs = node.attributes ? 
-          Object.entries(node.attributes)
-            .map(([key, value]) => `${key}="${value}"`)
-            .join(' ') : '';
-        const children = node.children ? 
-          this.createBasicOutput(node.children) : '';
-        return `<${tag}${attrs ? ' ' + attrs : ''}>${children}</${tag}>`;
-      }
-      return '';
-    }).join('');
+    return template
+      .map((node) => {
+        if (typeof node === 'string') return node;
+        if (node.type === 'text') return node.content || '';
+        if (node.type === 'element') {
+          const tag = node.tag || 'div';
+          const attrs = node.attributes
+            ? Object.entries(node.attributes)
+                .map(([key, value]) => `${key}="${value}"`)
+                .join(' ')
+            : '';
+          const children = node.children
+            ? this.createBasicOutput(node.children)
+            : '';
+          return `<${tag}${attrs ? ' ' + attrs : ''}>${children}</${tag}>`;
+        }
+        return '';
+      })
+      .join('');
   }
 
   /**
@@ -671,5 +683,4 @@ const onDateChange = (newDate) => setDate(newDate);`,
   getAnalyzer(): TemplateAnalyzer {
     return this.analyzer;
   }
-
 }

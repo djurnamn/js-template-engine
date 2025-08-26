@@ -507,6 +507,24 @@ export class TemplateAnalyzer {
       }
     }
 
+    // Extract extension data for styling extensions (e.g., BEM, Tailwind)
+    if (node.extensions) {
+      if (!existingStyling.extensionData) {
+        existingStyling.extensionData = {};
+      }
+      
+      // Merge extension data - this allows styling extensions to access their configuration
+      for (const [extensionKey, extensionData] of Object.entries(node.extensions)) {
+        if (!existingStyling.extensionData[extensionKey]) {
+          existingStyling.extensionData[extensionKey] = [];
+        }
+        existingStyling.extensionData[extensionKey].push({
+          nodeId,
+          data: extensionData
+        });
+      }
+    }
+
     // Merge with existing styling
     existingStyling.staticClasses.push(...staticClasses);
     existingStyling.dynamicClasses.push(...dynamicClasses);

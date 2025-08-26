@@ -80,6 +80,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
   private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
+  
+  /** Current concepts being rendered (for per-element class access) */
+  private concepts?: ComponentConcept;
+
 
   constructor() {
     this.propertyProcessor = new ComponentPropertyProcessor({
@@ -140,9 +144,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    */
   processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput {
     const processedConditionals = conditionals.map(conditional => {
-      const thenContent = this.renderNodes(conditional.thenNodes);
+      // Use structural rendering for conditional content to support styling concepts
+      const thenContent = this.renderStructuralConcepts(conditional.thenNodes as any, {});
       const elseContent = conditional.elseNodes ?
-        this.renderNodes(conditional.elseNodes) : null;
+        this.renderStructuralConcepts(conditional.elseNodes as any, {}) : null;
 
       return {
         condition: conditional.condition,
@@ -375,6 +380,9 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Render component to Svelte format
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
+    // Store concepts for per-element class access
+    this.concepts = concepts;
+    
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'svelte', component: context.component },
@@ -806,6 +814,18 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         } else {
           attributeString += ` ${name}="${value}"`;
         }
+      }
+    }
+
+    // Apply per-element classes if available (e.g., from BEM extension)
+    if (this.concepts?.styling?.perElementClasses && concept.nodeId) {
+      const elementClasses = this.concepts.styling.perElementClasses[concept.nodeId];
+      if (elementClasses && elementClasses.length > 0) {
+        const classNames = elementClasses.join(' ');
+        // Merge with existing class attribute if present
+        const existingClass = concept.attributes?.class || '';
+        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        attributeString += ` class="${combinedClasses}"`;
       }
     }
     

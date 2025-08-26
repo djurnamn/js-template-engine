@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import {
+  ProcessingPipeline,
+  ExtensionRegistry,
+} from '@js-template-engine/core';
 import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import type { ExtendedTemplate } from '@js-template-engine/types';
@@ -26,7 +29,7 @@ describe('Svelte Framework Extension Integration', () => {
       ];
 
       const result = await pipeline.process(template, {
-        framework: 'svelte'
+        framework: 'svelte',
       });
 
       expect(result.errors.getErrors().length).toBe(0);
@@ -42,19 +45,19 @@ describe('Svelte Framework Extension Integration', () => {
             type: 'element',
             tag: 'button',
             attributes: {
-              'on:click': 'handleClick'
+              'on:click': 'handleClick',
             },
-            children: [{ type: 'text', content: 'Click me' }]
-          }
+            children: [{ type: 'text', content: 'Click me' }],
+          },
         ],
         component: {
-          name: 'EventComponent'
-        }
+          name: 'EventComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('on:click={handleClick}');
@@ -72,27 +75,27 @@ describe('Svelte Framework Extension Integration', () => {
               {
                 type: 'element',
                 tag: 'div',
-                children: [{ type: 'text', content: 'Visible content' }]
-              }
+                children: [{ type: 'text', content: 'Visible content' }],
+              },
             ],
             else: [
               {
                 type: 'element',
                 tag: 'div',
-                children: [{ type: 'text', content: 'Hidden content' }]
-              }
-            ]
-          }
+                children: [{ type: 'text', content: 'Hidden content' }],
+              },
+            ],
+          },
         ],
         component: {
           name: 'ConditionalComponent',
-          props: { isVisible: 'boolean' }
-        }
+          props: { isVisible: 'boolean' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('{#if isVisible}');
@@ -116,20 +119,20 @@ describe('Svelte Framework Extension Integration', () => {
               {
                 type: 'element',
                 tag: 'li',
-                children: [{ type: 'text', content: 'List item' }]
-              }
-            ]
-          }
+                children: [{ type: 'text', content: 'List item' }],
+              },
+            ],
+          },
         ],
         component: {
           name: 'ListComponent',
-          props: { items: 'any[]' }
-        }
+          props: { items: 'any[]' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('{#each items as item, index (item.id)}');
@@ -150,25 +153,25 @@ describe('Svelte Framework Extension Integration', () => {
                 type: 'element',
                 tag: 'slot',
                 attributes: { name: 'header' },
-                children: [{ type: 'text', content: 'Header content' }]
+                children: [{ type: 'text', content: 'Header content' }],
               },
               {
                 type: 'element',
                 tag: 'slot',
                 attributes: {},
-                children: [{ type: 'text', content: 'Default slot content' }]
-              }
-            ]
-          }
+                children: [{ type: 'text', content: 'Default slot content' }],
+              },
+            ],
+          },
         ],
         component: {
-          name: 'CardComponent'
-        }
+          name: 'CardComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('<slot name="header">');
@@ -187,19 +190,19 @@ describe('Svelte Framework Extension Integration', () => {
             attributes: {
               type: 'text',
               'bind:value': 'inputValue',
-              disabled: '{isDisabled}'
-            }
-          }
+              disabled: '{isDisabled}',
+            },
+          },
         ],
         component: {
           name: 'InputComponent',
-          props: { inputValue: 'string', isDisabled: 'boolean' }
-        }
+          props: { inputValue: 'string', isDisabled: 'boolean' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('bind:value={inputValue}');
@@ -216,23 +219,23 @@ describe('Svelte Framework Extension Integration', () => {
             children: [
               {
                 type: 'comment',
-                content: 'This is a Svelte comment'
+                content: 'This is a Svelte comment',
               },
               {
                 type: 'text',
-                content: 'Hello Svelte'
-              }
-            ]
-          }
+                content: 'Hello Svelte',
+              },
+            ],
+          },
         ],
         component: {
-          name: 'SvelteTestComponent'
-        }
+          name: 'SvelteTestComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('<!-- This is a Svelte comment -->');
@@ -249,24 +252,24 @@ describe('Svelte Framework Extension Integration', () => {
               {
                 type: 'element',
                 tag: 'h1',
-                children: [{ type: 'text', content: 'Title' }]
+                children: [{ type: 'text', content: 'Title' }],
               },
               {
                 type: 'element',
                 tag: 'p',
-                children: [{ type: 'text', content: 'Content' }]
-              }
-            ]
-          }
+                children: [{ type: 'text', content: 'Content' }],
+              },
+            ],
+          },
         ],
         component: {
-          name: 'SvelteFragmentComponent'
-        }
+          name: 'SvelteFragmentComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('<h1>Title</h1>');
@@ -293,7 +296,7 @@ describe('Svelte Framework Extension Integration', () => {
             children: [
               {
                 type: 'comment',
-                content: 'Nested logic container'
+                content: 'Nested logic container',
               },
               {
                 type: 'for',
@@ -307,24 +310,24 @@ describe('Svelte Framework Extension Integration', () => {
                       {
                         type: 'element',
                         tag: 'div',
-                        children: [{ type: 'text', content: 'Visible item' }]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
+                        children: [{ type: 'text', content: 'Visible item' }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
         ],
         component: {
           name: 'NestedSvelteComponent',
-          props: { items: 'any[]' }
-        }
+          props: { items: 'any[]' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('<!-- Nested logic container -->');
@@ -345,19 +348,19 @@ describe('Svelte Framework Extension Integration', () => {
             attributes: {
               'on:click': 'handleClick',
               'on:mouseenter': 'handleHover',
-              'on:keydown': 'handleKeydown'
+              'on:keydown': 'handleKeydown',
             },
-            children: [{ type: 'text', content: 'Multi-event button' }]
-          }
+            children: [{ type: 'text', content: 'Multi-event button' }],
+          },
         ],
         component: {
-          name: 'MultiEventComponent'
-        }
+          name: 'MultiEventComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('on:click={handleClick}');
@@ -386,12 +389,12 @@ describe('Svelte Framework Extension Integration', () => {
             type: 'element',
             tag: 'div',
             extensions: {
-              bem: { block: 'card', modifiers: ['primary'] }
+              bem: { block: 'card', modifiers: ['primary'] },
             },
             children: [
               {
                 type: 'comment',
-                content: 'Card content'
+                content: 'Card content',
               },
               {
                 type: 'if',
@@ -401,25 +404,25 @@ describe('Svelte Framework Extension Integration', () => {
                     type: 'element',
                     tag: 'h2',
                     extensions: {
-                      bem: { element: 'title' }
+                      bem: { element: 'title' },
                     },
-                    children: [{ type: 'text', content: 'Title' }]
-                  }
-                ]
-              }
-            ]
-          }
+                    children: [{ type: 'text', content: 'Title' }],
+                  },
+                ],
+              },
+            ],
+          },
         ],
         component: {
           name: 'SvelteCardComponent',
-          props: { showTitle: 'boolean' }
-        }
+          props: { showTitle: 'boolean' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
         extensions: ['bem'],
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toMatch(/class="card[^"]*primary[^"]*"/);
@@ -436,7 +439,7 @@ describe('Svelte Framework Extension Integration', () => {
             type: 'element',
             tag: 'ul',
             extensions: {
-              bem: { block: 'menu' }
+              bem: { block: 'menu' },
             },
             children: [
               {
@@ -448,25 +451,28 @@ describe('Svelte Framework Extension Integration', () => {
                     type: 'element',
                     tag: 'li',
                     extensions: {
-                      bem: { element: 'item', modifiers: ['{menuItem.active ? "active" : ""}'] }
+                      bem: {
+                        element: 'item',
+                        modifiers: ['{menuItem.active ? "active" : ""}'],
+                      },
                     },
-                    children: [{ type: 'text', content: 'Menu Item' }]
-                  }
-                ]
-              }
-            ]
-          }
+                    children: [{ type: 'text', content: 'Menu Item' }],
+                  },
+                ],
+              },
+            ],
+          },
         ],
         component: {
           name: 'SvelteMenuComponent',
-          props: { menuItems: 'any[]' }
-        }
+          props: { menuItems: 'any[]' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
         extensions: ['bem'],
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('class="menu"');
@@ -493,17 +499,17 @@ describe('Svelte Framework Extension Integration', () => {
           {
             type: 'if',
             condition: '', // Empty condition
-            then: []       // Empty then branch
-          }
+            then: [], // Empty then branch
+          },
         ],
         component: {
-          name: 'ErrorTestComponent'
-        }
+          name: 'ErrorTestComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       // Should not crash and should handle gracefully
@@ -516,19 +522,19 @@ describe('Svelte Framework Extension Integration', () => {
         template: [
           {
             type: 'for',
-            items: '',  // Empty items
-            item: '',   // Empty item variable
-            children: []
-          }
+            items: '', // Empty items
+            item: '', // Empty item variable
+            children: [],
+          },
         ],
         component: {
-          name: 'ErrorTestComponent'
-        }
+          name: 'ErrorTestComponent',
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       // Should not crash and should handle gracefully
@@ -544,16 +550,18 @@ describe('Svelte Framework Extension Integration', () => {
         {
           type: 'element' as const,
           tag: 'div',
-          children: [{ type: 'text' as const, content: 'Test' }]
-        }
+          children: [{ type: 'text' as const, content: 'Test' }],
+        },
       ];
 
       const result = await emptyPipeline.process(template, {
-        framework: 'svelte'
+        framework: 'svelte',
       });
 
       expect(result.errors.getErrors().length).toBeGreaterThan(0);
-      expect(result.errors.getErrors()[0].message).toContain('Framework extension \'svelte\' not found');
+      expect(result.errors.getErrors()[0].message).toContain(
+        "Framework extension 'svelte' not found"
+      );
     });
   });
 
@@ -576,20 +584,20 @@ describe('Svelte Framework Extension Integration', () => {
             children: [
               {
                 type: 'text',
-                content: 'TypeScript Svelte Component'
-              }
-            ]
-          }
+                content: 'TypeScript Svelte Component',
+              },
+            ],
+          },
         ],
         component: {
           name: 'TypeScriptSvelteComponent',
-          props: { message: 'string', count: 'number' }
-        }
+          props: { message: 'string', count: 'number' },
+        },
       };
 
       const result = await pipeline.process(template.template, {
         framework: 'svelte',
-        component: template.component
+        component: template.component,
       });
 
       expect(result.output).toContain('TypeScript Svelte Component');

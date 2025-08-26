@@ -345,113 +345,26 @@ export class BemExtension
     };
   }
 
-  /**
-   * Finds the nearest ancestor node with a BEM block.
-   * @param ancestors - The ancestor nodes.
-   * @returns The nearest ancestor with a block, or undefined.
-   */
-  private findNearestBlockNode(ancestors: TemplateNode[]): BemNode | undefined {
-    return [...ancestors]
-      .reverse()
-      .find(
-        (ancestor) =>
-          getExtensionOptions<BemTypes.NodeExtensions>(ancestor, 'bem')
-            ?.block || (ancestor as BemNode)?.block
-      ) as BemNode | undefined;
-  }
 
-  /**
-   * Visits a node and applies BEM classes.
-   * @param node - The node to visit.
-   * @param ancestors - Ancestor nodes.
-   */
-  public onNodeVisit(node: TemplateNode, ancestors: TemplateNode[] = []): void {
-    if (!isElementNode(node)) return;
-    const bem = getExtensionOptions<BemTypes.NodeExtensions>(node, 'bem');
-    // Use helper to find the closest ancestor with a block
-    const closestBlockNode = this.findNearestBlockNode(ancestors);
-    const closestBlockBem =
-      closestBlockNode &&
-      getExtensionOptions<BemTypes.NodeExtensions>(closestBlockNode, 'bem');
-    // Get block from current node or ancestor
-    const block =
-      bem?.block ??
-      (node as BemNode).block ??
-      closestBlockBem?.block ??
-      (closestBlockNode as BemNode)?.block;
-    if (!block) return; // No block found, don't generate classes
-    // Get element and modifiers from current node
-    const element = bem?.element ?? (node as BemNode).element;
-    const modifiers = [
-      ...(bem?.modifiers ?? []),
-      ...(bem?.modifier ? [bem.modifier] : []),
-      ...((node as BemNode).modifiers ?? []),
-      ...((node as BemNode).modifier ? [(node as BemNode).modifier] : []),
-    ].filter((modifier): modifier is string => typeof modifier === 'string');
-    // Generate BEM classes as array
-    const bemClasses = this.getBemClasses(block, element, modifiers);
-    if (!bemClasses.length) return;
-    // Get existing classes and deduplicate
-    const existingClass = (node as BemNode).attributes?.class || '';
-    const existingClassList = existingClass.split(/\s+/).filter(Boolean);
-    const uniqueClasses = Array.from(
-      new Set([...existingClassList, ...bemClasses])
-    );
-    // Update node attributes with deduplicated classes
-    (node as BemNode).attributes = {
-      ...(node as BemNode).attributes,
-      class: uniqueClasses.join(' '),
-    };
-    this.logger.info(
-      `Applied BEM classes to <${(node as BemNode).tag}>: ${uniqueClasses.join(' ')}`
-    );
-  }
-
-  /**
-   * Generates BEM class names for a node.
-   * @param block - The block name.
-   * @param element - The element name.
-   * @param modifiers - The modifiers.
-   * @returns An array of BEM class names.
-   */
-  private getBemClasses(
-    block: string,
-    element?: string,
-    modifiers: string[] = []
-  ): string[] {
-    if (!block) return [];
-    const base = element ? `${block}__${element}` : block;
-    return [base, ...modifiers.map((mod) => `${base}--${mod}`)];
-  }
-
-  /**
-   * Handles a node during traversal.
-   * @param node - The node to handle.
-   * @param ancestorNodesContext - Ancestor nodes.
-   * @returns The updated node.
-   */
-  public nodeHandler(
-    node: TemplateNode,
-    ancestorNodesContext: TemplateNode[] = []
-  ): TemplateNode {
-    this.onNodeVisit(node, ancestorNodesContext);
-    return node;
-  }
 
   /**
    * Process styling concepts through BEM methodology
    */
   processStyles(concepts: StylingConcept): StyleOutput {
-    // Generate BEM classes from styling concepts
-    const bemClasses = this.generateBemClassesFromConcepts(concepts);
+    // Generate BEM classes per element from extension data
+    const perElementClasses = this.generatePerElementBemClasses(concepts);
     
-    // Generate SCSS with existing functionality
-    const scssOutput = this.generateScssFromClasses(bemClasses);
+    // Generate SCSS from all BEM classes  
+    const allBemClasses = Object.values(perElementClasses).flat();
+    const scssOutput = this.generateScssFromClasses(allBemClasses);
     
-    // Update styling concepts with generated BEM classes
+    // Return updated styling with per-element BEM classes
     const updatedStyling: StylingConcept = {
       ...concepts,
-      staticClasses: [...concepts.staticClasses, ...bemClasses]
+      perElementClasses: {
+        ...concepts.perElementClasses,
+        ...perElementClasses
+      }
     };
     
     return {
@@ -461,21 +374,71 @@ export class BemExtension
     };
   }
 
-
   /**
-   * Generate BEM classes from styling concepts
+   * Generate BEM classes per element from extension data
    */
-  private generateBemClassesFromConcepts(styling: StylingConcept): string[] {
-    const classes: string[] = [];
+  private generatePerElementBemClasses(styling: StylingConcept): Record<string, string[]> {
+    const perElementClasses: Record<string, string[]> = {};
     
-    // Extract BEM patterns from static classes
-    for (const className of styling.staticClasses) {
-      if (this.isBemClass(className)) {
-        classes.push(className);
+    // Process BEM extension data if present
+    if (styling.extensionData?.bem) {
+      // Build block context map for element inheritance
+      const blockContext = new Map<string, string>();
+      
+      // First pass: collect all blocks
+      for (const bemNode of styling.extensionData.bem) {
+        if (bemNode.data.block) {
+          blockContext.set(bemNode.nodeId, bemNode.data.block);
+        }
+      }
+      
+      // Second pass: generate classes per element with proper inheritance
+      for (const bemNode of styling.extensionData.bem) {
+        const bemData = bemNode.data;
+        const block = bemData.block || this.findBlockForElement(bemNode.nodeId, blockContext);
+        
+        if (block) {
+          const classes: string[] = [];
+          
+          // Generate base class (block or block__element)
+          let baseClass = block;
+          if (bemData.element) {
+            baseClass = `${block}__${bemData.element}`;
+          }
+          
+          classes.push(baseClass);
+          
+          // Generate modifier classes
+          if (bemData.modifiers && Array.isArray(bemData.modifiers)) {
+            for (const modifier of bemData.modifiers) {
+              if (modifier) {
+                classes.push(`${baseClass}--${modifier}`);
+              }
+            }
+          }
+          
+          // Store classes for this specific node
+          perElementClasses[bemNode.nodeId] = classes;
+        }
       }
     }
     
-    return classes;
+    return perElementClasses;
+  }
+
+  /**
+   * Find the appropriate block for an element by walking up the node hierarchy
+   */
+  private findBlockForElement(nodeId: string, blockContext: Map<string, string>): string | undefined {
+    // Walk up the node ID path to find a parent block
+    const parts = nodeId.split('.');
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const ancestorPath = parts.slice(0, i + 1).join('.');
+      if (blockContext.has(ancestorPath)) {
+        return blockContext.get(ancestorPath);
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -558,86 +521,6 @@ export class BemExtension
     return match ? match[1] : null;
   }
 
-  /**
-   * Process template with BEM styling
-   */
-  processTemplate(template: TemplateNode[], context: RenderContext): { 
-    output: TemplateNode[];
-    concepts: ComponentConcept;
-    metadata: any;
-  } {
-    // Extract styling concepts from template
-    const stylingConcepts = this.extractStylingConcepts(template);
-    
-    // Generate BEM classes
-    const styleOutput = this.processStyles(stylingConcepts);
-    
-    // Update concepts with generated BEM classes
-    const bemClasses = this.generateBemClassesFromConcepts(stylingConcepts);
-    if (context.concepts) {
-      const updatedConcepts = context.concepts as ComponentConcept;
-      updatedConcepts.styling = {
-        ...updatedConcepts.styling,
-        staticClasses: [...updatedConcepts.styling.staticClasses, ...bemClasses]
-      };
-      (context as any).concepts = updatedConcepts;
-    }
-    
-    return {
-      output: template,
-      concepts: context.concepts as ComponentConcept,
-      metadata: {
-        bemClasses: this.generateBemClassesFromConcepts(stylingConcepts),
-        scssOutput: styleOutput.styles
-      }
-    };
-  }
-
-  /**
-   * Extract styling concepts from template nodes
-   */
-  private extractStylingConcepts(template: TemplateNode[]): StylingConcept {
-    const staticClasses: string[] = [];
-    const dynamicClasses: string[] = [];
-    const inlineStyles: Record<string, string> = {};
-    
-    const traverse = (nodes: TemplateNode[]) => {
-      for (const node of nodes) {
-        if (node.type === 'element' || !node.type) {
-          // Extract classes from attributes
-          if (node.attributes?.class) {
-            const classes = String(node.attributes.class).split(/\s+/).filter(Boolean);
-            staticClasses.push(...classes);
-          }
-          
-          // Extract inline styles
-          if (node.attributes?.style && typeof node.attributes.style === 'string') {
-            const styleDeclarations = node.attributes.style.split(';').filter(Boolean);
-            for (const declaration of styleDeclarations) {
-              const [property, value] = declaration.split(':').map(s => s.trim());
-              if (property && value) {
-                inlineStyles[property] = value;
-              }
-            }
-          }
-          
-          // Process children
-          if (node.children) {
-            traverse(node.children);
-          }
-        }
-      }
-    };
-    
-    traverse(template);
-    
-    return {
-      nodeId: 'root',
-      staticClasses,
-      dynamicClasses,
-      inlineStyles
-    };
-  }
 
   /**
    * Determines the appropriate file extension for BEM HTML output.

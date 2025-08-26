@@ -37,6 +37,10 @@ export interface StylingConcept extends BaseConcept {
   inlineStyles: Record<string, string>;
   /** Framework-specific style bindings */
   styleBindings?: Record<string, string>;
+  /** Extension-specific data (e.g., BEM configuration, Tailwind utilities) */
+  extensionData?: Record<string, any>;
+  /** Per-element classes indexed by node ID */
+  perElementClasses?: Record<string, string[]>;
 }
 
 /**
