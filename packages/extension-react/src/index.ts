@@ -136,6 +136,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
   private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
+  
+  /** Current concepts being rendered (for per-element class access) */
+  private concepts?: ComponentConcept;
 
   constructor() {
     this.propertyProcessor = new ComponentPropertyProcessor({
@@ -671,6 +674,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Render component to React JSX format
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
+    // Store concepts for per-element class access
+    this.concepts = concepts;
+    
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'react', component: context.component },
@@ -735,11 +741,27 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   /**
    * Analyze hook usage (simplified implementation)
    */
-  private analyzeHookUsage(_concepts: ComponentConcept): string[] {
+  private analyzeHookUsage(concepts: ComponentConcept): string[] {
     const hooks: string[] = [];
-    // TODO: Enhance based on script analysis
-    // For now, just return empty array
-    return hooks;
+    
+    // Analyze concepts to determine needed hooks
+    if (concepts.events.length > 0) {
+      hooks.push('useCallback');
+    }
+    
+    if (concepts.styling && (
+      concepts.styling.dynamicClasses.length > 0 ||
+      Object.keys(concepts.styling.inlineStyles).length > 0
+    )) {
+      hooks.push('useMemo');
+    }
+    
+    if (concepts.conditionals.length > 0 || concepts.iterations.length > 0) {
+      hooks.push('useMemo');
+    }
+    
+    // Remove duplicates and return
+    return Array.from(new Set(hooks));
   }
 
   /**
@@ -1084,6 +1106,36 @@ export class ReactFrameworkExtension implements FrameworkExtension {
       for (const [name, expression] of Object.entries(node.expressionAttributes)) {
         const reactName = this.transformAttributeName(name);
         attributes += ` ${reactName}={${expression}}`;
+      }
+    }
+
+    // Apply per-element classes if available (e.g., from BEM extension)
+    // For raw template nodes, we need to find the matching classes by checking all per-element classes
+    if (this.concepts?.styling?.perElementClasses && node.extensions) {
+      // Find the nodeId that matches this node's extension data
+      let matchedClasses: string[] = [];
+      
+      if (this.concepts.styling.extensionData?.bem) {
+        for (const bemNode of this.concepts.styling.extensionData.bem) {
+          // Check if this BEM node data matches the current node's extension data
+          if (node.extensions.bem && 
+              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
+            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+            if (elementClasses && elementClasses.length > 0) {
+              matchedClasses = elementClasses;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (matchedClasses.length > 0) {
+        const classNames = matchedClasses.join(' ');
+        // Merge with existing className attribute if present
+        const existingClass = node.attributes?.className || node.attributes?.class || '';
+        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        // Use className for React
+        attributes += ` className="${combinedClasses}"`;
       }
     }
 

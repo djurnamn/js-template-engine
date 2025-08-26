@@ -34,18 +34,6 @@ export interface Component {
   style?: string;
 }
 
-/**
- * Interface for root handler context.
- * Provides context information for root-level template processing.
- */
-export interface RootHandlerContext {
-  /** The component metadata if available. */
-  component?: Component;
-  /** The generated style output. */
-  styleOutput?: string;
-  /** Additional context properties. */
-  [key: string]: any;
-}
 
 /**
  * Interface for component-specific options.
@@ -91,11 +79,10 @@ export function sanitizeComponentName(name: string): string {
  * @returns The resolved and sanitized component name.
  */
 export function resolveComponentName(
-  context: RootHandlerContext,
+  component: Component | undefined,
   options: { name?: string; componentName?: string },
   defaultName = 'Component'
 ): string {
-  const component = context.component;
   const rawName =
     component?.name || options.name || options.componentName || defaultName;
   return sanitizeComponentName(rawName);

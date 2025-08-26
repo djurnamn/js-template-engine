@@ -5,7 +5,6 @@ import type {
   DeepPartial,
   StyleProcessorPlugin,
   BaseExtensionOptions,
-  RootHandlerContext,
 } from '@js-template-engine/types';
 import type {
   StylingExtension,

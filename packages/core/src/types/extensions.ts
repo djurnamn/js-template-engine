@@ -171,23 +171,6 @@ export interface Extension<
    * @returns The merged options.
    */
   optionsHandler?: (defaultOptions: T, options: DeepPartial<T>) => T;
-  /**
-   * Handler for processing individual nodes.
-   * @param node - The template node to process.
-   * @param ancestorNodesContext - The context of ancestor nodes.
-   * @returns The processed template node.
-   */
-  nodeHandler: (
-    node: TemplateNode & NodeExtensions<U>,
-    ancestorNodesContext?: TemplateNode[]
-  ) => TemplateNode;
-  /**
-   * Optional handler for processing the root template.
-   * @param template - The template string to process.
-   * @param options - The extension options.
-   * @returns The processed template string.
-   */
-  rootHandler?: (template: string, options: T) => string;
 }
 
 /**

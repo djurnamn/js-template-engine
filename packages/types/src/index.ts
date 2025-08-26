@@ -3,14 +3,12 @@ import { StyleDefinition, StyleOutputFormat } from './styles';
 import { ExtensionKey, Component } from './extensions';
 import { DeepPartial } from './utils';
 import { StyleProcessorPlugin } from './extensions';
-import { RootHandlerContext } from './context';
 
 export type {
   StyleDefinition,
   StyleOutputFormat,
   ExtensionKey,
   DeepPartial,
-  RootHandlerContext,
   Component,
 };
 
@@ -125,27 +123,8 @@ export interface Extension<
 > {
   /** The unique key identifying this extension. */
   key: string;
-  /**
-   * Optional handler for processing individual nodes.
-   * @param node - The template node to process.
-   * @param ancestorNodesContext - The context of ancestor nodes.
-   * @returns The processed template node.
-   */
-  nodeHandler?: (
-    node: TemplateNode & { extensions?: { [key: string]: U } },
-    ancestorNodesContext?: TemplateNode[]
-  ) => TemplateNode;
   /** Optional style processing plugin for this extension. */
   stylePlugin?: StyleProcessorPlugin;
-  /**
-   * Optional callback called when a node is visited during traversal.
-   * @param node - The node being visited.
-   * @param ancestors - The ancestor nodes of the current node.
-   */
-  onNodeVisit?: (
-    node: TemplateNode & { extensions?: { [key: string]: U } },
-    ancestors?: TemplateNode[]
-  ) => void;
   /**
    * Optional callback called before rendering begins.
    * @param template - The template nodes to be rendered.
@@ -177,18 +156,6 @@ export interface Extension<
    * @returns The Prettier parser string (e.g., 'typescript', 'babel', 'vue', 'html').
    */
   getPrettierParser?: (options: RenderOptions) => string;
-  /**
-   * Optional handler for processing the root template.
-   * @param template - The template string to process.
-   * @param options - The extension options.
-   * @param context - The root handler context.
-   * @returns The processed template string.
-   */
-  rootHandler?: (
-    template: string,
-    options: T,
-    context: RootHandlerContext
-  ) => string;
   /**
    * Optional handler for merging extension options.
    * @param defaultOptions - The default options.

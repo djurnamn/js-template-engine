@@ -313,17 +313,40 @@ export class ComponentPropertyProcessor {
     framework: string,
     comment: string
   ): string {
-    // For now, use append strategy with comment
-    // TODO: Implement intelligent detection and merging of:
-    // - Function declarations
-    // - Variable assignments
-    // - Import statements
-    // - Duplicate detection and conflict resolution
-    
     if (!common.trim()) return framework;
     if (!framework.trim()) return common;
     
-    return common + '\n\n' + comment + framework;
+    // Basic intelligent merging implementation
+    const commonLines = common.split('\n');
+    const frameworkLines = framework.split('\n');
+    
+    // Detect and handle imports
+    const commonImports = commonLines.filter(line => line.trim().startsWith('import'));
+    const frameworkImports = frameworkLines.filter(line => line.trim().startsWith('import'));
+    const commonCode = commonLines.filter(line => !line.trim().startsWith('import')).join('\n');
+    const frameworkCode = frameworkLines.filter(line => !line.trim().startsWith('import')).join('\n');
+    
+    // Merge imports, removing duplicates
+    const allImports = Array.from(new Set([...commonImports, ...frameworkImports]));
+    
+    // Detect function declarations and variable assignments
+    const hasCommonFunctions = commonCode.includes('function ') || commonCode.includes('const ') || commonCode.includes('let ');
+    const hasFrameworkFunctions = frameworkCode.includes('function ') || frameworkCode.includes('const ') || frameworkCode.includes('let ');
+    
+    // Build final result
+    let result = '';
+    
+    if (allImports.length > 0) {
+      result += allImports.join('\n') + '\n\n';
+    }
+    
+    if (hasCommonFunctions && hasFrameworkFunctions) {
+      result += commonCode.trim() + '\n\n' + comment + frameworkCode.trim();
+    } else {
+      result += common.trim() + '\n\n' + comment + framework.trim();
+    }
+    
+    return result;
   }
 
   /**

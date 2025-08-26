@@ -110,6 +110,7 @@ export interface VueElement {
   tag: string;
   attributes: Record<string, string>;
   children?: any[];
+  extensions?: Record<string, any>; // Extension data for styling extensions
 }
 
 /**
@@ -186,6 +187,9 @@ export class VueFrameworkExtension implements FrameworkExtension {
   private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
   private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
+  
+  /** Current concepts being rendered (for per-element class access) */
+  private concepts?: ComponentConcept;
 
   constructor() {
     this.propertyProcessor = new ComponentPropertyProcessor({
@@ -292,7 +296,8 @@ export class VueFrameworkExtension implements FrameworkExtension {
         type: 'element',
         tag: nodes[0].tag || 'div',
         attributes: { ...nodes[0].attributes, ...directive },
-        children: nodes[0].children || []
+        children: nodes[0].children || [],
+        extensions: nodes[0].extensions // Preserve extension data for styling extensions
       };
     } else {
       // Multiple elements - wrap in template
@@ -488,6 +493,9 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Render component to Vue SFC format
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
+    // Store concepts for per-element class access
+    this.concepts = concepts;
+    
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'vue', component: context.component },
@@ -1001,6 +1009,35 @@ ${propsInterface}export default defineComponent({
         } else if (typeof value === 'string' || typeof value === 'number') {
           attributes += ` ${name}="${value}"`;
         }
+      }
+    }
+
+    // Apply per-element classes if available (e.g., from BEM extension)
+    // For raw template nodes, we need to find the matching classes by checking all per-element classes
+    if (this.concepts?.styling?.perElementClasses && node.extensions) {
+      // Find the nodeId that matches this node's extension data
+      let matchedClasses: string[] = [];
+      
+      if (this.concepts.styling.extensionData?.bem) {
+        for (const bemNode of this.concepts.styling.extensionData.bem) {
+          // Check if this BEM node data matches the current node's extension data
+          if (node.extensions.bem && 
+              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
+            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+            if (elementClasses && elementClasses.length > 0) {
+              matchedClasses = elementClasses;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (matchedClasses.length > 0) {
+        const classNames = matchedClasses.join(' ');
+        // Merge with existing class attribute if present
+        const existingClass = node.attributes?.class || '';
+        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        attributes += ` class="${combinedClasses}"`;
       }
     }
 

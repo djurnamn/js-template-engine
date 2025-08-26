@@ -4,50 +4,38 @@ import {
   resolveComponentProps,
   resolveComponentImports
 } from '@js-template-engine/types';
-import type { Component, RootHandlerContext, RenderOptions } from '@js-template-engine/types';
+import type { Component, RenderOptions } from '@js-template-engine/types';
 
 describe('Component Utilities', () => {
   describe('resolveComponentName', () => {
     it('should return name from component metadata if available', () => {
-      const context: RootHandlerContext = {
-        component: {
-          name: 'CustomComponent'
-        },
-        framework: 'react'
+      const component: Component = {
+        name: 'CustomComponent'
       };
       const options: RenderOptions = {};
-      expect(resolveComponentName(context, options)).toBe('CustomComponent');
+      expect(resolveComponentName(component, options)).toBe('CustomComponent');
     });
 
     it('should fall back to options.name if component name is not available', () => {
-      const context: RootHandlerContext = {
-        component: {},
-        framework: 'react'
-      };
+      const component: Component = {};
       const options: RenderOptions = {
         name: 'OptionComponent'
       };
-      expect(resolveComponentName(context, options)).toBe('OptionComponent');
+      expect(resolveComponentName(component, options)).toBe('OptionComponent');
     });
 
     it('should fall back to options.componentName if other names are not available', () => {
-      const context: RootHandlerContext = {
-        component: {},
-        framework: 'react'
-      };
+      const component: Component = {};
       const options: RenderOptions = {
         componentName: 'AltComponent'
       };
-      expect(resolveComponentName(context, options)).toBe('AltComponent');
+      expect(resolveComponentName(component, options)).toBe('AltComponent');
     });
 
     it('should use default name if no names are provided', () => {
-      const context: RootHandlerContext = {
-        component: {},
-        framework: 'react'
-      };
+      const component: Component = {};
       const options: RenderOptions = {};
-      expect(resolveComponentName(context, options)).toBe('Component');
+      expect(resolveComponentName(component, options)).toBe('Component');
       expect(resolveComponentName(context, options, 'CustomDefault')).toBe('CustomDefault');
     });
   });

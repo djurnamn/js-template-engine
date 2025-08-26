@@ -155,12 +155,12 @@ export class ConceptValidator {
     };
 
     // Validate individual concept types
-    const eventResult = this.validateEvents(concepts.events, context);
-    const stylingResult = this.validateStyling(concepts.styling, context);
-    const conditionalResult = this.validateConditionals(concepts.conditionals, context);
-    const iterationResult = this.validateIterations(concepts.iterations, context);
-    const slotResult = this.validateSlots(concepts.slots, context);
-    const attributeResult = this.validateAttributes(concepts.attributes, context);
+    const eventResult = this.validateEvents(concepts.events, options);
+    const stylingResult = this.validateStyling(concepts.styling, options);
+    const conditionalResult = this.validateConditionals(concepts.conditionals, options);
+    const iterationResult = this.validateIterations(concepts.iterations, options);
+    const slotResult = this.validateSlots(concepts.slots, options);
+    const attributeResult = this.validateAttributes(concepts.attributes, options);
 
     // Aggregate results
     const results = [eventResult, stylingResult, conditionalResult, iterationResult, slotResult, attributeResult];
@@ -173,7 +173,7 @@ export class ConceptValidator {
 
     // Cross-concept validation
     if (options.enableCrossConceptValidation) {
-      const crossResult = this.validateConceptConsistency(concepts, context);
+      const crossResult = this.validateConceptConsistency(concepts, options);
       warnings.push(...crossResult.warnings);
       suggestions.push(...crossResult.suggestions);
       totalScore = Math.min(totalScore, crossResult.score);
@@ -213,10 +213,16 @@ export class ConceptValidator {
   /**
    * Validate event concepts.
    */
-  validateEvents(events: EventConcept[], context: ValidationContext): ValidationResult {
+  validateEvents(events: EventConcept[], options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     for (const event of events) {
       // Validate event name
@@ -271,10 +277,16 @@ export class ConceptValidator {
   /**
    * Validate styling concepts.
    */
-  validateStyling(styling: StylingConcept, context: ValidationContext): ValidationResult {
+  validateStyling(styling: StylingConcept, options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     // Validate static classes
     for (const className of styling.staticClasses) {
@@ -334,10 +346,16 @@ export class ConceptValidator {
   /**
    * Validate conditional concepts.
    */
-  validateConditionals(conditionals: ConditionalConcept[], context: ValidationContext): ValidationResult {
+  validateConditionals(conditionals: ConditionalConcept[], options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     for (const conditional of conditionals) {
       // Validate condition expression
@@ -378,10 +396,16 @@ export class ConceptValidator {
   /**
    * Validate iteration concepts.
    */
-  validateIterations(iterations: IterationConcept[], context: ValidationContext): ValidationResult {
+  validateIterations(iterations: IterationConcept[], options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     for (const iteration of iterations) {
       // Validate required fields
@@ -431,10 +455,16 @@ export class ConceptValidator {
   /**
    * Validate slot concepts.
    */
-  validateSlots(slots: SlotConcept[], context: ValidationContext): ValidationResult {
+  validateSlots(slots: SlotConcept[], options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     const slotNames = new Set<string>();
 
@@ -478,10 +508,16 @@ export class ConceptValidator {
   /**
    * Validate attribute concepts.
    */
-  validateAttributes(attributes: AttributeConcept[], context: ValidationContext): ValidationResult {
+  validateAttributes(attributes: AttributeConcept[], options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: {} as ComponentConcept,
+      framework: options.framework,
+      options
+    };
 
     const attributeNames = new Set<string>();
 
@@ -532,10 +568,16 @@ export class ConceptValidator {
   /**
    * Validate concept consistency across all concepts.
    */
-  validateConceptConsistency(concepts: ComponentConcept, context: ValidationContext): ValidationResult {
+  validateConceptConsistency(concepts: ComponentConcept, options: ValidationOptions = {}): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 100;
+    
+    const context: ValidationContext = {
+      allConcepts: concepts,
+      framework: options.framework,
+      options
+    };
 
     // Check for conflicting patterns
     const hasInlineStyles = Object.keys(concepts.styling.inlineStyles).length > 0;

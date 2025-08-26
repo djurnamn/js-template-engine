@@ -146,22 +146,29 @@ describe('BEM extension integration', () => {
       expect(result.metadata.extensionsUsed).toContain('bem');
     });
 
-    it('should preserve existing BEM node processing', () => {
+    it('should process BEM styling concepts correctly', () => {
       const bemExtension = new BemExtension(false);
-      const node = {
-        type: 'element' as const,
-        tag: 'button',
-        attributes: {},
-        extensions: {
-          bem: { block: 'button', element: 'icon', modifier: 'active' },
-        },
-        children: []
+      const stylingConcept = {
+        nodeId: 'button-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        extensionData: {
+          bem: [{
+            nodeId: 'button-node',
+            data: {
+              block: 'button',
+              element: 'icon',
+              modifiers: ['active']
+            }
+          }]
+        }
       };
 
-      bemExtension.onNodeVisit(node, []);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(node.attributes.class).toContain('button__icon');
-      expect(node.attributes.class).toContain('button__icon--active');
+      expect(result.styles).toContain('button__icon');
+      expect(result.styles).toContain('button__icon--active');
     });
   });
 

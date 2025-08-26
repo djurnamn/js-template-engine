@@ -383,46 +383,6 @@ export class TailwindExtension
   }
 
 
-  /**
-   * Coordinate Tailwind styling with framework extensions.
-   * @param frameworkExtension - Framework extension to coordinate with
-   * @param concepts - Component concepts
-   * @returns Updated component concepts
-   */
-  coordinateWithFramework(
-    frameworkExtension: FrameworkExtension, 
-    concepts: ComponentConcept
-  ): ComponentConcept {
-    // Process all classes through Tailwind processing
-    // This will validate them and handle unknown classes based on configuration
-    const processedOutput = this.processClasses(concepts.styling.staticClasses);
-    
-    // Determine final classes based on unknownClassHandling configuration
-    let finalClasses: string[];
-    
-    if (this.options.unknownClassHandling === 'ignore') {
-      // When ignoring unknown classes, only use the processed classes (which filters out unknown ones)
-      finalClasses = [...concepts.styling.staticClasses, ...processedOutput.classes];
-      // Remove duplicates by converting to Set and back to array
-      finalClasses = Array.from(new Set(finalClasses));
-      
-      // Filter out classes that were filtered out by processClasses
-      const processedSet = new Set(processedOutput.classes);
-      finalClasses = finalClasses.filter(cls => processedSet.has(cls) || this.utilityParser.validateUtility(cls).valid);
-    } else {
-      // For other configurations (warn, error), include both original and processed
-      finalClasses = [...concepts.styling.staticClasses, ...processedOutput.classes];
-    }
-    
-    // Update styling concepts with processed classes
-    const updatedConcepts = { ...concepts };
-    updatedConcepts.styling = {
-      ...concepts.styling,
-      staticClasses: finalClasses,
-    };
-    
-    return updatedConcepts;
-  }
 
   /**
    * Simple heuristic to check if a class looks like it could be a Tailwind class.

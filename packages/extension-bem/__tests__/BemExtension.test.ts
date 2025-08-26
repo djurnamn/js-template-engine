@@ -1,30 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BemExtension } from '../src/index';
-import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
-import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
-import type { StylingConcept, ComponentConcept } from '@js-template-engine/core';
+import type { StylingConcept } from '@js-template-engine/core';
 
 describe('BemExtension', () => {
   let bemExtension: BemExtension;
-  let mockComponentConcept: ComponentConcept;
 
   beforeEach(() => {
     bemExtension = new BemExtension(false);
-    mockComponentConcept = {
-      events: [],
-      styling: {
-        nodeId: 'test-node',
-        staticClasses: ['button', 'button__icon'],
-        dynamicClasses: [],
-        inlineStyles: {}
-      },
-      conditionals: [],
-      iterations: [],
-      slots: [],
-      attributes: [],
-      metadata: {}
-    };
   });
 
   describe('StylingExtension interface implementation', () => {
@@ -39,9 +21,21 @@ describe('BemExtension', () => {
     it('should process styling concepts correctly', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test-node',
-        staticClasses: ['button', 'button__icon', 'button--active'],
+        staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'button-node',
+              data: {
+                block: 'button',
+                element: 'icon',
+                modifiers: ['active']
+              }
+            }
+          ]
+        }
       };
 
       const result = bemExtension.processStyles(stylingConcept);
@@ -56,9 +50,25 @@ describe('BemExtension', () => {
     it('should handle non-BEM classes gracefully', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test-node',
-        staticClasses: ['regular-class', 'another-class'],
+        staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'node-1',
+              data: {
+                block: 'regular-class'
+              }
+            },
+            {
+              nodeId: 'node-2',
+              data: {
+                block: 'another-class'
+              }
+            }
+          ]
+        }
       };
 
       const result = bemExtension.processStyles(stylingConcept);
@@ -70,56 +80,91 @@ describe('BemExtension', () => {
     });
   });
 
-  describe('Framework coordination', () => {
-
-    it('should coordinate with React extension', () => {
-      const reactExtension = new ReactFrameworkExtension();
-      
-      const result = bemExtension.coordinateWithFramework(reactExtension, mockComponentConcept);
-      
-      expect(result.styling.staticClasses).toContain('button');
-      expect(result.styling.staticClasses).toContain('button__icon');
-      expect(result.styling.staticClasses.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('should coordinate with Vue extension', () => {
-      const vueExtension = new VueFrameworkExtension();
-      
-      const result = bemExtension.coordinateWithFramework(vueExtension, mockComponentConcept);
-      
-      expect(result.styling.staticClasses).toContain('button');
-      expect(result.styling.staticClasses).toContain('button__icon');
-      expect(result.styling.staticClasses.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('should coordinate with Svelte extension', () => {
-      const svelteExtension = new SvelteFrameworkExtension();
-      
-      const result = bemExtension.coordinateWithFramework(svelteExtension, mockComponentConcept);
-      
-      expect(result.styling.staticClasses).toContain('button');
-      expect(result.styling.staticClasses).toContain('button__icon');
-      expect(result.styling.staticClasses.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('should preserve existing styling concepts', () => {
-      const conceptWithModifiers: ComponentConcept = {
-        ...mockComponentConcept,
-        styling: {
-          nodeId: 'test-node',
-          staticClasses: ['existing-class', 'button__element--modifier'],
-          dynamicClasses: ['dynamic-class'],
-          inlineStyles: { color: 'red' }
+  describe('Extension data processing', () => {
+    it('should process BEM extension data correctly', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'button-node',
+              data: {
+                block: 'button',
+                element: 'icon',
+                modifiers: ['active', 'large']
+              }
+            }
+          ]
         }
       };
 
-      const reactExtension = new ReactFrameworkExtension();
-      const result = bemExtension.coordinateWithFramework(reactExtension, conceptWithModifiers);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(result.styling.staticClasses).toContain('existing-class');
-      expect(result.styling.staticClasses).toContain('button__element--modifier');
-      expect(result.styling.dynamicClasses).toEqual(['dynamic-class']);
-      expect(result.styling.inlineStyles).toEqual({ color: 'red' });
+      expect(result.updatedStyling.perElementClasses['button-node']).toContain('button__icon');
+      expect(result.updatedStyling.perElementClasses['button-node']).toContain('button__icon--active');
+      expect(result.updatedStyling.perElementClasses['button-node']).toContain('button__icon--large');
+    });
+
+    it('should handle block inheritance for elements', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'parent.child',
+              data: {
+                block: 'card'
+              }
+            },
+            {
+              nodeId: 'parent.child.element',
+              data: {
+                element: 'title'
+              }
+            }
+          ]
+        }
+      };
+
+      const result = bemExtension.processStyles(stylingConcept);
+      
+      expect(result.updatedStyling.perElementClasses['parent.child']).toContain('card');
+      expect(result.updatedStyling.perElementClasses['parent.child.element']).toContain('card__title');
+    });
+
+    it('should preserve existing per-element classes', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {
+          'existing-node': ['existing-class']
+        },
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'bem-node',
+              data: {
+                block: 'button'
+              }
+            }
+          ]
+        }
+      };
+
+      const result = bemExtension.processStyles(stylingConcept);
+      
+      expect(result.updatedStyling.perElementClasses['existing-node']).toEqual(['existing-class']);
+      expect(result.updatedStyling.perElementClasses['bem-node']).toContain('button');
     });
   });
 
@@ -127,15 +172,29 @@ describe('BemExtension', () => {
     it('should generate BEM classes for valid block__element--modifier patterns', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test',
-        staticClasses: [
-          'block',
-          'block__element',
-          'block--modifier',
-          'block__element--modifier',
-          'another-block__different-element--state'
-        ],
+        staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'block-node',
+              data: {
+                block: 'block',
+                element: 'element',
+                modifiers: ['modifier']
+              }
+            },
+            {
+              nodeId: 'another-block-node',
+              data: {
+                block: 'another-block',
+                element: 'different-element',
+                modifiers: ['state']
+              }
+            }
+          ]
+        }
       };
 
       const result = bemExtension.processStyles(stylingConcept);
@@ -151,20 +210,15 @@ describe('BemExtension', () => {
     it('should ignore invalid BEM patterns', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test',
-        staticClasses: [
-          'invalid__',     // Ends with __
-          '--invalid',     // Starts with --
-          'block___invalid', // Triple underscores
-          'block---invalid', // Triple hyphens  
-          '123invalid'     // Starts with number
-        ],
+        staticClasses: [],
         dynamicClasses: [],
         inlineStyles: {}
+        // No extensionData.bem, so no SCSS should be generated
       };
 
       const result = bemExtension.processStyles(stylingConcept);
       
-      // All classes are invalid BEM patterns, so no SCSS should be generated
+      // No BEM extension data provided, so no SCSS should be generated
       expect(result.styles).toBe('');
     });
   });
@@ -173,16 +227,48 @@ describe('BemExtension', () => {
     it('should generate nested SCSS for BEM hierarchy', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test',
-        staticClasses: [
-          'card',
-          'card__header',
-          'card__body',
-          'card__footer',
-          'card--large',
-          'card__header--highlighted'
-        ],
+        staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'card-node',
+              data: {
+                block: 'card'
+              }
+            },
+            {
+              nodeId: 'header-node',
+              data: {
+                block: 'card',
+                element: 'header',
+                modifiers: ['highlighted']
+              }
+            },
+            {
+              nodeId: 'body-node',
+              data: {
+                block: 'card',
+                element: 'body'
+              }
+            },
+            {
+              nodeId: 'footer-node',
+              data: {
+                block: 'card',
+                element: 'footer'
+              }
+            },
+            {
+              nodeId: 'large-card-node',
+              data: {
+                block: 'card',
+                modifiers: ['large']
+              }
+            }
+          ]
+        }
       };
 
       const result = bemExtension.processStyles(stylingConcept);
@@ -198,14 +284,27 @@ describe('BemExtension', () => {
     it('should handle multiple blocks separately', () => {
       const stylingConcept: StylingConcept = {
         nodeId: 'test',
-        staticClasses: [
-          'header',
-          'header__logo',
-          'footer',
-          'footer__link'
-        ],
+        staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'header-node',
+              data: {
+                block: 'header',
+                element: 'logo'
+              }
+            },
+            {
+              nodeId: 'footer-node',
+              data: {
+                block: 'footer',
+                element: 'link'
+              }
+            }
+          ]
+        }
       };
 
       const result = bemExtension.processStyles(stylingConcept);
@@ -217,103 +316,137 @@ describe('BemExtension', () => {
     });
   });
 
-  describe('Existing BEM functionality preservation', () => {
-    it('should generate BEM classes correctly', () => {
-      const node = {
-        type: 'element' as const,
-        tag: 'button',
-        attributes: {},
-        extensions: {
-          bem: {
-            block: 'button',
-            element: 'icon',
-            modifiers: ['active', 'large']
-          }
+  describe('BEM class validation', () => {
+    it('should process only valid BEM extension data', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'valid-node',
+              data: {
+                block: 'button',
+                element: 'icon',
+                modifiers: ['active']
+              }
+            },
+            {
+              nodeId: 'block-only-node',
+              data: {
+                block: 'card'
+              }
+            }
+          ]
         }
       };
 
-      bemExtension.onNodeVisit(node, []);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(node.attributes.class).toContain('button__icon');
-      expect(node.attributes.class).toContain('button__icon--active');
-      expect(node.attributes.class).toContain('button__icon--large');
+      expect(result.updatedStyling.perElementClasses['valid-node']).toContain('button__icon');
+      expect(result.updatedStyling.perElementClasses['valid-node']).toContain('button__icon--active');
+      expect(result.updatedStyling.perElementClasses['block-only-node']).toContain('card');
     });
 
-    it('should work with legacy BEM configuration', () => {
-      const node = {
-        type: 'element' as const,
-        tag: 'div',
-        attributes: {},
-        extensions: {
-          bem: {
-            block: 'card',
-            modifier: 'highlighted'
-          }
+    it('should handle modifier variations correctly', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'block-modifier',
+              data: {
+                block: 'card',
+                modifiers: ['highlighted', 'large']
+              }
+            }
+          ]
         }
       };
 
-      bemExtension.onNodeVisit(node, []);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(node.attributes.class).toContain('card');
-      expect(node.attributes.class).toContain('card--highlighted');
+      expect(result.updatedStyling.perElementClasses['block-modifier']).toContain('card');
+      expect(result.updatedStyling.perElementClasses['block-modifier']).toContain('card--highlighted');
+      expect(result.updatedStyling.perElementClasses['block-modifier']).toContain('card--large');
     });
 
-    it('should inherit block from ancestor nodes', () => {
-      const parentNode = {
-        type: 'element' as const,
-        tag: 'div',
-        attributes: {},
-        extensions: {
-          bem: {
-            block: 'card'
-          }
+    it('should handle complex BEM hierarchy', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'root',
+              data: {
+                block: 'hero'
+              }
+            },
+            {
+              nodeId: 'root.header',
+              data: {
+                element: 'header',
+                modifiers: ['sticky']
+              }
+            },
+            {
+              nodeId: 'root.header.title',
+              data: {
+                element: 'title'
+              }
+            }
+          ]
         }
       };
 
-      const childNode = {
-        type: 'element' as const,
-        tag: 'h2',
-        attributes: {},
-        extensions: {
-          bem: {
-            element: 'title'
-          }
-        }
-      };
-
-      bemExtension.onNodeVisit(childNode, [parentNode]);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(childNode.attributes.class).toContain('card__title');
+      expect(result.updatedStyling.perElementClasses['root']).toContain('hero');
+      expect(result.updatedStyling.perElementClasses['root.header']).toContain('hero__header');
+      expect(result.updatedStyling.perElementClasses['root.header']).toContain('hero__header--sticky');
+      expect(result.updatedStyling.perElementClasses['root.header.title']).toContain('hero__title');
     });
   });
 
-  describe('Template processing', () => {
-    it('should extract styling concepts from template', () => {
-      const template = [
-        {
-          type: 'element' as const,
-          tag: 'div',
-          attributes: {
-            class: 'button button__icon button--active',
-            style: 'color: red; background: blue'
-          },
-          children: []
+  describe('SCSS generation from extension data', () => {
+    it('should generate SCSS from processed BEM classes', () => {
+      const stylingConcept: StylingConcept = {
+        nodeId: 'test-node',
+        staticClasses: [],
+        dynamicClasses: [],
+        inlineStyles: {},
+        perElementClasses: {},
+        extensionData: {
+          bem: [
+            {
+              nodeId: 'component',
+              data: {
+                block: 'button',
+                element: 'icon',
+                modifiers: ['active']
+              }
+            }
+          ]
         }
-      ];
-
-      const context = {
-        component: {},
-        options: {},
-        concepts: mockComponentConcept
       };
 
-      const result = bemExtension.processTemplate(template, context);
+      const result = bemExtension.processStyles(stylingConcept);
       
-      expect(result.concepts).toBeDefined();
-      expect(result.metadata.bemClasses).toContain('button');
-      expect(result.metadata.bemClasses).toContain('button__icon');
-      expect(result.metadata.bemClasses).toContain('button--active');
-      expect(result.metadata.scssOutput).toContain('.button {');
+      expect(result.styles).toContain('.button {');
+      expect(result.styles).toContain('&__icon {');
+      expect(result.styles).toContain('&--active {');
+      expect(result.imports).toEqual([]);
     });
   });
 });

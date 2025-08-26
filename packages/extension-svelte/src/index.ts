@@ -142,12 +142,12 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Process conditional concepts for Svelte logic blocks
    */
-  processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput {
+  processConditionals(conditionals: ConditionalConcept[], globalAttributes: Record<string, string> = {}): FrameworkConditionalOutput {
     const processedConditionals = conditionals.map(conditional => {
-      // Use structural rendering for conditional content to support styling concepts
-      const thenContent = this.renderStructuralConcepts(conditional.thenNodes as any, {});
+      // Convert raw template nodes to rendered content while preserving per-element styling
+      const thenContent = this.renderNodes(conditional.thenNodes);
       const elseContent = conditional.elseNodes ?
-        this.renderStructuralConcepts(conditional.elseNodes as any, {}) : null;
+        this.renderNodes(conditional.elseNodes) : null;
 
       return {
         condition: conditional.condition,
@@ -200,11 +200,12 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Process iteration concepts for Svelte each blocks
    */
-  processIterations(iterations: IterationConcept[]): FrameworkIterationOutput {
+  processIterations(iterations: IterationConcept[], globalAttributes: Record<string, string> = {}): FrameworkIterationOutput {
     const processedIterations = iterations.map(iteration => {
       const vEachExpression = this.generateEachExpression(iteration);
       const keyExpression = iteration.keyExpression ||
         (iteration.indexVariable || 'index');
+      // Convert raw template nodes to rendered content while preserving per-element styling
       const childContent = this.renderNodes(iteration.childNodes);
 
       return {
@@ -738,12 +739,12 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     const parts: string[] = [structuralOutput];
 
     if (concepts.conditionals.length > 0) {
-      const conditionalOutput = this.processConditionals(concepts.conditionals);
+      const conditionalOutput = this.processConditionals(concepts.conditionals, allAttributes);
       parts.push(conditionalOutput.syntax);
     }
 
     if (concepts.iterations.length > 0) {
-      const iterationOutput = this.processIterations(concepts.iterations);
+      const iterationOutput = this.processIterations(concepts.iterations, allAttributes);
       parts.push(iterationOutput.syntax);
     }
 
@@ -970,6 +971,35 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     if (node.expressionAttributes) {
       for (const [name, expression] of Object.entries(node.expressionAttributes)) {
         attributes += ` ${name}={${expression}}`;
+      }
+    }
+
+    // Apply per-element classes if available (e.g., from BEM extension)
+    // For raw template nodes, we need to find the matching classes by checking all per-element classes
+    if (this.concepts?.styling?.perElementClasses && node.extensions) {
+      // Find the nodeId that matches this node's extension data
+      let matchedClasses: string[] = [];
+      
+      if (this.concepts.styling.extensionData?.bem) {
+        for (const bemNode of this.concepts.styling.extensionData.bem) {
+          // Check if this BEM node data matches the current node's extension data
+          if (node.extensions.bem && 
+              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
+            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+            if (elementClasses && elementClasses.length > 0) {
+              matchedClasses = elementClasses;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (matchedClasses.length > 0) {
+        const classNames = matchedClasses.join(' ');
+        // Merge with existing class attribute if present
+        const existingClass = node.attributes?.class || '';
+        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        attributes += ` class="${combinedClasses}"`;
       }
     }
 
