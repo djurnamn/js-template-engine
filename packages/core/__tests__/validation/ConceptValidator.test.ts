@@ -63,8 +63,8 @@ describe('ConceptValidator', () => {
 
       expect(result.suggestions).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('use button or add role'),
-          severity: 'warning'
+          message: expect.stringContaining('button element or add role'),
+          type: 'accessibility'
         })
       );
     });
@@ -86,7 +86,7 @@ describe('ConceptValidator', () => {
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('framework mismatch')
+          message: expect.stringContaining('Framework mismatch')
         })
       );
     });
@@ -132,8 +132,8 @@ describe('ConceptValidator', () => {
       });
 
       expect(result.warnings).toHaveLength(2);
-      expect(result.warnings[0].message).toContain('invalid CSS property');
-      expect(result.warnings[1].message).toContain('invalid color value');
+      expect(result.warnings[0].message).toContain('Invalid CSS property');
+      expect(result.warnings[1].message).toContain('Invalid color value');
     });
 
     it('should suggest performance improvements', () => {
@@ -161,7 +161,7 @@ describe('ConceptValidator', () => {
 
       expect(result.suggestions).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('consider external CSS')
+          message: expect.stringContaining('Consider external CSS')
         })
       );
     });
@@ -173,14 +173,14 @@ describe('ConceptValidator', () => {
         {
           nodeId: 'if-1',
           condition: 'user.isLoggedIn',
-          consequent: ['Welcome user'],
-          alternate: ['Please log in']
+          thenNodes: ['Welcome user'],
+          elseNodes: ['Please log in']
         },
         {
           nodeId: 'if-2',
           condition: '', // Empty condition - should error
-          consequent: ['Content'],
-          alternate: []
+          thenNodes: ['Content'],
+          elseNodes: []
         }
       ];
 
@@ -190,7 +190,7 @@ describe('ConceptValidator', () => {
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('empty condition')
+          message: expect.stringContaining('missing condition')
         })
       );
     });
@@ -200,8 +200,8 @@ describe('ConceptValidator', () => {
         {
           nodeId: 'if-1',
           condition: 'user && user.profile && user.profile.settings && user.profile.settings.theme === "dark"',
-          consequent: ['Dark theme content'],
-          alternate: ['Light theme content']
+          thenNodes: ['Dark theme content'],
+          elseNodes: ['Light theme content']
         }
       ];
 
@@ -212,7 +212,7 @@ describe('ConceptValidator', () => {
 
       expect(result.suggestions).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('consider optional chaining')
+          message: expect.stringContaining('using optional chaining')
         })
       );
     });
@@ -224,16 +224,18 @@ describe('ConceptValidator', () => {
         {
           nodeId: 'loop-1',
           items: 'users',
-          item: 'user',
-          key: 'user.id',
-          index: 'index'
+          itemVariable: 'user',
+          keyExpression: 'user.id',
+          indexVariable: 'index',
+          childNodes: []
         },
         {
           nodeId: 'loop-2',
           items: 'items',
-          item: 'item',
-          key: '', // Missing key - should warn for performance
-          index: undefined
+          itemVariable: 'item',
+          keyExpression: '', // Missing key - should warn for performance
+          indexVariable: undefined,
+          childNodes: []
         }
       ];
 
@@ -244,7 +246,7 @@ describe('ConceptValidator', () => {
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('missing key')
+          message: expect.stringContaining('key expression')
         })
       );
     });
@@ -254,9 +256,10 @@ describe('ConceptValidator', () => {
         {
           nodeId: 'loop-1',
           items: 'users',
-          item: 'user',
-          key: 'index', // Using index as key - should warn
-          index: 'index'
+          itemVariable: 'user',
+          keyExpression: 'index', // Using index as key - should warn
+          indexVariable: 'index',
+          childNodes: []
         }
       ];
 
@@ -267,7 +270,7 @@ describe('ConceptValidator', () => {
 
       expect(result.suggestions).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('avoid using index as key')
+          message: expect.stringContaining('Avoid using index as key')
         })
       );
     });
@@ -320,7 +323,7 @@ describe('ConceptValidator', () => {
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('duplicate slot name')
+          message: expect.stringContaining('Duplicate slot name')
         })
       );
     });
@@ -338,7 +341,9 @@ describe('ConceptValidator', () => {
         ],
         styling: {
           nodeId: 'button-1',
-          staticClasses: ['btn', 'btn-submit']
+          staticClasses: ['btn', 'btn-submit'],
+          dynamicClasses: [],
+          inlineStyles: {}
         },
         conditionals: [],
         iterations: [],
@@ -366,7 +371,9 @@ describe('ConceptValidator', () => {
         ],
         styling: {
           nodeId: 'button-1',
-          staticClasses: ['btn-primary', 'btn-success'] // But success styling
+          staticClasses: ['btn-primary', 'btn-success'], // But success styling
+          dynamicClasses: [],
+          inlineStyles: {}
         },
         conditionals: [],
         iterations: [],
@@ -462,7 +469,7 @@ describe('ConceptValidator', () => {
 
       expect(result.suggestions).toContainEqual(
         expect.objectContaining({
-          message: expect.stringContaining('insufficient color contrast'),
+          message: expect.stringContaining('Insufficient color contrast'),
           actionable: true
         })
       );

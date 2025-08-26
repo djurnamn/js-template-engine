@@ -632,7 +632,7 @@ describe('TemplateAnalyzer', () => {
 
       expect(errorCollector.hasWarnings()).toBe(true);
       const warnings = errorCollector.getErrorsBySeverity('warning');
-      expect(warnings[0].message).toContain('Unknown node type: unknown');
+      expect(warnings[0].message).toContain('Unknown node type for structural extraction: unknown');
     });
 
     it('should collect multiple errors', () => {

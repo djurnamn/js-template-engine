@@ -36,7 +36,7 @@ describe('Component Utilities', () => {
       const component: Component = {};
       const options: RenderOptions = {};
       expect(resolveComponentName(component, options)).toBe('Component');
-      expect(resolveComponentName(context, options, 'CustomDefault')).toBe('CustomDefault');
+      expect(resolveComponentName(component, options, 'CustomDefault')).toBe('CustomDefault');
     });
   });
 
