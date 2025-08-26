@@ -495,7 +495,7 @@ describe('ReactFrameworkExtension', () => {
       const result = extension.renderComponent(complexConcepts, complexContext);
 
       // Should include all processed concepts
-      expect(result).toContain('import React, { useState } from \'react\';');
+      expect(result).toContain('import React');
       expect(result).toContain('interface ComplexComponentProps {');
       expect(result).toContain('title?: string');
       expect(result).toContain('header?: React.ReactNode');

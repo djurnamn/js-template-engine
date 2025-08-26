@@ -436,6 +436,16 @@ describe('SvelteFrameworkExtension', () => {
   describe('renderComponent', () => {
     it('should generate basic Svelte component', () => {
       const concepts: ComponentConcept = {
+        structure: [
+          {
+            type: 'element',
+            tag: 'div',
+            nodeId: 'root',
+            children: [
+              { type: 'text', content: 'Component content' }
+            ]
+          }
+        ],
         events: [],
         conditionals: [],
         iterations: [],
@@ -500,6 +510,16 @@ describe('SvelteFrameworkExtension', () => {
 
     it('should handle component with events and conditionals', () => {
       const concepts: ComponentConcept = {
+        structure: [
+          {
+            type: 'element',
+            tag: 'button',
+            nodeId: 'node1',
+            children: [
+              { type: 'text', content: 'Click me' }
+            ]
+          }
+        ],
         events: [
           { name: 'click', handler: 'handleClick', nodeId: 'node1', modifiers: [], parameters: [] }
         ],
@@ -533,7 +553,7 @@ describe('SvelteFrameworkExtension', () => {
       const result = extension.renderComponent(concepts, context);
       
       expect(result).toContain('{#if isVisible}');
-      expect(result).toContain('on:click="handleClick"');
+      expect(result).toContain('on:click={handleClick}');
     });
 
     it('should handle component with iterations and slots', () => {
@@ -580,6 +600,16 @@ describe('SvelteFrameworkExtension', () => {
 
     it('should handle component with styling', () => {
       const concepts: ComponentConcept = {
+        structure: [
+          {
+            type: 'element',
+            tag: 'button',
+            nodeId: 'root',
+            children: [
+              { type: 'text', content: 'Styled Button' }
+            ]
+          }
+        ],
         events: [],
         conditionals: [],
         iterations: [],
