@@ -21,7 +21,11 @@ import type {
   IterationConcept,
   SlotConcept,
   AttributeConcept,
-  ComponentConcept
+  ComponentConcept,
+  StructuralConcept,
+  TextConcept,
+  CommentConcept,
+  FragmentConcept
 } from '@js-template-engine/core';
 
 import {
@@ -835,23 +839,19 @@ ${propsInterface}export default defineComponent({
    * Render template from concepts
    */
   private renderTemplate(concepts: ComponentConcept): string {
-    const parts: string[] = [];
-
-    // Process events to get event attributes
+    // Process behavioral concepts to get attributes
     let eventAttributes: Record<string, string> = {};
     if (concepts.events.length > 0) {
       const eventOutput = this.processEvents(concepts.events);
       eventAttributes = eventOutput.attributes;
     }
 
-    // Process attributes
     let staticAttributes: Record<string, string> = {};
     if (concepts.attributes.length > 0) {
       const attributeOutput = this.processAttributes(concepts.attributes);
       staticAttributes = attributeOutput.attributes;
     }
 
-    // Combine all attributes that should be applied to elements
     const allAttributes = { ...staticAttributes, ...eventAttributes };
 
     // Add styling classes if present
@@ -861,7 +861,6 @@ ${propsInterface}export default defineComponent({
         allAttributes['class'] = staticClasses;
       }
 
-      // Add inline styles
       if (Object.keys(concepts.styling.inlineStyles).length > 0) {
         const styleObj = Object.entries(concepts.styling.inlineStyles)
           .map(([key, value]) => `${key}: ${value}`)
@@ -870,50 +869,91 @@ ${propsInterface}export default defineComponent({
       }
     }
 
-    // Process conditionals
+    // Render structural concepts
+    const structuralOutput = this.renderStructuralConcepts(concepts.structure, allAttributes);
+
+    // Process behavioral concepts that generate their own syntax
+    const parts: string[] = [structuralOutput];
+
     if (concepts.conditionals.length > 0) {
       const conditionalOutput = this.processConditionals(concepts.conditionals);
       parts.push(conditionalOutput.syntax);
     }
 
-    // Process iterations  
     if (concepts.iterations.length > 0) {
       const iterationOutput = this.processIterations(concepts.iterations);
       parts.push(iterationOutput.syntax);
     }
 
-    // Process slots
     if (concepts.slots.length > 0) {
       const slotOutput = this.processSlots(concepts.slots);
       parts.push(slotOutput.syntax);
     }
 
-    // If we have events, attributes, or styling without other concepts, create a root element
-    if (parts.length === 0 && Object.keys(allAttributes).length > 0) {
-      let attributeString = '';
-      for (const [name, value] of Object.entries(allAttributes)) {
-        attributeString += ` ${name}="${value}"`;
+    return parts.filter(Boolean).join('\n');
+  }
+
+  /**
+   * Render structural concepts to Vue template syntax
+   */
+  private renderStructuralConcepts(
+    structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
+    attributes: Record<string, string>
+  ): string {
+    return structuralConcepts.map(concept => {
+      switch (concept.type) {
+        case 'text':
+          const textConcept = concept as TextConcept;
+          return textConcept.content;
+
+        case 'comment':
+          const commentConcept = concept as CommentConcept;
+          return `<!-- ${commentConcept.content} -->`;
+
+        case 'fragment':
+          const fragmentConcept = concept as FragmentConcept;
+          return this.renderStructuralConcepts(fragmentConcept.children, {});
+
+        case 'element':
+        default:
+          // StructuralConcept (element)
+          const structuralConcept = concept as StructuralConcept;
+          return this.renderStructuralElement(structuralConcept, attributes);
       }
-      return `<div${attributeString}>Component content</div>`;
-    }
+    }).join('');
+  }
 
-    // If we have processed concepts, we need to apply attributes to them
-    if (parts.length > 0 && Object.keys(allAttributes).length > 0) {
-      // For now, create a wrapper div with the attributes
-      let attributeString = '';
-      for (const [name, value] of Object.entries(allAttributes)) {
-        attributeString += ` ${name}="${value}"`;
+  /**
+   * Render a structural element as Vue template
+   */
+  private renderStructuralElement(
+    concept: StructuralConcept,
+    globalAttributes: Record<string, string>
+  ): string {
+    const tag = concept.tag;
+    
+    // Render children
+    const childrenOutput = this.renderStructuralConcepts(concept.children, {});
+    
+    // Apply global attributes only to the first/root element
+    let attributeString = '';
+    if (Object.keys(globalAttributes).length > 0) {
+      for (const [name, value] of Object.entries(globalAttributes)) {
+        // Handle Vue directives and expressions correctly
+        if (name.startsWith('@') || name.startsWith('v-') || name.startsWith(':')) {
+          attributeString += ` ${name}="${value}"`;
+        } else {
+          attributeString += ` ${name}="${value}"`;
+        }
       }
-      return `<div${attributeString}>\n  ${parts.join('\n  ')}\n</div>`;
     }
 
-    // If we have processed concepts without attributes
-    if (parts.length > 0) {
-      return parts.join('\n');
+    // Self-closing tags
+    if (concept.isSelfClosing && !childrenOutput) {
+      return `<${tag}${attributeString} />`;
     }
 
-    // Default fallback for completely empty component
-    return '<div>Component content</div>';
+    return `<${tag}${attributeString}>${childrenOutput}</${tag}>`;
   }
 
   /**

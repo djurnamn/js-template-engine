@@ -158,11 +158,31 @@ export class TemplateAnalyzer {
           const tag = node.tag || 'div';
           const children = this.extractStructuralConcepts(node.children || [], currentPath);
           
+          // Capture element's own attributes (excluding events and styling which are handled separately)
+          const elementAttributes: Record<string, any> = {};
+          if (node.attributes) {
+            for (const [name, value] of Object.entries(node.attributes)) {
+              // Skip attributes that will be handled as behavioral concepts
+              if (!this.shouldIgnoreAttribute(name)) {
+                elementAttributes[name] = value;
+              }
+            }
+          }
+          if (node.expressionAttributes) {
+            for (const [name, value] of Object.entries(node.expressionAttributes)) {
+              // Skip attributes that will be handled as behavioral concepts
+              if (!this.shouldIgnoreAttribute(name)) {
+                elementAttributes[name] = value;
+              }
+            }
+          }
+          
           return {
             nodeId,
             type: 'element',
             tag,
             children,
+            attributes: Object.keys(elementAttributes).length > 0 ? elementAttributes : undefined,
             isSelfClosing: this.isSelfClosingTag(tag)
           } as StructuralConcept;
 

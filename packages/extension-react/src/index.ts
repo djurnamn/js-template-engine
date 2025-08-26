@@ -21,7 +21,11 @@ import type {
   IterationConcept,
   SlotConcept,
   AttributeConcept,
-  ComponentConcept
+  ComponentConcept,
+  StructuralConcept,
+  TextConcept,
+  CommentConcept,
+  FragmentConcept
 } from '@js-template-engine/core';
 
 import {
@@ -847,40 +851,20 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Render template from concepts to JSX
    */
   private renderTemplate(concepts: ComponentConcept): string {
-    const parts: string[] = [];
-
-    // Process events to get event attributes
+    // Process behavioral concepts to get attributes
+    let eventAttributes: Record<string, string> = {};
     if (concepts.events.length > 0) {
-      this.processEvents(concepts.events);
-      // Events are processed and included in individual elements
+      const eventOutput = this.processEvents(concepts.events);
+      eventAttributes = eventOutput.attributes;
     }
 
-    // Process conditionals
-    if (concepts.conditionals.length > 0) {
-      const conditionalOutput = this.processConditionals(concepts.conditionals);
-      parts.push(conditionalOutput.syntax);
-    }
-
-    // Process iterations
-    if (concepts.iterations.length > 0) {
-      const iterationOutput = this.processIterations(concepts.iterations);
-      parts.push(iterationOutput.syntax);
-    }
-
-    // Process slots
-    if (concepts.slots.length > 0) {
-      const slotOutput = this.processSlots(concepts.slots);
-      parts.push(slotOutput.syntax);
-    }
-
-    // Process attributes and styling
-    let elementAttributes = '';
+    let staticAttributes: Record<string, string> = {};
     if (concepts.attributes.length > 0) {
       const attributeOutput = this.processAttributes(concepts.attributes);
-      elementAttributes = Object.entries(attributeOutput.attributes)
-        .map(([name, value]) => ` ${name}="${value}"`)
-        .join('');
+      staticAttributes = attributeOutput.attributes;
     }
+
+    const allAttributes = { ...staticAttributes, ...eventAttributes };
 
     // Add styling classes if present
     if (concepts.styling) {
@@ -889,27 +873,114 @@ export class ReactFrameworkExtension implements FrameworkExtension {
       
       if (staticClasses || dynamicClasses) {
         const classValue = staticClasses + (dynamicClasses ? ` ${dynamicClasses}` : '');
-        elementAttributes += ` className="${classValue}"`;
+        allAttributes['className'] = classValue;
       }
 
-      // Add inline styles
       if (Object.keys(concepts.styling.inlineStyles).length > 0) {
-        const styleObj = JSON.stringify(concepts.styling.inlineStyles);
-        elementAttributes += ` style={${styleObj}}`;
+        allAttributes['style'] = JSON.stringify(concepts.styling.inlineStyles);
       }
     }
 
-    // If we have processed concepts, combine them
-    if (parts.length > 0) {
-      if (parts.length === 1) {
-        return parts[0];
-      } else {
-        return `<>\n      ${parts.join('\n      ')}\n    </>`;
+    // Render structural concepts
+    const structuralOutput = this.renderStructuralConcepts(concepts.structure, allAttributes);
+
+    // Process behavioral concepts that generate their own syntax
+    const parts: string[] = [structuralOutput];
+
+    if (concepts.conditionals.length > 0) {
+      const conditionalOutput = this.processConditionals(concepts.conditionals);
+      parts.push(conditionalOutput.syntax);
+    }
+
+    if (concepts.iterations.length > 0) {
+      const iterationOutput = this.processIterations(concepts.iterations);
+      parts.push(iterationOutput.syntax);
+    }
+
+    if (concepts.slots.length > 0) {
+      const slotOutput = this.processSlots(concepts.slots);
+      parts.push(slotOutput.syntax);
+    }
+
+    const filteredParts = parts.filter(Boolean);
+    if (filteredParts.length === 1) {
+      return filteredParts[0];
+    } else if (filteredParts.length > 1) {
+      return `<>\n      ${filteredParts.join('\n      ')}\n    </>`;
+    }
+
+    return '';
+  }
+
+  /**
+   * Render structural concepts to JSX
+   */
+  private renderStructuralConcepts(
+    structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
+    attributes: Record<string, string>
+  ): string {
+    return structuralConcepts.map(concept => {
+      switch (concept.type) {
+        case 'text':
+          const textConcept = concept as TextConcept;
+          return textConcept.content;
+
+        case 'comment':
+          const commentConcept = concept as CommentConcept;
+          return `{/* ${commentConcept.content} */}`;
+
+        case 'fragment':
+          const fragmentConcept = concept as FragmentConcept;
+          return this.renderStructuralConcepts(fragmentConcept.children, {});
+
+        case 'element':
+        default:
+          // StructuralConcept (element)
+          const structuralConcept = concept as StructuralConcept;
+          return this.renderStructuralElement(structuralConcept, attributes);
+      }
+    }).join('');
+  }
+
+  /**
+   * Render a structural element as JSX
+   */
+  private renderStructuralElement(
+    concept: StructuralConcept,
+    globalAttributes: Record<string, string>
+  ): string {
+    const tag = concept.tag;
+    
+    // Render children
+    const childrenOutput = this.renderStructuralConcepts(concept.children, {});
+    
+    // Apply global attributes only to the first/root element
+    let attributeString = '';
+    if (Object.keys(globalAttributes).length > 0) {
+      for (const [name, value] of Object.entries(globalAttributes)) {
+        // Handle JSX event handlers and expressions correctly
+        if (name.startsWith('on') && name.charAt(2) === name.charAt(2).toUpperCase()) {
+          // React event handlers like onClick, onChange
+          attributeString += ` ${name}={${value}}`;
+        } else if (name === 'className' || name === 'style') {
+          // Handle React-specific attributes
+          if (name === 'style' && typeof value === 'string' && value.startsWith('{')) {
+            attributeString += ` ${name}={${value}}`;
+          } else {
+            attributeString += ` ${name}="${value}"`;
+          }
+        } else {
+          attributeString += ` ${name}="${value}"`;
+        }
       }
     }
 
-    // Default fallback for empty component
-    return `<div${elementAttributes}>Component content</div>`;
+    // Self-closing tags
+    if (concept.isSelfClosing && !childrenOutput) {
+      return `<${tag}${attributeString} />`;
+    }
+
+    return `<${tag}${attributeString}>${childrenOutput}</${tag}>`;
   }
 
   /**

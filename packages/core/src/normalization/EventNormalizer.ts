@@ -73,6 +73,8 @@ export const EVENT_NORMALIZATION: EventNormalization = {
   'mouseup': { vue: '@mouseup', react: 'onMouseUp', svelte: 'on:mouseup' },
   'mouseover': { vue: '@mouseover', react: 'onMouseOver', svelte: 'on:mouseover' },
   'mouseout': { vue: '@mouseout', react: 'onMouseOut', svelte: 'on:mouseout' },
+  'mouseenter': { vue: '@mouseenter', react: 'onMouseEnter', svelte: 'on:mouseenter' },
+  'mouseleave': { vue: '@mouseleave', react: 'onMouseLeave', svelte: 'on:mouseleave' },
   'load': { vue: '@load', react: 'onLoad', svelte: 'on:load' },
   'error': { vue: '@error', react: 'onError', svelte: 'on:error' },
   'resize': { vue: '@resize', react: 'onResize', svelte: 'on:resize' },

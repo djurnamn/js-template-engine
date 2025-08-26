@@ -97,6 +97,8 @@ export interface StructuralConcept extends BaseConcept {
   tag: string;
   /** Child elements and content */
   children: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[];
+  /** Element's own attributes (not behavioral ones like events) */
+  attributes?: Record<string, any>;
   /** Whether this is a self-closing element */
   isSelfClosing?: boolean;
   /** Type identifier */

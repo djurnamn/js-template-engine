@@ -754,7 +754,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
     attributes: Record<string, string>
   ): string {
-    return structuralConcepts.map(concept => {
+    return structuralConcepts.map((concept, index) => {
       switch (concept.type) {
         case 'text':
           const textConcept = concept as TextConcept;
@@ -772,7 +772,9 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         default:
           // StructuralConcept (element)
           const structuralConcept = concept as StructuralConcept;
-          return this.renderStructuralElement(structuralConcept, attributes);
+          // Only apply global attributes to the first element
+          const attributesToApply = index === 0 ? attributes : {};
+          return this.renderStructuralElement(structuralConcept, attributesToApply);
       }
     }).join('');
   }
@@ -789,13 +791,41 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     // Render children
     const childrenOutput = this.renderStructuralConcepts(concept.children, {});
     
-    // Apply global attributes only to the first/root element
     let attributeString = '';
-    if (Object.keys(globalAttributes).length > 0) {
-      for (const [name, value] of Object.entries(globalAttributes)) {
+    
+    // First, render the element's own attributes
+    if (concept.attributes) {
+      for (const [name, value] of Object.entries(concept.attributes)) {
         // Handle Svelte event directives and expressions correctly
         if (name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('use:')) {
           attributeString += ` ${name}={${value}}`;
+        } else if (this.isExpressionValue(String(value))) {
+          // Handle expression attributes like disabled="{isDisabled}" -> disabled={isDisabled}
+          const expressionContent = this.extractExpressionContent(String(value));
+          attributeString += ` ${name}={${expressionContent}}`;
+        } else {
+          attributeString += ` ${name}="${value}"`;
+        }
+      }
+    }
+    
+    // Then apply global attributes (behavioral concepts)
+    if (Object.keys(globalAttributes).length > 0) {
+      for (const [name, value] of Object.entries(globalAttributes)) {
+        // Skip attributes that look like event names without proper prefixes
+        // This prevents issues where 'mouseenter' appears instead of 'on:mouseenter'
+        const commonEvents = ['click', 'mouseenter', 'mouseleave', 'keydown', 'keyup', 'change', 'input', 'submit', 'focus', 'blur'];
+        if (commonEvents.includes(name.toLowerCase())) {
+          continue; // Skip potential event attributes without proper prefixes
+        }
+        
+        // Handle Svelte event directives and expressions correctly
+        if (name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('use:')) {
+          attributeString += ` ${name}={${value}}`;
+        } else if (this.isExpressionValue(value)) {
+          // Handle expression attributes like disabled="{isDisabled}" -> disabled={isDisabled}
+          const expressionContent = this.extractExpressionContent(value);
+          attributeString += ` ${name}={${expressionContent}}`;
         } else {
           attributeString += ` ${name}="${value}"`;
         }
@@ -808,6 +838,24 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     }
 
     return `<${tag}${attributeString}>${childrenOutput}</${tag}>`;
+  }
+
+  /**
+   * Check if a value is an expression (wrapped in curly braces)
+   */
+  private isExpressionValue(value: string): boolean {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    return trimmed.startsWith('{') && trimmed.endsWith('}');
+  }
+
+  /**
+   * Extract expression content from curly braces
+   */
+  private extractExpressionContent(value: string): string {
+    if (!this.isExpressionValue(value)) return value;
+    const trimmed = value.trim();
+    return trimmed.slice(1, -1); // Remove { and }
   }
 
   /**
