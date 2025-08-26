@@ -19,6 +19,8 @@ export interface EventConcept extends BaseConcept {
   name: string;
   /** Handler function name or expression */
   handler: string;
+  /** Framework-specific attribute name (onClick, @click, on:click) */
+  frameworkAttribute?: string;
   /** Event modifiers (prevent, stop, once, etc.) */
   modifiers?: string[];
   /** Parameters passed to the handler */

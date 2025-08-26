@@ -633,6 +633,16 @@ describe('Vue SFC Compilation Integration', () => {
 
   it('should generate SFC that could be compiled by Vue', () => {
     const concepts: ComponentConcept = {
+      structure: [
+        {
+          type: 'element',
+          tag: 'button',
+          nodeId: 'button',
+          children: [
+            { type: 'text', content: 'Click me' }
+          ]
+        }
+      ],
       events: [
         { name: 'click', handler: 'increment', nodeId: 'button', modifiers: [], parameters: [] }
       ],

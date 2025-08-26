@@ -878,7 +878,7 @@ ${propsInterface}export default defineComponent({
     }
 
     // Render structural concepts
-    const structuralOutput = this.renderStructuralConcepts(concepts.structure, allAttributes);
+    const structuralOutput = this.renderStructuralConcepts(concepts.structure || [], allAttributes);
 
     // Process behavioral concepts that generate their own syntax
     const parts: string[] = [structuralOutput];
@@ -908,6 +908,9 @@ ${propsInterface}export default defineComponent({
     structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
     attributes: Record<string, string>
   ): string {
+    if (!structuralConcepts || structuralConcepts.length === 0) {
+      return '';
+    }
     return structuralConcepts.map(concept => {
       switch (concept.type) {
         case 'text':
@@ -920,7 +923,7 @@ ${propsInterface}export default defineComponent({
 
         case 'fragment':
           const fragmentConcept = concept as FragmentConcept;
-          return this.renderStructuralConcepts(fragmentConcept.children, {});
+          return this.renderStructuralConcepts(fragmentConcept.children || [], {});
 
         case 'element':
         default:
@@ -941,7 +944,7 @@ ${propsInterface}export default defineComponent({
     const tag = concept.tag;
     
     // Render children
-    const childrenOutput = this.renderStructuralConcepts(concept.children, {});
+    const childrenOutput = this.renderStructuralConcepts(concept.children || [], {});
     
     // Apply global attributes only to the first/root element
     let attributeString = '';

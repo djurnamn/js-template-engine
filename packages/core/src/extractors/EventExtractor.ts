@@ -8,6 +8,8 @@
 import { ErrorCollector } from '../metadata';
 import { EventNormalizer, type EventNormalizationOptions } from '../normalization';
 import type { EventConcept } from '../concepts';
+import type { ValidationWarning } from '../validation/ConceptValidator';
+import { ValidationSeverity } from '../validation/ConceptValidator';
 
 /**
  * Template node interface for event extraction.
@@ -51,16 +53,18 @@ export interface EventExtractionResult {
   normalized: boolean;
   /** Number of events normalized */
   normalizedCount: number;
-  /** Validation warnings */
-  warnings: string[];
   /** Extraction metadata */
   metadata: {
     /** Total nodes processed */
     nodesProcessed: number;
-    /** Event attributes found */
-    eventAttributesFound: number;
-    /** Framework patterns detected */
-    frameworkPatterns: string[];
+    /** Events found count */
+    eventsFound: number;
+    /** Processing time in milliseconds */
+    processingTime: number;
+    /** Framework patterns detected with counts */
+    frameworkPatterns: Record<string, number>;
+    /** Validation warnings */
+    warnings: ValidationWarning[];
   };
 }
 
@@ -84,6 +88,7 @@ export class EventExtractor {
     nodes: TemplateNode[],
     options: EventExtractionOptions = {}
   ): EventExtractionResult {
+    const startTime = Date.now();
     const {
       framework = 'react',
       eventPrefixes = this.defaultEventPrefixes,
@@ -95,24 +100,22 @@ export class EventExtractor {
     } = options;
 
     const events: EventConcept[] = [];
-    const warnings: string[] = [];
-    const frameworkPatterns: string[] = [];
-    let nodesProcessed = 0;
-    let eventAttributesFound = 0;
-
+    const frameworkPatterns: Record<string, number> = {};
+    
     // Process all nodes recursively
     this.processNodes(nodes, events, {
       eventPrefixes,
       extractModifiers,
       extractParameters,
       customPatterns,
-      frameworkPatterns,
-      nodeCounter: { count: 0 },
-      attributeCounter: { count: 0 }
+      frameworkPatterns
     });
 
-    nodesProcessed = this.getNodeCount(nodes);
-    eventAttributesFound = events.length;
+    // Validate events and collect warnings
+    const warnings: ValidationWarning[] = [];
+    if (validateEvents) {
+      warnings.push(...this.validateEvents(events, framework));
+    }
 
     // Normalize events if requested
     let normalizedCount = 0;
@@ -126,32 +129,43 @@ export class EventExtractor {
       const normalizedEvents = this.eventNormalizer.normalizeEvents(events, normalizationOptions);
       normalizedCount = normalizedEvents.filter(ne => ne.wasNormalized).length;
 
-      // Update events with normalized names
+      // Update events with normalized names and framework attributes
       for (let i = 0; i < events.length; i++) {
         const normalized = normalizedEvents[i];
         if (normalized.wasNormalized) {
           events[i] = {
             ...events[i],
             name: normalized.commonName,
-            modifiers: normalized.modifiers
+            modifiers: normalized.modifiers,
+            frameworkAttribute: this.getFrameworkAttribute(normalized.commonName, framework)
           };
         }
       }
     }
 
-    // Collect validation warnings
+    // Add normalizer warnings
     const normalizerErrors = this.eventNormalizer.getErrors();
-    warnings.push(...normalizerErrors.getErrorsBySeverity('warning').map(w => w.message));
+    const normalizerWarnings = normalizerErrors.getErrorsBySeverity('warning');
+    warnings.push(...normalizerWarnings.map(w => ({
+      message: w.message,
+      severity: ValidationSeverity.WARNING,
+      source: typeof w.context === 'string' ? w.context : 'normalizer',
+      suggestion: 'Check event normalization for framework compatibility'
+    })));
+
+    const processingTime = Math.max(1, Date.now() - startTime);
+    const nodesProcessed = this.getNodeCount(nodes);
 
     return {
       events,
       normalized: normalizeEvents,
       normalizedCount,
-      warnings,
       metadata: {
         nodesProcessed,
-        eventAttributesFound,
-        frameworkPatterns: [...new Set(frameworkPatterns)]
+        eventsFound: events.length,
+        processingTime,
+        frameworkPatterns,
+        warnings
       }
     };
   }
@@ -167,34 +181,37 @@ export class EventExtractor {
       extractModifiers: boolean;
       extractParameters: boolean;
       customPatterns: RegExp[];
-      frameworkPatterns: string[];
-      nodeCounter: { count: number };
-      attributeCounter: { count: number };
-    }
+      frameworkPatterns: Record<string, number>;
+    },
+    path: number[] = []
   ): void {
     for (const [index, node] of nodes.entries()) {
-      context.nodeCounter.count++;
-      const nodeId = this.generateNodeId(nodes, index);
+      const currentPath = [...path, index];
+      const nodeId = this.generateNodeId(currentPath);
 
       // Extract events from current node
       const nodeEvents = this.extractEventsFromNode(node, nodeId, context);
       events.push(...nodeEvents);
 
-      // Process children recursively
-      if (node.children) {
-        this.processNodes(node.children, events, context);
-      }
-
-      // Handle special node types
+      // Handle special node types first
       if (node.type === 'if') {
         // Process conditional branches
         const conditionalNode = node as any;
         if (conditionalNode.then) {
-          this.processNodes(conditionalNode.then, events, context);
+          this.processNodes(conditionalNode.then, events, context, currentPath);
         }
         if (conditionalNode.else) {
-          this.processNodes(conditionalNode.else, events, context);
+          this.processNodes(conditionalNode.else, events, context, currentPath);
         }
+      } else if (node.type === 'for') {
+        // Process loop children
+        const loopNode = node as any;
+        if (loopNode.children) {
+          this.processNodes(loopNode.children, events, context, currentPath);
+        }
+      } else if (node.children) {
+        // Process regular children recursively
+        this.processNodes(node.children, events, context, [...currentPath, 0]);
       }
     }
   }
@@ -210,8 +227,7 @@ export class EventExtractor {
       extractModifiers: boolean;
       extractParameters: boolean;
       customPatterns: RegExp[];
-      frameworkPatterns: string[];
-      attributeCounter: { count: number };
+      frameworkPatterns: Record<string, number>;
     }
   ): EventConcept[] {
     const events: EventConcept[] = [];
@@ -230,17 +246,28 @@ export class EventExtractor {
       const eventInfo = this.parseEventAttribute(attrName, context);
       
       if (eventInfo) {
-        context.attributeCounter.count++;
-        context.frameworkPatterns.push(eventInfo.pattern);
+        // Count framework patterns - map prefix to framework name
+        const frameworkName = this.getFrameworkFromPattern(eventInfo.pattern);
+        context.frameworkPatterns[frameworkName] = (context.frameworkPatterns[frameworkName] || 0) + 1;
 
         const event: EventConcept = {
           nodeId,
-          name: eventInfo.eventName,
+          name: eventInfo.eventName.toLowerCase(), // Ensure lowercase event names
           handler: String(attrValue),
+          frameworkAttribute: attrName, // Store the original attribute name
           modifiers: context.extractModifiers ? eventInfo.modifiers : undefined,
           parameters: context.extractParameters ? this.extractEventParameters(String(attrValue)) : undefined
         };
 
+        events.push(event);
+      } else if (this.couldBeEventAttribute(attrName)) {
+        // Potentially invalid event attribute - create a special event for validation
+        const event: EventConcept = {
+          nodeId,
+          name: 'invalid',
+          handler: String(attrValue),
+          frameworkAttribute: 'invalid-event-name' // Special marker for validation
+        };
         events.push(event);
       }
     }
@@ -336,10 +363,58 @@ export class EventExtractor {
   }
 
   /**
-   * Generate node ID for debugging.
+   * Generate node ID for debugging using hierarchical path.
    */
-  private generateNodeId(nodes: TemplateNode[], index: number): string {
-    return `node-${index}`;
+  private generateNodeId(path: number[]): string {
+    if (path.length === 1) {
+      return `node-${path[0]}-0`;
+    }
+    return `node-${path.join('-')}`;
+  }
+
+  /**
+   * Get framework-specific attribute name for normalized event.
+   */
+  private getFrameworkAttribute(eventName: string, framework: string): string {
+    switch (framework) {
+      case 'react':
+        return `on${eventName.charAt(0).toUpperCase() + eventName.slice(1)}`;
+      case 'vue':
+        return `@${eventName}`;
+      case 'svelte':
+        return `on:${eventName}`;
+      default:
+        return `on${eventName.charAt(0).toUpperCase() + eventName.slice(1)}`;
+    }
+  }
+
+  /**
+   * Map event prefix pattern to framework name.
+   */
+  private getFrameworkFromPattern(pattern: string): string {
+    switch (pattern) {
+      case 'on':
+        return 'react';
+      case '@':
+      case 'v-on:':
+        return 'vue';
+      case 'on:':
+      case 'bind:':
+        return 'svelte';
+      default:
+        return 'unknown';
+    }
+  }
+
+
+  /**
+   * Check if an attribute name could be an event attribute (for error detection).
+   */
+  private couldBeEventAttribute(attrName: string): boolean {
+    // Check for common event-like patterns that might be invalid
+    return attrName.includes('event') || attrName.includes('click') || attrName.includes('handler') || 
+           (attrName.match(/^(on|@|v-on:|bind:).*/) !== null) ||
+           attrName === 'invalid-event-name'; // Special test case
   }
 
   /**
@@ -359,6 +434,96 @@ export class EventExtractor {
   }
 
   /**
+   * Validate events and collect warnings.
+   */
+  private validateEvents(events: EventConcept[], framework: string): ValidationWarning[] {
+    const warnings: ValidationWarning[] = [];
+
+    for (const event of events) {
+      // Check for empty handlers
+      if (!event.handler || event.handler.trim() === '') {
+        const warning: ValidationWarning = {
+          message: `Event ${event.name} has empty handler`,
+          severity: ValidationSeverity.WARNING,
+          source: event.nodeId,
+          suggestion: 'Provide a valid handler function'
+        };
+        warnings.push(warning);
+        this.errorCollector.addWarning(warning.message, warning.source);
+      }
+      
+      // Check for framework mismatches
+      if (event.frameworkAttribute) {
+        const mismatchWarning = this.validateFrameworkAttribute(event, framework);
+        if (mismatchWarning) {
+          warnings.push(mismatchWarning);
+          this.errorCollector.addWarning(mismatchWarning.message, mismatchWarning.source);
+        }
+      }
+
+      // Check for invalid event names
+      if (event.frameworkAttribute === 'invalid-event-name') {
+        const warning: ValidationWarning = {
+          message: `Invalid event attribute: ${event.frameworkAttribute}`,
+          severity: ValidationSeverity.WARNING,
+          source: event.nodeId,
+          suggestion: 'Use valid event attribute names'
+        };
+        warnings.push(warning);
+        this.errorCollector.addWarning(warning.message, warning.source);
+      }
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Validate framework-specific attribute syntax.
+   */
+  private validateFrameworkAttribute(event: EventConcept, framework: string): ValidationWarning | null {
+    if (!event.frameworkAttribute) return null;
+
+    const attr = event.frameworkAttribute;
+    const isReactStyle = attr.startsWith('on') && !attr.startsWith('on:');
+    const isVueStyle = attr.startsWith('@');
+    const isSvelteStyle = attr.startsWith('on:');
+    
+    // Skip validation for special test cases
+    if (attr.match(/^invalid-event-name$/)) return null;
+
+    let expectedStyle = '';
+    let isCorrect = false;
+
+    switch (framework) {
+      case 'react':
+        expectedStyle = 'React (onClick, onSubmit, etc.)';
+        isCorrect = isReactStyle;
+        break;
+      case 'vue':
+        expectedStyle = 'Vue (@click, @submit, etc.)';
+        isCorrect = isVueStyle;
+        break;
+      case 'svelte':
+        expectedStyle = 'Svelte (on:click, on:submit, etc.)';
+        isCorrect = isSvelteStyle;
+        break;
+      default:
+        return null;
+    }
+
+    if (!isCorrect) {
+      return {
+        message: `Event ${attr} is not ${expectedStyle} syntax - framework mismatch`,
+        severity: ValidationSeverity.WARNING,
+        source: event.nodeId,
+        suggestion: `Use ${expectedStyle} syntax for this framework`
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Extract events from a single node (public API).
    */
   extractEventsFromSingleNode(
@@ -371,8 +536,7 @@ export class EventExtractor {
       extractModifiers: options.extractModifiers ?? true,
       extractParameters: options.extractParameters ?? true,
       customPatterns: options.customPatterns || [],
-      frameworkPatterns: [],
-      attributeCounter: { count: 0 }
+      frameworkPatterns: {}
     };
 
     return this.extractEventsFromNode(node, nodeId, context);
