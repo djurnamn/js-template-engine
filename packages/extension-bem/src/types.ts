@@ -59,6 +59,8 @@ export interface BemNodeExtensions {
   block?: string;
   /** Element name for BEM. */
   element?: string;
+  /** Single modifier for BEM. */
+  modifier?: string;
   /** Modifiers for BEM. */
   modifiers?: string[];
 }

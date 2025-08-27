@@ -3,7 +3,7 @@ import {
   ProcessingPipeline,
   ExtensionRegistry,
 } from '@js-template-engine/core';
-import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
+import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import type { ExtendedTemplate } from '@js-template-engine/types';
 
@@ -14,7 +14,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -284,7 +284,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -377,7 +377,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new BemExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -489,7 +489,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -571,7 +571,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
-import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
-import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
+import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
+import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import { TailwindExtension } from '@js-template-engine/extension-tailwind';
 import type { ExtendedTemplate } from '@js-template-engine/types';
@@ -106,7 +106,7 @@ describe('Combined Extensions Integration', () => {
   describe('Legacy Basic Tests', () => {
     it('renders with React and BEM extensions', async () => {
       const registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       registry.registerStyling(new BemExtension(false));
       const pipeline = new ProcessingPipeline(registry);
       
@@ -125,8 +125,8 @@ describe('Combined Extensions Integration', () => {
       const registry = new ExtensionRegistry();
       
       // Different framework extensions can be registered with different keys
-      const reactResult = registry.registerFramework(new ReactFrameworkExtension(false));
-      const vueResult = registry.registerFramework(new VueFrameworkExtension(false));
+      const reactResult = registry.registerFramework(new ReactExtension(false));
+      const vueResult = registry.registerFramework(new VueExtension(false));
       
       expect(reactResult.isValid).toBe(true);
       expect(vueResult.isValid).toBe(true);
@@ -151,9 +151,9 @@ describe('Combined Extensions Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
-      registry.registerFramework(new VueFrameworkExtension(false));
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
+      registry.registerFramework(new VueExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new BemExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -217,9 +217,9 @@ describe('Combined Extensions Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
-      registry.registerFramework(new VueFrameworkExtension(false));
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
+      registry.registerFramework(new VueExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -280,9 +280,9 @@ describe('Combined Extensions Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
-      registry.registerFramework(new VueFrameworkExtension(false));
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
+      registry.registerFramework(new VueExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new BemExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
@@ -366,7 +366,7 @@ describe('Combined Extensions Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       registry.registerStyling(new BemExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
@@ -448,9 +448,9 @@ describe('Combined Extensions Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
-      registry.registerFramework(new VueFrameworkExtension(false));
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
+      registry.registerFramework(new VueExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new BemExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);

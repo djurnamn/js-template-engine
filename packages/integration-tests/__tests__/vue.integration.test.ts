@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
+import { VueExtension } from '@js-template-engine/extension-vue';
 
 const simpleTemplate = [
   {
@@ -21,7 +21,7 @@ const simpleTemplate = [
 describe('Vue extension integration', () => {
   it('renders a component with slots and props', async () => {
     const registry = new ExtensionRegistry();
-    registry.registerFramework(new VueFrameworkExtension(false));
+    registry.registerFramework(new VueExtension(false));
     const pipeline = new ProcessingPipeline(registry);
     
     const result = await pipeline.process(simpleTemplate, {

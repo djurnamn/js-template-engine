@@ -212,7 +212,51 @@ export class ProcessingPipeline {
       // Check for template analysis issues (malformed templates should trigger warnings)
       this.checkForTemplateIssues(template);
 
-      // Process framework extension first
+      // Process legacy extensions array by mapping to specific extension types
+      if (options.extensions?.length) {
+        for (const extensionKey of options.extensions) {
+          // Check if it's a styling extension (like 'bem', 'tailwind')
+          const stylingExtension = this.registry.getStyling(extensionKey);
+          if (stylingExtension && !options.styling) {
+            options.styling = extensionKey; // Auto-map to styling option
+          }
+          
+          // Check if it's a utility extension
+          const utilityExtension = this.registry.getUtility(extensionKey);
+          if (utilityExtension) {
+            if (!options.utilities) options.utilities = [];
+            if (!options.utilities.includes(extensionKey)) {
+              options.utilities.push(extensionKey);
+            }
+          }
+          
+          // Check if it's a framework extension (though this should use options.framework)
+          const frameworkExtension = this.registry.getFramework(extensionKey);
+          if (frameworkExtension && !options.framework) {
+            options.framework = extensionKey; // Auto-map to framework option
+          }
+        }
+      }
+
+      // Process styling extension first (before framework) so classes are available for rendering
+      if (options.styling) {
+        const stylingExtension = this.registry.getStyling(options.styling);
+        if (stylingExtension) {
+          extensionsUsed.push(options.styling);
+          extensionTimes[options.styling] = this.timeExtension(() => {
+            const styleResult = stylingExtension.processStyles(concepts.styling);
+            processedConcepts.styling = styleResult.updatedStyling || processedConcepts.styling;
+          });
+        } else {
+          this.errorCollector.addWarning(
+            `Styling extension '${options.styling}' not found`,
+            'root',
+            'pipeline'
+          );
+        }
+      }
+
+      // Process framework extension (after styling so it can use generated classes)
       if (options.framework) {
         const frameworkExtension = this.registry.getFramework(options.framework);
         if (frameworkExtension) {
@@ -264,32 +308,14 @@ export class ProcessingPipeline {
           // Return empty output for missing framework extension
           output = '';
         }
-      } else if (template.length > 0) {
-        // No framework specified but template exists - warn and return empty
+      } else if (template.length > 0 && !options.styling && !options.utilities?.length) {
+        // No framework, styling, or utilities specified but template exists - warn and return empty
         this.errorCollector.addWarning(
           'No framework specified for processing',
           'root',
           'pipeline'
         );
         output = '';
-      }
-
-      // Process styling extension if specified (after framework)
-      if (options.styling) {
-        const stylingExtension = this.registry.getStyling(options.styling);
-        if (stylingExtension) {
-          extensionsUsed.push(options.styling);
-          extensionTimes[options.styling] = this.timeExtension(() => {
-            const styleResult = stylingExtension.processStyles(concepts.styling);
-            processedConcepts.styling = styleResult.updatedStyling || processedConcepts.styling;
-          });
-        } else {
-          this.errorCollector.addWarning(
-            `Styling extension '${options.styling}' not found`,
-            'root',
-            'pipeline'
-          );
-        }
       }
 
       // Process utility extensions last if specified

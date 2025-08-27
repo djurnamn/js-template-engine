@@ -278,6 +278,7 @@ import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
 import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
+import { TailwindExtension } from '@js-template-engine/extension-tailwind';
 import fs from 'fs-extra';
 import path from 'path';
 import config from '../create-ui-kit.config.js';
@@ -304,6 +305,9 @@ async function build() {
     // Add styling extensions first
     if (config.capabilities.styling.includes('bem')) {
       registry.registerStyling(new BemExtension());
+    }
+    if (config.capabilities.styling.includes('tailwind')) {
+      registry.registerStyling(new TailwindExtension());
     }
     
     // Add framework extension

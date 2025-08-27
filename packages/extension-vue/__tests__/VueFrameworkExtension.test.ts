@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { VueFrameworkExtension } from '../src/index';
+import { VueExtension } from '../src/index';
 import type {
   EventConcept,
   ConditionalConcept,
@@ -16,11 +16,11 @@ import type {
   RenderContext
 } from '@js-template-engine/core';
 
-describe('VueFrameworkExtension', () => {
-  let extension: VueFrameworkExtension;
+describe('VueExtension', () => {
+  let extension: VueExtension;
 
   beforeEach(() => {
-    extension = new VueFrameworkExtension();
+    extension = new VueExtension();
   });
 
   describe('metadata', () => {
@@ -625,10 +625,10 @@ describe('VueFrameworkExtension', () => {
 
 // Integration test to verify the extension works with actual Vue compilation
 describe('Vue SFC Compilation Integration', () => {
-  let extension: VueFrameworkExtension;
+  let extension: VueExtension;
 
   beforeEach(() => {
-    extension = new VueFrameworkExtension();
+    extension = new VueExtension();
   });
 
   it('should generate SFC that could be compiled by Vue', () => {

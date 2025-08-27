@@ -187,10 +187,10 @@ describe('Create UI Kit - End-to-End Integration', () => {
       // Test the component generation logic directly
       // In a real scenario, this would be tested by executing the CLI command
       const { ProcessingPipeline, ExtensionRegistry } = await import('@js-template-engine/core');
-      const { ReactFrameworkExtension } = await import('@js-template-engine/extension-react');
+      const { ReactExtension } = await import('@js-template-engine/extension-react');
 
       const registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       const pipeline = new ProcessingPipeline(registry);
       
       // Load a component template
@@ -318,10 +318,10 @@ describe('Create UI Kit - End-to-End Integration', () => {
 
       // Simulate consumer CLI usage (component generation)
       const { ProcessingPipeline, ExtensionRegistry } = await import('@js-template-engine/core');
-      const { ReactFrameworkExtension } = await import('@js-template-engine/extension-react');
+      const { ReactExtension } = await import('@js-template-engine/extension-react');
       
       const registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       const pipeline = new ProcessingPipeline(registry);
       const buttonTemplate = await fs.readJson(
         path.join(TEST_PROJECT_PATH, 'src/components/button.json')

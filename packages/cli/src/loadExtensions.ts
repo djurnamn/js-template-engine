@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { BemExtension } from '@js-template-engine/extension-bem';
+import { TailwindExtension } from '@js-template-engine/extension-tailwind';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
 import { SvelteExtension } from '@js-template-engine/extension-svelte';
@@ -8,6 +9,7 @@ import type { FrameworkExtension, StylingExtension } from '@js-template-engine/c
 
 type ExtensionMap = {
   '@js-template-engine/extension-bem': typeof BemExtension;
+  '@js-template-engine/extension-tailwind': typeof TailwindExtension;
   '@js-template-engine/extension-react': typeof ReactExtension;
   '@js-template-engine/extension-vue': typeof VueExtension;
   '@js-template-engine/extension-svelte': typeof SvelteExtension;
@@ -15,6 +17,7 @@ type ExtensionMap = {
 
 const EXTENSION_MAP: ExtensionMap = {
   '@js-template-engine/extension-bem': BemExtension,
+  '@js-template-engine/extension-tailwind': TailwindExtension,
   '@js-template-engine/extension-react': ReactExtension,
   '@js-template-engine/extension-vue': VueExtension,
   '@js-template-engine/extension-svelte': SvelteExtension,

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { BemExtension } from '@js-template-engine/extension-bem';
-import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
+import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
 
 const bemTemplate = [
   {
@@ -67,7 +67,7 @@ describe('BEM extension integration', () => {
   describe('Framework coordination', () => {
     it('should coordinate BEM with React extension', async () => {
       const bemExtension = new BemExtension(false);
-      const reactExtension = new ReactFrameworkExtension();
+      const reactExtension = new ReactExtension();
       
       registry.registerStyling(bemExtension);
       registry.registerFramework(reactExtension);
@@ -87,7 +87,7 @@ describe('BEM extension integration', () => {
 
     it('should coordinate BEM with Vue extension', async () => {
       const bemExtension = new BemExtension(false);
-      const vueExtension = new VueFrameworkExtension();
+      const vueExtension = new VueExtension();
       
       registry.registerStyling(bemExtension);
       registry.registerFramework(vueExtension);
@@ -167,8 +167,9 @@ describe('BEM extension integration', () => {
 
       const result = bemExtension.processStyles(stylingConcept);
       
-      expect(result.styles).toContain('button__icon');
-      expect(result.styles).toContain('button__icon--active');
+      expect(result.styles).toContain('.button');
+      expect(result.styles).toContain('&__icon');
+      expect(result.styles).toContain('&--active');
     });
   });
 

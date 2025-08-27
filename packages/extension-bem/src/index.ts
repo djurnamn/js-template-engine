@@ -407,13 +407,22 @@ export class BemStylingExtension
           
           classes.push(baseClass);
           
-          // Generate modifier classes
+          // Generate modifier classes from both singular and plural forms
+          const modifiers: string[] = [];
+          
+          // Handle single modifier (string)
+          if (bemData.modifier && typeof bemData.modifier === 'string') {
+            modifiers.push(bemData.modifier);
+          }
+          
+          // Handle multiple modifiers (array) 
           if (bemData.modifiers && Array.isArray(bemData.modifiers)) {
-            for (const modifier of bemData.modifiers) {
-              if (modifier) {
-                classes.push(`${baseClass}--${modifier}`);
-              }
-            }
+            modifiers.push(...bemData.modifiers.filter(Boolean));
+          }
+          
+          // Generate modifier classes
+          for (const modifier of modifiers) {
+            classes.push(`${baseClass}--${modifier}`);
           }
           
           // Store classes for this specific node

@@ -22,7 +22,7 @@ importers:
         version: 2.5.3
       vitest:
         specifier: ^1.6.1
-        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4)
+        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1))
 
   packages/cli:
     dependencies:
@@ -38,6 +38,9 @@ importers:
       '@js-template-engine/extension-svelte':
         specifier: workspace:*
         version: link:../extension-svelte
+      '@js-template-engine/extension-tailwind':
+        specifier: workspace:*
+        version: link:../extension-tailwind
       '@js-template-engine/extension-vue':
         specifier: workspace:*
         version: link:../extension-vue
@@ -96,7 +99,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^1.3.1
-        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4)
+        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1))
 
   packages/create-ui-kit:
     dependencies:
@@ -109,6 +112,12 @@ importers:
       '@js-template-engine/extension-react':
         specifier: workspace:*
         version: link:../extension-react
+      '@js-template-engine/extension-svelte':
+        specifier: workspace:*
+        version: link:../extension-svelte
+      '@js-template-engine/extension-tailwind':
+        specifier: workspace:*
+        version: link:../extension-tailwind
       '@js-template-engine/extension-vue':
         specifier: workspace:*
         version: link:../extension-vue
@@ -145,7 +154,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^1.3.1
-        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4)
+        version: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1))
 
   packages/examples:
     dependencies:
@@ -3130,7 +3139,7 @@ snapshots:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4)
+      vitest: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -3169,7 +3178,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 2.0.0
-      vitest: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4)
+      vitest: 1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1))
 
   '@vitest/utils@1.6.1':
     dependencies:
@@ -4758,7 +4767,7 @@ snapshots:
       '@types/node': 22.15.16
       fsevents: 2.3.3
 
-  vitest@1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4):
+  vitest@1.6.1(@types/node@20.17.46)(@vitest/ui@3.2.4(vitest@1.6.1)):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1

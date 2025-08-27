@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { TailwindExtension } from '@js-template-engine/extension-tailwind';
-import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
-import { SvelteFrameworkExtension } from '@js-template-engine/extension-svelte';
+import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
+import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import type { ExtendedTemplate } from '@js-template-engine/types';
 
 describe('Tailwind Extension Integration', () => {
@@ -108,7 +108,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -162,7 +162,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new VueFrameworkExtension(false));
+      registry.registerFramework(new VueExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -215,7 +215,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteFrameworkExtension(false));
+      registry.registerFramework(new SvelteExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -267,7 +267,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new ReactFrameworkExtension(false));
+      registry.registerFramework(new ReactExtension(false));
       registry.registerStyling(new TailwindExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });

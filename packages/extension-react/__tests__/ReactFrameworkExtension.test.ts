@@ -4,7 +4,7 @@
  * Tests all concept processors and JSX component generation.
  */
 
-import { ReactFrameworkExtension } from '../src';
+import { ReactExtension } from '../src';
 import type {
   EventConcept,
   ConditionalConcept,
@@ -15,11 +15,11 @@ import type {
   RenderContext
 } from '@js-template-engine/core';
 
-describe('ReactFrameworkExtension', () => {
-  let extension: ReactFrameworkExtension;
+describe('ReactExtension', () => {
+  let extension: ReactExtension;
 
   beforeEach(() => {
-    extension = new ReactFrameworkExtension();
+    extension = new ReactExtension();
   });
 
   describe('metadata', () => {

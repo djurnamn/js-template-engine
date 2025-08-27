@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SvelteFrameworkExtension } from '../src/index';
+import { SvelteExtension } from '../src/index';
 import type {
   EventConcept,
   ConditionalConcept,
@@ -16,11 +16,11 @@ import type {
   RenderContext
 } from '@js-template-engine/core';
 
-describe('SvelteFrameworkExtension', () => {
-  let extension: SvelteFrameworkExtension;
+describe('SvelteExtension', () => {
+  let extension: SvelteExtension;
 
   beforeEach(() => {
-    extension = new SvelteFrameworkExtension();
+    extension = new SvelteExtension();
   });
 
   describe('metadata', () => {

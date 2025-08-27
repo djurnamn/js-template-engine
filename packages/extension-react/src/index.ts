@@ -979,10 +979,42 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     // Render children
     const childrenOutput = this.renderStructuralConcepts(concept.children || [], {});
     
-    // Apply global attributes only to the first/root element
+    // Check for per-element classes using nodeId (e.g., from BEM extension)
+    let perElementClasses: string[] = [];
+    if (concept.nodeId && this.concepts?.styling?.perElementClasses) {
+      const elementClasses = this.concepts.styling.perElementClasses[concept.nodeId];
+      if (elementClasses && elementClasses.length > 0) {
+        perElementClasses = elementClasses;
+      }
+    }
+    
+    // Merge global attributes, concept attributes, and per-element classes
+    const mergedAttributes = { 
+      ...globalAttributes,
+      ...(concept.attributes || {})
+    };
+    
+    if (perElementClasses.length > 0) {
+      const existingClassName = mergedAttributes.className || mergedAttributes.class || '';
+      const allClasses = existingClassName ? 
+        `${existingClassName} ${perElementClasses.join(' ')}` : 
+        perElementClasses.join(' ');
+      mergedAttributes.className = allClasses;
+      
+      // Remove the 'class' attribute if present (React uses className)
+      delete mergedAttributes.class;
+    }
+    
+    // Transform attribute names for React (e.g., class -> className)
+    if (mergedAttributes.class && !mergedAttributes.className) {
+      mergedAttributes.className = mergedAttributes.class;
+      delete mergedAttributes.class;
+    }
+    
+    // Apply attributes (global + per-element)
     let attributeString = '';
-    if (Object.keys(globalAttributes).length > 0) {
-      for (const [name, value] of Object.entries(globalAttributes)) {
+    if (Object.keys(mergedAttributes).length > 0) {
+      for (const [name, value] of Object.entries(mergedAttributes)) {
         // Handle JSX event handlers and expressions correctly
         if (name.startsWith('on') && name.charAt(2) === name.charAt(2).toUpperCase()) {
           // React event handlers like onClick, onChange

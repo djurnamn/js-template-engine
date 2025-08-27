@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
-import { ReactFrameworkExtension } from '@js-template-engine/extension-react';
-import { VueFrameworkExtension } from '@js-template-engine/extension-vue';
+import { ReactExtension } from '@js-template-engine/extension-react';
+import { VueExtension } from '@js-template-engine/extension-vue';
 import { BemExtension } from '@js-template-engine/extension-bem';
 import type { ExtendedTemplate } from '@js-template-engine/types';
 
@@ -12,7 +12,7 @@ describe('Template Logic Integration Tests', () => {
 
     beforeEach(() => {
       reactRegistry = new ExtensionRegistry();
-      reactRegistry.registerFramework(new ReactFrameworkExtension(false));
+      reactRegistry.registerFramework(new ReactExtension(false));
       reactRegistry.registerStyling(new BemExtension(false));
       reactPipeline = new ProcessingPipeline(reactRegistry);
     });
@@ -278,7 +278,7 @@ describe('Template Logic Integration Tests', () => {
 
     beforeEach(() => {
       vueRegistry = new ExtensionRegistry();
-      vueRegistry.registerFramework(new VueFrameworkExtension(false));
+      vueRegistry.registerFramework(new VueExtension(false));
       vueRegistry.registerStyling(new BemExtension(false));
       vuePipeline = new ProcessingPipeline(vueRegistry);
     });
@@ -481,7 +481,7 @@ describe('Template Logic Integration Tests', () => {
 
     beforeEach(() => {
       errorTestRegistry = new ExtensionRegistry();
-      errorTestRegistry.registerFramework(new ReactFrameworkExtension(false));
+      errorTestRegistry.registerFramework(new ReactExtension(false));
       errorTestPipeline = new ProcessingPipeline(errorTestRegistry);
     });
 

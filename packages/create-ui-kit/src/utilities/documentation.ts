@@ -3,7 +3,9 @@ import path from 'path';
 import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
+import { SvelteExtension } from '@js-template-engine/extension-svelte';
 import { BemExtension } from '@js-template-engine/extension-bem';
+import { TailwindExtension } from '@js-template-engine/extension-tailwind';
 
 export interface ComponentDoc {
   name: string;
@@ -109,10 +111,13 @@ export class DocumentationGenerator {
         registry.registerFramework(new ReactExtension());
       } else if (framework === 'vue') {
         registry.registerFramework(new VueExtension());
+      } else if (framework === 'svelte') {
+        registry.registerFramework(new SvelteExtension());
       }
       
-      // Add BEM extension for styling
+      // Add styling extensions
       registry.registerStyling(new BemExtension());
+      registry.registerStyling(new TailwindExtension());
 
       const pipeline = new ProcessingPipeline(registry);
 
