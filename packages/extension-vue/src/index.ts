@@ -1,6 +1,6 @@
 /**
  * Vue Framework Extension
- * 
+ *
  * Generates Vue Single File Components with template, script, and style sections.
  */
 
@@ -12,7 +12,7 @@ import type {
   FrameworkConditionalOutput,
   FrameworkIterationOutput,
   FrameworkSlotOutput,
-  FrameworkAttributeOutput
+  FrameworkAttributeOutput,
 } from '@js-template-engine/core';
 
 import type {
@@ -25,7 +25,7 @@ import type {
   StructuralConcept,
   TextConcept,
   CommentConcept,
-  FragmentConcept
+  FragmentConcept,
 } from '@js-template-engine/core';
 
 import {
@@ -33,14 +33,14 @@ import {
   ComponentPropertyProcessor,
   ScriptMergeProcessor,
   ImportProcessor,
-  DEFAULT_MERGE_STRATEGIES
+  DEFAULT_MERGE_STRATEGIES,
 } from '@js-template-engine/core';
 
 import type {
   ImportDefinition,
   ScriptMergeStrategy,
   PropMergeStrategy,
-  ImportMergeStrategy
+  ImportMergeStrategy,
 } from '@js-template-engine/core';
 
 /**
@@ -172,7 +172,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'vue',
     name: 'Vue Framework Extension',
-    version: '1.0.0'
+    version: '1.0.0',
   };
 
   public framework = 'vue' as const;
@@ -184,10 +184,12 @@ export class VueFrameworkExtension implements FrameworkExtension {
   private importProcessor = new ImportProcessor();
 
   // Merge strategies
-  private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
+  private scriptMergeStrategy: ScriptMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
-  private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
-  
+  private importMergeStrategy: ImportMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.imports;
+
   /** Current concepts being rendered (for per-element class access) */
   private concepts?: ComponentConcept;
 
@@ -195,7 +197,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
     this.propertyProcessor = new ComponentPropertyProcessor({
       script: this.scriptMergeStrategy,
       props: this.propMergeStrategy,
-      imports: this.importMergeStrategy
+      imports: this.importMergeStrategy,
     });
     this.scriptMerger = new ScriptMergeProcessor();
   }
@@ -204,13 +206,17 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Process event concepts to Vue directives
    */
   processEvents(events: EventConcept[]): FrameworkEventOutput {
-    const processedEvents = events.map(event => {
+    const processedEvents = events.map((event) => {
       // Normalize event to Vue directive format
       const normalizedEvent = this.eventNormalizer.normalizeEvent(event, {
         framework: 'vue',
-        preserveModifiers: true
+        preserveModifiers: true,
       });
-      const syntax = this.generateEventSyntax(event.name, event.handler, event.modifiers || []);
+      const syntax = this.generateEventSyntax(
+        event.name,
+        event.handler,
+        event.modifiers || []
+      );
 
       return {
         directive: normalizedEvent.frameworkAttribute,
@@ -218,7 +224,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
         modifiers: event.modifiers || [],
         parameters: event.parameters || [],
         nodeId: event.nodeId,
-        syntax
+        syntax,
       } as VueEventOutput;
     });
 
@@ -232,64 +238,79 @@ export class VueFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes,
-      imports
+      imports,
     };
   }
 
   /**
    * Generate Vue event syntax with modifiers
    */
-  private generateEventSyntax(eventName: string, handler: string, modifiers: string[] = []): string {
-    const modifierString = modifiers.length > 0 ? `.${modifiers.join('.')}` : '';
+  private generateEventSyntax(
+    eventName: string,
+    handler: string,
+    modifiers: string[] = []
+  ): string {
+    const modifierString =
+      modifiers.length > 0 ? `.${modifiers.join('.')}` : '';
     return `@${eventName}${modifierString}="${handler}"`;
   }
 
   /**
    * Process conditional concepts for Vue v-if/v-else directives
    */
-  processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput {
-    const processedConditionals = conditionals.map(conditional => {
+  processConditionals(
+    conditionals: ConditionalConcept[]
+  ): FrameworkConditionalOutput {
+    const processedConditionals = conditionals.map((conditional) => {
       const elements = this.generateConditionalElements(conditional);
-      
+
       return {
         condition: conditional.condition,
         thenElements: elements.thenElements,
         elseElements: elements.elseElements,
         nodeId: conditional.nodeId,
-        syntax: elements.combined.map(el => this.renderVueElement(el)).join('\n')
+        syntax: elements.combined
+          .map((el) => this.renderVueElement(el))
+          .join('\n'),
       } as VueConditionalOutput;
     });
 
-    const syntax = processedConditionals.map(c => c.syntax).join('\n');
+    const syntax = processedConditionals.map((c) => c.syntax).join('\n');
 
     return {
       syntax,
-      imports: []
+      imports: [],
     };
   }
 
   /**
    * Generate Vue conditional elements
    */
-  private generateConditionalElements(conditional: ConditionalConcept): VueConditionalElements {
+  private generateConditionalElements(
+    conditional: ConditionalConcept
+  ): VueConditionalElements {
     const thenElements = this.processConditionalBranch(conditional.thenNodes, {
-      'v-if': conditional.condition
+      'v-if': conditional.condition,
     });
-    
-    const elseElements = conditional.elseNodes ?
-      this.processConditionalBranch(conditional.elseNodes, { 'v-else': '' }) : null;
-    
+
+    const elseElements = conditional.elseNodes
+      ? this.processConditionalBranch(conditional.elseNodes, { 'v-else': '' })
+      : null;
+
     return {
       thenElements,
       elseElements,
-      combined: elseElements ? [thenElements, elseElements] : [thenElements]
+      combined: elseElements ? [thenElements, elseElements] : [thenElements],
     };
   }
 
   /**
    * Process conditional branch
    */
-  private processConditionalBranch(nodes: TemplateNode[], directive: Record<string, string>): VueElement {
+  private processConditionalBranch(
+    nodes: TemplateNode[],
+    directive: Record<string, string>
+  ): VueElement {
     if (nodes.length === 1 && this.isElementNode(nodes[0])) {
       // Single element - add directive directly
       return {
@@ -297,7 +318,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
         tag: nodes[0].tag || 'div',
         attributes: { ...nodes[0].attributes, ...directive },
         children: nodes[0].children || [],
-        extensions: nodes[0].extensions // Preserve extension data for styling extensions
+        extensions: nodes[0].extensions, // Preserve extension data for styling extensions
       };
     } else {
       // Multiple elements - wrap in template
@@ -305,7 +326,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
         type: 'element',
         tag: 'template',
         attributes: directive,
-        children: nodes
+        children: nodes,
       };
     }
   }
@@ -314,13 +335,17 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Process iteration concepts for Vue v-for directive
    */
   processIterations(iterations: IterationConcept[]): FrameworkIterationOutput {
-    const processedIterations = iterations.map(iteration => {
+    const processedIterations = iterations.map((iteration) => {
       const vForExpression = this.generateVForExpression(iteration);
-      const keyExpression = iteration.keyExpression || 
-        (iteration.indexVariable || 'index');
-      
-      const element = this.generateIterationElement(iteration, vForExpression, keyExpression);
-      
+      const keyExpression =
+        iteration.keyExpression || iteration.indexVariable || 'index';
+
+      const element = this.generateIterationElement(
+        iteration,
+        vForExpression,
+        keyExpression
+      );
+
       return {
         vForExpression,
         keyExpression,
@@ -328,15 +353,17 @@ export class VueFrameworkExtension implements FrameworkExtension {
         itemVariable: iteration.itemVariable,
         indexVariable: iteration.indexVariable,
         nodeId: iteration.nodeId,
-        syntax: element
+        syntax: element,
       } as VueIterationOutput;
     });
 
-    const syntax = processedIterations.map(i => this.renderVueElement(i.syntax)).join('\n');
+    const syntax = processedIterations
+      .map((i) => this.renderVueElement(i.syntax))
+      .join('\n');
 
     return {
       syntax,
-      imports: []
+      imports: [],
     };
   }
 
@@ -361,17 +388,20 @@ export class VueFrameworkExtension implements FrameworkExtension {
   ): VueElement {
     const directives = {
       'v-for': vForExpression,
-      ':key': keyExpression
+      ':key': keyExpression,
     };
-    
-    if (iteration.childNodes.length === 1 && this.isElementNode(iteration.childNodes[0])) {
+
+    if (
+      iteration.childNodes.length === 1 &&
+      this.isElementNode(iteration.childNodes[0])
+    ) {
       // Single element - add v-for directly
       const child = iteration.childNodes[0];
       return {
         type: 'element',
         tag: child.tag || 'div',
         attributes: { ...child.attributes, ...directives },
-        children: child.children || []
+        children: child.children || [],
       };
     } else {
       // Multiple elements - wrap in template
@@ -379,7 +409,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
         type: 'element',
         tag: 'template',
         attributes: directives,
-        children: iteration.childNodes
+        children: iteration.childNodes,
       };
     }
   }
@@ -388,39 +418,46 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Process slot concepts for Vue slot elements
    */
   processSlots(slots: SlotConcept[]): FrameworkSlotOutput {
-    const processedSlots = slots.map(slot => {
-      const fallbackContent = slot.fallback ? 
-        this.renderNodes(slot.fallback) : null;
-      
+    const processedSlots = slots.map((slot) => {
+      const fallbackContent = slot.fallback
+        ? this.renderNodes(slot.fallback)
+        : null;
+
       return {
         name: slot.name,
         fallback: fallbackContent,
         nodeId: slot.nodeId,
-        syntax: this.generateSlotElement(slot.name, fallbackContent)
+        syntax: this.generateSlotElement(slot.name, fallbackContent),
       } as VueSlotOutput;
     });
 
-    const syntax = processedSlots.map(s => this.renderVueElement(s.syntax)).join('\n');
+    const syntax = processedSlots
+      .map((s) => this.renderVueElement(s.syntax))
+      .join('\n');
     const props: Record<string, string> = {};
 
     return {
       syntax,
       props,
-      imports: []
+      imports: [],
     };
   }
 
   /**
    * Generate slot element
    */
-  private generateSlotElement(name: string, fallback: string | null): VueElement {
-    const attributes: Record<string, string> = name === 'default' ? {} : { name };
-    
+  private generateSlotElement(
+    name: string,
+    fallback: string | null
+  ): VueElement {
+    const attributes: Record<string, string> =
+      name === 'default' ? {} : { name };
+
     return {
       type: 'element',
       tag: 'slot',
       attributes,
-      children: fallback ? this.parseNodes(fallback) : []
+      children: fallback ? this.parseNodes(fallback) : [],
     };
   }
 
@@ -428,9 +465,9 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Process attribute concepts for Vue attribute and directive handling
    */
   processAttributes(attributes: AttributeConcept[]): FrameworkAttributeOutput {
-    const processedAttributes = attributes.map(attribute => {
+    const processedAttributes = attributes.map((attribute) => {
       const vueAttribute = this.processVueAttribute(attribute);
-      
+
       return {
         originalName: attribute.name,
         vueName: vueAttribute.name,
@@ -438,7 +475,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
         isExpression: attribute.isExpression,
         isDirective: vueAttribute.isDirective,
         nodeId: attribute.nodeId,
-        syntax: vueAttribute.syntax
+        syntax: vueAttribute.syntax,
       } as VueAttributeOutput;
     });
 
@@ -453,7 +490,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes: attributeMap,
-      imports: []
+      imports: [],
     };
   }
 
@@ -462,30 +499,30 @@ export class VueFrameworkExtension implements FrameworkExtension {
    */
   private processVueAttribute(attribute: AttributeConcept): VueAttributeInfo {
     const { name, value, isExpression } = attribute;
-    
+
     // Handle Vue directives
     if (name.startsWith('v-') || name.startsWith('@') || name.startsWith(':')) {
       return {
         name,
         isDirective: true,
-        syntax: `${name}="${value}"`
+        syntax: `${name}="${value}"`,
       };
     }
-    
+
     // Handle dynamic bindings
     if (isExpression) {
       return {
         name: `:${name}`,
         isDirective: true,
-        syntax: `:${name}="${value}"`
+        syntax: `:${name}="${value}"`,
       };
     }
-    
+
     // Static attributes
     return {
       name,
       isDirective: false,
-      syntax: `${name}="${value}"`
+      syntax: `${name}="${value}"`,
     };
   }
 
@@ -495,7 +532,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
     // Store concepts for per-element class access
     this.concepts = concepts;
-    
+
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'vue', component: context.component },
@@ -505,9 +542,13 @@ export class VueFrameworkExtension implements FrameworkExtension {
 
     // Generate SFC sections
     const templateSection = this.generateTemplateSection(concepts);
-    const scriptSection = this.generateScriptSection(concepts, context, componentName);
+    const scriptSection = this.generateScriptSection(
+      concepts,
+      context,
+      componentName
+    );
     const styleSection = this.generateStyleSection(context);
-    
+
     return this.assembleSFC(templateSection, scriptSection, styleSection);
   }
 
@@ -531,9 +572,10 @@ export class VueFrameworkExtension implements FrameworkExtension {
    * Indent template content
    */
   private indentTemplate(content: string): string {
-    return content.split('\n').map(line => 
-      line.trim() ? `  ${line}` : line
-    ).join('\n');
+    return content
+      .split('\n')
+      .map((line) => (line.trim() ? `  ${line}` : line))
+      .join('\n');
   }
 
   /**
@@ -544,18 +586,38 @@ export class VueFrameworkExtension implements FrameworkExtension {
     context: RenderContext,
     componentName: string
   ): string {
-    const useTypeScript = (context.options?.language || 'javascript') === 'typescript';
-    const useComposition = context.component?.extensions?.vue?.composition ?? 
-      context.options?.composition ?? false;
-    const useSetup = context.component?.extensions?.vue?.setup ?? 
-      context.options?.setup ?? false;
-    
+    const useTypeScript =
+      (context.options?.language || 'javascript') === 'typescript';
+    const useComposition =
+      context.component?.extensions?.vue?.composition ??
+      context.options?.composition ??
+      false;
+    const useSetup =
+      context.component?.extensions?.vue?.setup ??
+      context.options?.setup ??
+      false;
+
     if (useSetup) {
-      return this.generateSetupScript(concepts, context, componentName, useTypeScript);
+      return this.generateSetupScript(
+        concepts,
+        context,
+        componentName,
+        useTypeScript
+      );
     } else if (useComposition) {
-      return this.generateCompositionScript(concepts, context, componentName, useTypeScript);
+      return this.generateCompositionScript(
+        concepts,
+        context,
+        componentName,
+        useTypeScript
+      );
     } else {
-      return this.generateOptionsScript(concepts, context, componentName, useTypeScript);
+      return this.generateOptionsScript(
+        concepts,
+        context,
+        componentName,
+        useTypeScript
+      );
     }
   }
 
@@ -574,20 +636,24 @@ export class VueFrameworkExtension implements FrameworkExtension {
       context.component?.imports || [],
       { strategy: this.importMergeStrategy }
     );
-    
+
     const scriptResult = this.scriptMerger.mergeScripts(
       context.component?.script || '',
       context.component?.extensions?.vue?.script || '',
       this.scriptMergeStrategy
     );
     const script = scriptResult.content;
-    
+
     // Generate props definition
-    const propsDefinition = this.generateSetupProps(concepts, context, useTypeScript);
-    
+    const propsDefinition = this.generateSetupProps(
+      concepts,
+      context,
+      useTypeScript
+    );
+
     const lang = useTypeScript ? ' lang="ts"' : '';
     const importStatements = this.formatImports(imports);
-    
+
     return `<script setup${lang}>
 ${importStatements.join('\n')}
 
@@ -607,7 +673,12 @@ ${script}
     useTypeScript: boolean
   ): string {
     // Use composition API but not setup syntax
-    return this.generateOptionsScript(concepts, context, componentName, useTypeScript);
+    return this.generateOptionsScript(
+      concepts,
+      context,
+      componentName,
+      useTypeScript
+    );
   }
 
   /**
@@ -624,22 +695,28 @@ ${script}
       context.component?.imports || [],
       { strategy: this.importMergeStrategy }
     );
-    
+
     const scriptResult = this.scriptMerger.mergeScripts(
       context.component?.script || '',
       context.component?.extensions?.vue?.script || '',
       this.scriptMergeStrategy
     );
     const script = scriptResult.content;
-    
+
     const props = this.generateOptionsProps(concepts, context);
     const lang = useTypeScript ? ' lang="ts"' : '';
     const importStatements = this.formatImports(imports);
-    
+
     // Generate TypeScript interface for Options API
-    const propsInterface = useTypeScript && Object.keys(this.mergeAllProps(concepts, context)).length > 0 ?
-      this.generatePropsInterface(`${componentName}Props`, this.mergeAllProps(concepts, context)) + '\n\n' : '';
-    
+    const propsInterface =
+      useTypeScript &&
+      Object.keys(this.mergeAllProps(concepts, context)).length > 0
+        ? this.generatePropsInterface(
+            `${componentName}Props`,
+            this.mergeAllProps(concepts, context)
+          ) + '\n\n'
+        : '';
+
     return `<script${lang}>
 ${importStatements.join('\n')}
 
@@ -658,11 +735,11 @@ ${propsInterface}export default defineComponent({
     useTypeScript: boolean
   ): string {
     const props = this.mergeAllProps(concepts, context);
-    
+
     if (Object.keys(props).length === 0) {
       return '';
     }
-    
+
     if (useTypeScript) {
       // TypeScript interface approach
       const interfaceName = `${this.getComponentName(context)}Props`;
@@ -678,13 +755,16 @@ ${propsInterface}export default defineComponent({
   /**
    * Generate options props
    */
-  private generateOptionsProps(concepts: ComponentConcept, context: RenderContext): string {
+  private generateOptionsProps(
+    concepts: ComponentConcept,
+    context: RenderContext
+  ): string {
     const props = this.mergeAllProps(concepts, context);
-    
+
     if (Object.keys(props).length === 0) {
       return '';
     }
-    
+
     const runtimeProps = this.generateRuntimeProps(props);
     return `props: ${runtimeProps}`;
   }
@@ -693,16 +773,19 @@ ${propsInterface}export default defineComponent({
    * Generate style section
    */
   private generateStyleSection(context: RenderContext): string {
-    const styleOutput = context.styleOutput || 
-      context.component?.extensions?.vue?.styleOutput || '';
-      
+    const styleOutput =
+      context.styleOutput ||
+      context.component?.extensions?.vue?.styleOutput ||
+      '';
+
     if (!styleOutput.trim()) {
       return '';
     }
-    
-    const styleLanguage = context.component?.extensions?.vue?.styleLanguage ?? 'css';
+
+    const styleLanguage =
+      context.component?.extensions?.vue?.styleLanguage ?? 'css';
     const isScoped = context.component?.extensions?.vue?.scoped ?? false;
-    
+
     const attributes = [];
     if (styleLanguage !== 'css') {
       attributes.push(`lang="${styleLanguage}"`);
@@ -710,30 +793,33 @@ ${propsInterface}export default defineComponent({
     if (isScoped) {
       attributes.push('scoped');
     }
-    
+
     const attrString = attributes.length > 0 ? ` ${attributes.join(' ')}` : '';
-    
+
     return `<style${attrString}>\n${styleOutput.trim()}\n</style>`;
   }
 
   /**
    * Get default Vue imports
    */
-  private getDefaultVueImports(concepts: ComponentConcept, isComposition: boolean): ImportDefinition[] {
+  private getDefaultVueImports(
+    concepts: ComponentConcept,
+    isComposition: boolean
+  ): ImportDefinition[] {
     const imports: ImportDefinition[] = [
-      { from: 'vue', named: ['defineComponent'] }
+      { from: 'vue', named: ['defineComponent'] },
     ];
-    
+
     if (isComposition) {
       const compositionImports = this.analyzeCompositionImports(concepts);
       if (compositionImports.length > 0) {
         imports.push({
           from: 'vue',
-          named: compositionImports
+          named: compositionImports,
         });
       }
     }
-    
+
     return imports;
   }
 
@@ -749,30 +835,36 @@ ${propsInterface}export default defineComponent({
   /**
    * Merge all props
    */
-  private mergeAllProps(concepts: ComponentConcept, context: RenderContext): Record<string, string> {
+  private mergeAllProps(
+    concepts: ComponentConcept,
+    context: RenderContext
+  ): Record<string, string> {
     const props: Record<string, string> = {};
-    
+
     // Add slot props
     for (const slot of concepts.slots) {
       const propName = slot.name === 'default' ? 'children' : slot.name;
       props[propName] = 'any';
     }
-    
+
     // Merge with component props
     if (context.component?.props) {
       Object.assign(props, context.component.props);
     }
-    
+
     return props;
   }
 
   /**
    * Generate props interface
    */
-  private generatePropsInterface(interfaceName: string, props: Record<string, string>): string {
-    const propEntries = Object.entries(props).map(([key, type]) =>
-      `  ${key}?: ${type};`
-    ).join('\n');
+  private generatePropsInterface(
+    interfaceName: string,
+    props: Record<string, string>
+  ): string {
+    const propEntries = Object.entries(props)
+      .map(([key, type]) => `  ${key}?: ${type};`)
+      .join('\n');
 
     return `interface ${interfaceName} {\n${propEntries}\n}`;
   }
@@ -781,10 +873,12 @@ ${propsInterface}export default defineComponent({
    * Generate runtime props
    */
   private generateRuntimeProps(props: Record<string, string>): string {
-    const propEntries = Object.entries(props).map(([key, type]) => {
-      const propType = this.getVueRuntimeType(type);
-      return `  ${key}: { type: ${propType}, required: false }`;
-    }).join(',\n');
+    const propEntries = Object.entries(props)
+      .map(([key, type]) => {
+        const propType = this.getVueRuntimeType(type);
+        return `  ${key}: { type: ${propType}, required: false }`;
+      })
+      .join(',\n');
 
     return `{\n${propEntries}\n}`;
   }
@@ -795,13 +889,20 @@ ${propsInterface}export default defineComponent({
   private getVueRuntimeType(type: string): string {
     const lowerType = type.toLowerCase();
     switch (lowerType) {
-      case 'string': return 'String';
-      case 'number': return 'Number';
-      case 'boolean': return 'Boolean';
-      case 'array': return 'Array';
-      case 'object': return 'Object';
-      case 'function': return 'Function';
-      default: return 'Object';
+      case 'string':
+        return 'String';
+      case 'number':
+        return 'Number';
+      case 'boolean':
+        return 'Boolean';
+      case 'array':
+        return 'Array';
+      case 'object':
+        return 'Object';
+      case 'function':
+        return 'Function';
+      default:
+        return 'Object';
     }
   }
 
@@ -816,16 +917,17 @@ ${propsInterface}export default defineComponent({
    * Indent script content
    */
   private indentScript(script: string): string {
-    return script.split('\n').map(line => 
-      line.trim() ? `    ${line}` : line
-    ).join('\n');
+    return script
+      .split('\n')
+      .map((line) => (line.trim() ? `    ${line}` : line))
+      .join('\n');
   }
 
   /**
    * Format imports to string array
    */
   private formatImports(imports: ImportDefinition[]): string[] {
-    return imports.map(imp => {
+    return imports.map((imp) => {
       const parts: string[] = [];
 
       if (imp.default && imp.named) {
@@ -878,7 +980,10 @@ ${propsInterface}export default defineComponent({
     }
 
     // Render structural concepts
-    const structuralOutput = this.renderStructuralConcepts(concepts.structure || [], allAttributes);
+    const structuralOutput = this.renderStructuralConcepts(
+      concepts.structure || [],
+      allAttributes
+    );
 
     // Process behavioral concepts that generate their own syntax
     const parts: string[] = [structuralOutput];
@@ -905,33 +1010,43 @@ ${propsInterface}export default defineComponent({
    * Render structural concepts to Vue template syntax
    */
   private renderStructuralConcepts(
-    structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
+    structuralConcepts: (
+      | StructuralConcept
+      | TextConcept
+      | CommentConcept
+      | FragmentConcept
+    )[],
     attributes: Record<string, string>
   ): string {
     if (!structuralConcepts || structuralConcepts.length === 0) {
       return '';
     }
-    return structuralConcepts.map(concept => {
-      switch (concept.type) {
-        case 'text':
-          const textConcept = concept as TextConcept;
-          return textConcept.content;
+    return structuralConcepts
+      .map((concept) => {
+        switch (concept.type) {
+          case 'text':
+            const textConcept = concept as TextConcept;
+            return textConcept.content;
 
-        case 'comment':
-          const commentConcept = concept as CommentConcept;
-          return `<!-- ${commentConcept.content} -->`;
+          case 'comment':
+            const commentConcept = concept as CommentConcept;
+            return `<!-- ${commentConcept.content} -->`;
 
-        case 'fragment':
-          const fragmentConcept = concept as FragmentConcept;
-          return this.renderStructuralConcepts(fragmentConcept.children || [], {});
+          case 'fragment':
+            const fragmentConcept = concept as FragmentConcept;
+            return this.renderStructuralConcepts(
+              fragmentConcept.children || [],
+              {}
+            );
 
-        case 'element':
-        default:
-          // StructuralConcept (element)
-          const structuralConcept = concept as StructuralConcept;
-          return this.renderStructuralElement(structuralConcept, attributes);
-      }
-    }).join('');
+          case 'element':
+          default:
+            // StructuralConcept (element)
+            const structuralConcept = concept as StructuralConcept;
+            return this.renderStructuralElement(structuralConcept, attributes);
+        }
+      })
+      .join('');
   }
 
   /**
@@ -942,16 +1057,23 @@ ${propsInterface}export default defineComponent({
     globalAttributes: Record<string, string>
   ): string {
     const tag = concept.tag;
-    
+
     // Render children
-    const childrenOutput = this.renderStructuralConcepts(concept.children || [], {});
-    
+    const childrenOutput = this.renderStructuralConcepts(
+      concept.children || [],
+      {}
+    );
+
     // Apply global attributes only to the first/root element
     let attributeString = '';
     if (Object.keys(globalAttributes).length > 0) {
       for (const [name, value] of Object.entries(globalAttributes)) {
         // Handle Vue directives and expressions correctly
-        if (name.startsWith('@') || name.startsWith('v-') || name.startsWith(':')) {
+        if (
+          name.startsWith('@') ||
+          name.startsWith('v-') ||
+          name.startsWith(':')
+        ) {
           attributeString += ` ${name}="${value}"`;
         } else {
           attributeString += ` ${name}="${value}"`;
@@ -972,7 +1094,7 @@ ${propsInterface}export default defineComponent({
    */
   private renderNodes(nodes: any[]): string {
     if (!nodes || nodes.length === 0) return '';
-    return nodes.map(node => this.renderSingleNode(node)).join('');
+    return nodes.map((node) => this.renderSingleNode(node)).join('');
   }
 
   /**
@@ -996,14 +1118,14 @@ ${propsInterface}export default defineComponent({
    */
   private renderElementNode(node: any): string {
     const tag = node.tag || 'div';
-    
+
     let children = '';
     if (node.children && node.children.length > 0) {
       children = this.renderNodes(node.children);
     } else if (node.content) {
       children = node.content;
     }
-    
+
     let attributes = '';
     if (node.attributes) {
       for (const [name, value] of Object.entries(node.attributes)) {
@@ -1020,13 +1142,16 @@ ${propsInterface}export default defineComponent({
     if (this.concepts?.styling?.perElementClasses && node.extensions) {
       // Find the nodeId that matches this node's extension data
       let matchedClasses: string[] = [];
-      
+
       if (this.concepts.styling.extensionData?.bem) {
         for (const bemNode of this.concepts.styling.extensionData.bem) {
           // Check if this BEM node data matches the current node's extension data
-          if (node.extensions.bem && 
-              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
-            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+          if (
+            node.extensions.bem &&
+            JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)
+          ) {
+            const elementClasses =
+              this.concepts.styling.perElementClasses[bemNode.nodeId];
             if (elementClasses && elementClasses.length > 0) {
               matchedClasses = elementClasses;
               break;
@@ -1034,20 +1159,36 @@ ${propsInterface}export default defineComponent({
           }
         }
       }
-      
+
       if (matchedClasses.length > 0) {
         const classNames = matchedClasses.join(' ');
         // Merge with existing class attribute if present
         const existingClass = node.attributes?.class || '';
-        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        const combinedClasses = existingClass
+          ? `${existingClass} ${classNames}`
+          : classNames;
         attributes += ` class="${combinedClasses}"`;
       }
     }
 
     // Self-closing tags
-    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 
-                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
-    
+    const selfClosingTags = [
+      'area',
+      'base',
+      'br',
+      'col',
+      'embed',
+      'hr',
+      'img',
+      'input',
+      'link',
+      'meta',
+      'param',
+      'source',
+      'track',
+      'wbr',
+    ];
+
     if (selfClosingTags.includes(tag.toLowerCase()) && !children) {
       return `<${tag}${attributes} />`;
     }
@@ -1080,14 +1221,18 @@ ${propsInterface}export default defineComponent({
   /**
    * Get file extension for Vue components
    */
-  public getFileExtension(_options: { language?: 'typescript' | 'javascript' }): string {
+  public getFileExtension(_options: {
+    language?: 'typescript' | 'javascript';
+  }): string {
     return '.vue';
   }
 
   /**
    * Get Prettier parser for Vue components
    */
-  public getPrettierParser(_options: { language?: 'typescript' | 'javascript' }): string {
+  public getPrettierParser(_options: {
+    language?: 'typescript' | 'javascript';
+  }): string {
     return 'vue';
   }
 }

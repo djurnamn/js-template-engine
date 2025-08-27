@@ -28,9 +28,9 @@
               "index": "index",
               "key": "navItem.href",
               "default": [
-                {"href": "/", "label": "Home"},
-                {"href": "/about", "label": "About"},
-                {"href": "/contact", "label": "Contact"}
+                { "href": "/", "label": "Home" },
+                { "href": "/about", "label": "About" },
+                { "href": "/contact", "label": "Contact" }
               ],
               "children": [
                 {

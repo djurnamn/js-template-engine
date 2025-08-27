@@ -1,6 +1,7 @@
 /**
  * Svelte-specific type definitions
  */
+import type { TemplateNode } from '@js-template-engine/types';
 
 /**
  * Svelte-specific event output interface
@@ -110,16 +111,4 @@ export interface SvelteFeatureAnalysis {
   lifecycle: string[];
   transitions: string[];
   actions: string[];
-}
-
-/**
- * Template node interface
- */
-export interface TemplateNode {
-  type?: string;
-  tag?: string;
-  content?: string;
-  attributes?: Record<string, any>;
-  children?: TemplateNode[];
-  [key: string]: any;
 }

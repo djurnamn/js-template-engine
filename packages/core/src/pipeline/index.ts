@@ -5,8 +5,4 @@
 export { ProcessingPipeline } from './ProcessingPipeline';
 
 // Re-export types
-export type {
-  ProcessingOptions,
-  ProcessingResult
-} from './ProcessingPipeline';
-
+export type { ProcessingOptions, ProcessingResult } from './ProcessingPipeline';

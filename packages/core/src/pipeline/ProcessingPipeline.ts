@@ -1,24 +1,24 @@
 /**
  * Core template processing pipeline that orchestrates concept extraction, validation, and rendering.
- * 
+ *
  * The ProcessingPipeline coordinates all aspects of template transformation including:
  * - Template analysis and concept extraction
  * - Framework-specific processing and rendering
  * - Styling extension integration
  * - Cross-framework event normalization
  * - Comprehensive validation and error handling
- * 
+ *
  * @example
  * ```typescript
  * const registry = new ExtensionRegistry();
  * const pipeline = new ProcessingPipeline(registry);
- * 
+ *
  * const result = await pipeline.process(templateNodes, {
  *   framework: 'react',
  *   styling: 'tailwind'
  * });
  * ```
- * 
+ *
  * @since 2.0.0
  */
 
@@ -55,7 +55,7 @@ import type { ComponentConcept } from '../concepts';
 
 /**
  * Configuration options for template processing operations.
- * 
+ *
  * @public
  */
 export interface ProcessingOptions {
@@ -88,7 +88,7 @@ export interface ProcessingOptions {
 
 /**
  * Comprehensive result object from template processing operations.
- * 
+ *
  * @public
  */
 export interface ProcessingResult {
@@ -144,27 +144,27 @@ export interface ProcessingResult {
 
 /**
  * Core template processing pipeline that orchestrates the transformation process.
- * 
+ *
  * The ProcessingPipeline serves as the central coordinator for all template processing
  * operations, managing extension registry interactions, concept extraction, validation,
  * and rendering across different frameworks and styling systems.
- * 
+ *
  * @example
  * ```typescript
  * const registry = new ExtensionRegistry();
  * registry.registerFramework('react', new ReactFrameworkExtension());
  * registry.registerStyling('tailwind', new TailwindStylingExtension());
- * 
+ *
  * const pipeline = new ProcessingPipeline(registry);
  * const result = await pipeline.process(templateNodes, {
  *   framework: 'react',
  *   styling: 'tailwind'
  * });
- * 
+ *
  * console.log(result.output); // Generated component code
  * console.log(result.metadata.processingTime); // Performance metrics
  * ```
- * 
+ *
  * @since 2.0.0
  */
 export class ProcessingPipeline {
@@ -185,17 +185,17 @@ export class ProcessingPipeline {
 
   /**
    * Creates a new ProcessingPipeline instance.
-   * 
+   *
    * @param registry - Extension registry containing framework, styling, and utility extensions
    * @param analyzer - Optional template analyzer instance (creates new one if not provided)
    * @param errorCollector - Optional error collector instance (creates new one if not provided)
-   * 
+   *
    * @example
    * ```typescript
    * const registry = new ExtensionRegistry();
    * const analyzer = new TemplateAnalyzer();
    * const errorCollector = new ErrorCollector();
-   * 
+   *
    * const pipeline = new ProcessingPipeline(registry, analyzer, errorCollector);
    * ```
    */
@@ -236,30 +236,30 @@ export class ProcessingPipeline {
 
   /**
    * Processes template nodes through the complete transformation pipeline.
-   * 
+   *
    * This is the primary entry point for template processing, handling concept extraction,
    * extension processing, and output generation with comprehensive error handling and
    * performance tracking.
-   * 
+   *
    * @param template - Array of template nodes to process
    * @param options - Configuration options for processing
    * @returns Promise resolving to processing result with output, errors, and metadata
-   * 
+   *
    * @example
    * ```typescript
    * const templateNodes = [
    *   { type: 'element', tag: 'div', attributes: { class: 'container' } }
    * ];
-   * 
+   *
    * const result = await pipeline.process(templateNodes, {
    *   framework: 'react',
    *   styling: 'tailwind'
    * });
-   * 
+   *
    * console.log(result.output); // Generated React component
    * console.log(result.metadata.extensionsUsed); // ['react', 'tailwind']
    * ```
-   * 
+   *
    * @throws {Error} When template processing encounters unrecoverable errors
    */
   async process(
@@ -269,12 +269,15 @@ export class ProcessingPipeline {
     const startTime = Date.now();
     const extensionTimes: Record<string, number> = {};
     this.errorCollector.clear();
-    
+
     try {
       // Extract concepts using analyzer
       const analyzerStart = process.hrtime.bigint();
       const concepts = this.analyzer.extractConcepts(template);
-      extensionTimes.analyzer = Math.max(1, Number((process.hrtime.bigint() - analyzerStart) / 1000000n));
+      extensionTimes.analyzer = Math.max(
+        1,
+        Number((process.hrtime.bigint() - analyzerStart) / 1000000n)
+      );
 
       // Count concepts for metadata (more careful checking)
       const conceptsFound = {
@@ -301,7 +304,7 @@ export class ProcessingPipeline {
           if (stylingExtension && !options.styling) {
             options.styling = extensionKey; // Auto-map to styling option
           }
-          
+
           // Check if it's a utility extension
           const utilityExtension = this.registry.getUtility(extensionKey);
           if (utilityExtension) {
@@ -310,7 +313,7 @@ export class ProcessingPipeline {
               options.utilities.push(extensionKey);
             }
           }
-          
+
           // Check if it's a framework extension (though this should use options.framework)
           const frameworkExtension = this.registry.getFramework(extensionKey);
           if (frameworkExtension && !options.framework) {
@@ -325,8 +328,11 @@ export class ProcessingPipeline {
         if (stylingExtension) {
           extensionsUsed.push(options.styling);
           extensionTimes[options.styling] = this.timeExtension(() => {
-            const styleResult = stylingExtension.processStyles(concepts.styling);
-            processedConcepts.styling = styleResult.updatedStyling || processedConcepts.styling;
+            const styleResult = stylingExtension.processStyles(
+              concepts.styling
+            );
+            processedConcepts.styling =
+              styleResult.updatedStyling || processedConcepts.styling;
           });
         } else {
           this.errorCollector.addWarning(
@@ -339,18 +345,26 @@ export class ProcessingPipeline {
 
       // Process framework extension (after styling so it can use generated classes)
       if (options.framework) {
-        const frameworkExtension = this.registry.getFramework(options.framework);
+        const frameworkExtension = this.registry.getFramework(
+          options.framework
+        );
         if (frameworkExtension) {
           extensionsUsed.push(options.framework);
-          
+
           // Process each concept type through framework extension
           extensionTimes[options.framework] = this.timeExtension(() => {
             try {
               frameworkExtension.processEvents(processedConcepts.events);
-              frameworkExtension.processConditionals(processedConcepts.conditionals);
-              frameworkExtension.processIterations(processedConcepts.iterations);
+              frameworkExtension.processConditionals(
+                processedConcepts.conditionals
+              );
+              frameworkExtension.processIterations(
+                processedConcepts.iterations
+              );
               frameworkExtension.processSlots(processedConcepts.slots);
-              frameworkExtension.processAttributes(processedConcepts.attributes);
+              frameworkExtension.processAttributes(
+                processedConcepts.attributes
+              );
             } catch (error) {
               this.errorCollector.addError({
                 message: `Framework processing failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -360,26 +374,31 @@ export class ProcessingPipeline {
               });
             }
           });
-          
+
           // Render component
-          extensionTimes[`${options.framework}-render`] = this.timeExtension(() => {
-            try {
-              const renderContext = {
-                component: options.component,
-                options: options,
-                concepts: processedConcepts,
-              };
-              output = frameworkExtension.renderComponent(processedConcepts, renderContext);
-            } catch (error) {
-              this.errorCollector.addError({
-                message: `Rendering failed: ${error instanceof Error ? error.message : String(error)}`,
-                nodeId: 'root',
-                extension: options.framework!,
-                severity: 'error',
-              });
-              output = '';
+          extensionTimes[`${options.framework}-render`] = this.timeExtension(
+            () => {
+              try {
+                const renderContext = {
+                  component: options.component,
+                  options: options,
+                  concepts: processedConcepts,
+                };
+                output = frameworkExtension.renderComponent(
+                  processedConcepts,
+                  renderContext
+                );
+              } catch (error) {
+                this.errorCollector.addError({
+                  message: `Rendering failed: ${error instanceof Error ? error.message : String(error)}`,
+                  nodeId: 'root',
+                  extension: options.framework!,
+                  severity: 'error',
+                });
+                output = '';
+              }
             }
-          });
+          );
         } else {
           this.errorCollector.addWarning(
             `Framework extension '${options.framework}' not found`,
@@ -389,7 +408,11 @@ export class ProcessingPipeline {
           // Return empty output for missing framework extension
           output = '';
         }
-      } else if (template.length > 0 && !options.styling && !options.utilities?.length) {
+      } else if (
+        template.length > 0 &&
+        !options.styling &&
+        !options.utilities?.length
+      ) {
         // No framework, styling, or utilities specified but template exists - warn and return empty
         this.errorCollector.addWarning(
           'No framework specified for processing',
@@ -413,7 +436,11 @@ export class ProcessingPipeline {
       }
 
       // If no framework extension was found or no framework specified, create basic output
-      if (!output && !this.errorCollector.hasErrors() && !this.errorCollector.hasWarnings()) {
+      if (
+        !output &&
+        !this.errorCollector.hasErrors() &&
+        !this.errorCollector.hasWarnings()
+      ) {
         output = this.createBasicOutput(template);
       }
 
@@ -470,7 +497,7 @@ export class ProcessingPipeline {
 
   /**
    * Measures execution time for extension operations.
-   * 
+   *
    * @param fn - Function to execute and time
    * @returns Execution time in milliseconds (minimum 1ms)
    */
@@ -484,47 +511,50 @@ export class ProcessingPipeline {
 
   /**
    * Determines if the template contains styling-related concepts.
-   * 
+   *
    * @param concepts - Extracted concepts from template analysis
    * @param template - Template nodes to analyze
    * @returns True if styling concepts are present
    */
   private hasStyling(concepts: any, template: any[]): boolean {
     if (template.length === 0) return false;
-    
+
     // Check if there are class attributes or styling info
-    const hasClassAttributes = template.some(node => 
-      node.attributes?.class || node.attributes?.className
+    const hasClassAttributes = template.some(
+      (node) => node.attributes?.class || node.attributes?.className
     );
-    
+
     // Check if concepts have styling data
-    const hasStylingConcepts = concepts.styling && 
-      (typeof concepts.styling === 'object' ? Object.keys(concepts.styling).length > 0 : !!concepts.styling);
-    
+    const hasStylingConcepts =
+      concepts.styling &&
+      (typeof concepts.styling === 'object'
+        ? Object.keys(concepts.styling).length > 0
+        : !!concepts.styling);
+
     return hasClassAttributes || hasStylingConcepts;
   }
 
   /**
    * Counts non-styling attribute concepts in the template.
-   * 
+   *
    * @param concepts - Extracted concepts from template analysis
    * @param template - Template nodes to analyze
    * @returns Number of nodes with non-class/className attributes
    */
   private hasAttributes(concepts: any, template: any[]): number {
     if (template.length === 0) return 0;
-    
+
     // Count non-class attributes
     let count = 0;
     for (const node of template) {
       if (node.attributes) {
-        const nonClassAttributes = Object.keys(node.attributes).filter(key => 
-          key !== 'class' && key !== 'className'
+        const nonClassAttributes = Object.keys(node.attributes).filter(
+          (key) => key !== 'class' && key !== 'className'
         );
         if (nonClassAttributes.length > 0) count += 1;
       }
     }
-    
+
     return count;
   }
 
@@ -577,18 +607,18 @@ export class ProcessingPipeline {
 
   /**
    * Processes templates with advanced features including enhanced extraction and validation.
-   * 
+   *
    * This method provides comprehensive template processing with additional capabilities:
    * - Enhanced concept extraction with specialized extractors
    * - Component property merging and resolution
    * - Cross-framework event normalization
    * - Comprehensive concept validation
    * - Framework consistency checking
-   * 
+   *
    * @param template - Array of template nodes to process
    * @param options - Processing options with advanced feature configuration
    * @returns Promise resolving to enhanced processing result
-   * 
+   *
    * @example
    * ```typescript
    * const result = await pipeline.processAdvanced(templateNodes, {
@@ -604,7 +634,7 @@ export class ProcessingPipeline {
    *   }
    * });
    * ```
-   * 
+   *
    * @throws {Error} When advanced processing encounters unrecoverable errors
    */
   async processAdvanced(
@@ -822,22 +852,22 @@ export class ProcessingPipeline {
 
   /**
    * Processes templates with intelligent feature detection and automatic enhancement.
-   * 
+   *
    * This method analyzes the template content and automatically enables advanced
    * processing features based on detected patterns and complexity. It provides
    * a convenient way to get optimal processing without manual configuration.
-   * 
+   *
    * @param template - Array of template nodes to process
    * @param options - Base processing options (enhanced features auto-detected)
    * @returns Promise resolving to enhanced processing result
-   * 
+   *
    * @example
    * ```typescript
    * // Automatically detects and enables appropriate features
    * const result = await pipeline.processWithAutoEnhancement(complexTemplate, {
    *   framework: 'vue'
    * });
-   * 
+   *
    * // Features like event extraction, styling extraction, and validation
    * // are enabled automatically based on template content
    * ```
@@ -972,7 +1002,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the component property processor for external component processing.
-   * 
+   *
    * @returns ComponentPropertyProcessor instance used by the pipeline
    */
   getComponentPropertyProcessor(): ComponentPropertyProcessor {
@@ -981,7 +1011,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the import processor for handling import merging and deduplication.
-   * 
+   *
    * @returns ImportProcessor instance used by the pipeline
    */
   getImportProcessor(): ImportProcessor {
@@ -990,7 +1020,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the script merge processor for combining script sections.
-   * 
+   *
    * @returns ScriptMergeProcessor instance used by the pipeline
    */
   getScriptMergeProcessor(): ScriptMergeProcessor {
@@ -999,7 +1029,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the component name resolver for component naming operations.
-   * 
+   *
    * @returns ComponentNameResolver instance used by the pipeline
    */
   getComponentNameResolver(): ComponentNameResolver {
@@ -1008,7 +1038,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the event extractor for advanced event processing.
-   * 
+   *
    * @returns EventExtractor instance used by the pipeline
    */
   getEventExtractor(): EventExtractor {
@@ -1017,7 +1047,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the styling extractor for advanced styling processing.
-   * 
+   *
    * @returns StylingExtractor instance used by the pipeline
    */
   getStylingExtractor(): StylingExtractor {
@@ -1026,7 +1056,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the concept validator for template validation operations.
-   * 
+   *
    * @returns ConceptValidator instance used by the pipeline
    */
   getConceptValidator(): ConceptValidator {
@@ -1035,7 +1065,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the framework consistency checker for cross-framework validation.
-   * 
+   *
    * @returns FrameworkConsistencyChecker instance used by the pipeline
    */
   getFrameworkConsistencyChecker(): FrameworkConsistencyChecker {
@@ -1044,7 +1074,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the event normalizer for cross-framework event standardization.
-   * 
+   *
    * @returns EventNormalizer instance used by the pipeline
    */
   getEventNormalizer(): EventNormalizer {
@@ -1053,7 +1083,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the advanced error collector for detailed error tracking.
-   * 
+   *
    * @returns ErrorCollector instance used for advanced processing errors
    */
   getAdvancedErrorCollector(): ErrorCollector {
@@ -1062,7 +1092,7 @@ const onDateChange = (newDate) => setDate(newDate);`,
 
   /**
    * Retrieves the template analyzer for external template analysis operations.
-   * 
+   *
    * @returns TemplateAnalyzer instance used by the pipeline
    */
   getAnalyzer(): TemplateAnalyzer {

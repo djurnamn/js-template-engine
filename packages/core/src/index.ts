@@ -4,7 +4,12 @@
 export { ExtensionRegistry } from './registry/ExtensionRegistry';
 export * from './pipeline';
 export { TemplateAnalyzer } from './analyzer/TemplateAnalyzer';
-export { ErrorCollector, PerformanceTracker, NodeIdGenerator, MetadataValidator } from './metadata';
+export {
+  ErrorCollector,
+  PerformanceTracker,
+  NodeIdGenerator,
+  MetadataValidator,
+} from './metadata';
 
 // Export type definitions
 export * from './concepts';

@@ -1,8 +1,4 @@
-import {
-  Extension,
-  TemplateNode,
-  RenderOptions,
-} from '@js-template-engine/types';
+import { TemplateNode, RenderOptions } from '@js-template-engine/types';
 
 /**
  * Logger interface for template engine logging.

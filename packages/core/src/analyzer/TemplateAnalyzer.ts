@@ -1,11 +1,11 @@
 /**
  * Advanced template analyzer for extracting and categorizing concepts from template node trees.
- * 
+ *
  * The TemplateAnalyzer serves as the primary component for parsing template structures
  * and extracting meaningful concepts including events, styling, conditionals, iterations,
  * slots, and attributes. It provides comprehensive analysis capabilities with configurable
  * options for different extraction strategies.
- * 
+ *
  * @example
  * ```typescript
  * const analyzer = new TemplateAnalyzer({
@@ -13,16 +13,16 @@
  *   extractStyling: true,
  *   eventPrefixes: ['on', '@', 'v-on:']
  * });
- * 
+ *
  * const concepts = analyzer.extractConcepts(templateNodes);
  * console.log(concepts.events.length); // Number of event concepts found
  * console.log(concepts.styling.staticClasses); // Static CSS classes
  * ```
- * 
+ *
  * @since 2.0.0
  */
 
-import type { 
+import type {
   ComponentConcept,
   EventConcept,
   StylingConcept,
@@ -34,7 +34,7 @@ import type {
   StructuralConcept,
   TextConcept,
   CommentConcept,
-  FragmentConcept
+  FragmentConcept,
 } from '../concepts';
 import { NodeIdGenerator, ErrorCollector } from '../metadata';
 
@@ -48,29 +48,29 @@ interface TemplateNode {
   attributes?: Record<string, any>;
   expressionAttributes?: Record<string, any>;
   children?: TemplateNode[];
-  
+
   // Conditional node properties
   condition?: string;
   then?: TemplateNode[];
   else?: TemplateNode[];
-  
+
   // Loop node properties
   items?: string;
   item?: string;
   index?: string;
   key?: string;
-  
+
   // Slot node properties
   name?: string;
   fallback?: TemplateNode[];
-  
+
   // Extension data
   extensions?: Record<string, any>;
 }
 
 /**
  * Configuration options for customizing template analysis behavior.
- * 
+ *
  * @public
  */
 export interface AnalyzerOptions {
@@ -103,24 +103,24 @@ const DEFAULT_ANALYZER_OPTIONS: Required<AnalyzerOptions> = {
   extractSlots: true,
   extractAttributes: true,
   eventPrefixes: ['on', '@', 'v-on:', 'on:'],
-  ignoreAttributes: ['key', 'ref']
+  ignoreAttributes: ['key', 'ref'],
 };
 
 /**
  * Advanced template analyzer that extracts meaningful concepts from template node trees.
- * 
+ *
  * The TemplateAnalyzer provides comprehensive parsing and concept extraction capabilities
  * for template structures, supporting multiple frameworks and extraction strategies.
  * It categorizes template nodes into structural and behavioral concepts for further
  * processing by extensions and the rendering pipeline.
- * 
+ *
  * Key capabilities:
  * - Structural analysis (elements, text, comments, fragments)
  * - Behavioral concept extraction (events, conditionals, iterations)
  * - Styling analysis (classes, inline styles, style bindings)
  * - Slot and attribute processing
  * - Error tracking and reporting
- * 
+ *
  * @example
  * ```typescript
  * const errorCollector = new ErrorCollector();
@@ -129,20 +129,20 @@ const DEFAULT_ANALYZER_OPTIONS: Required<AnalyzerOptions> = {
  *   extractStyling: true,
  *   eventPrefixes: ['on', '@', 'v-on:', 'on:']
  * }, errorCollector);
- * 
+ *
  * const templateNodes = [
  *   { type: 'element', tag: 'button', attributes: { class: 'btn' }, '@click': 'handleClick' }
  * ];
- * 
+ *
  * const concepts = analyzer.extractConcepts(templateNodes);
  * console.log(concepts.events); // Event concepts found
  * console.log(concepts.styling.staticClasses); // ['btn']
- * 
+ *
  * if (analyzer.getErrors().hasErrors()) {
  *   console.error('Analysis errors:', analyzer.getErrors().getErrors());
  * }
  * ```
- * 
+ *
  * @since 2.0.0
  */
 export class TemplateAnalyzer {
@@ -151,15 +151,15 @@ export class TemplateAnalyzer {
 
   /**
    * Creates a new TemplateAnalyzer instance with configurable options.
-   * 
+   *
    * @param options - Configuration options for customizing analysis behavior
    * @param errorCollector - Optional error collector instance for tracking analysis issues
-   * 
+   *
    * @example
    * ```typescript
    * // Basic analyzer with default options
    * const analyzer = new TemplateAnalyzer();
-   * 
+   *
    * // Customized analyzer for Vue.js templates
    * const vueAnalyzer = new TemplateAnalyzer({
    *   extractEvents: true,
@@ -167,7 +167,7 @@ export class TemplateAnalyzer {
    *   eventPrefixes: ['@', 'v-on:'],
    *   ignoreAttributes: ['key', 'ref', 'v-if']
    * });
-   * 
+   *
    * // With custom error collector
    * const errorCollector = new ErrorCollector();
    * const analyzer = new TemplateAnalyzer({}, errorCollector);
@@ -180,15 +180,15 @@ export class TemplateAnalyzer {
 
   /**
    * Extracts comprehensive concepts from a template node tree.
-   * 
+   *
    * This is the primary analysis method that processes template nodes and categorizes
    * them into structural and behavioral concepts. It performs a complete traversal
    * of the template tree, extracting events, styling, conditionals, iterations,
    * slots, and attributes based on the configured options.
-   * 
+   *
    * @param template - Array of template nodes to analyze
    * @returns ComponentConcept object containing all extracted concepts
-   * 
+   *
    * @example
    * ```typescript
    * const templateNodes = [
@@ -202,15 +202,15 @@ export class TemplateAnalyzer {
    *     ]
    *   }
    * ];
-   * 
+   *
    * const concepts = analyzer.extractConcepts(templateNodes);
-   * 
+   *
    * console.log(concepts.structure); // Structural representation
    * console.log(concepts.events); // Event concepts: [{ name: 'click', handler: 'handleClick' }]
    * console.log(concepts.styling.staticClasses); // ['container']
    * console.log(concepts.metadata); // Component metadata
    * ```
-   * 
+   *
    * @throws {Error} When template analysis encounters unrecoverable parsing errors
    */
   extractConcepts(template: TemplateNode[]): ComponentConcept {
@@ -222,7 +222,7 @@ export class TemplateAnalyzer {
       iterations: [],
       slots: [],
       attributes: [],
-      metadata: this.extractMetadata(template)
+      metadata: this.extractMetadata(),
     };
 
     // Extract structural concepts first
@@ -250,28 +250,34 @@ export class TemplateAnalyzer {
           return {
             nodeId,
             type: 'text',
-            content: node.content || ''
+            content: node.content || '',
           } as TextConcept;
 
         case 'comment':
           return {
             nodeId,
             type: 'comment',
-            content: node.content || ''
+            content: node.content || '',
           } as CommentConcept;
 
         case 'fragment':
           return {
             nodeId,
             type: 'fragment',
-            children: this.extractStructuralConcepts(node.children || [], currentPath)
+            children: this.extractStructuralConcepts(
+              node.children || [],
+              currentPath
+            ),
           } as FragmentConcept;
 
         case 'element':
         case undefined: // Default to element
           const tag = node.tag || 'div';
-          const children = this.extractStructuralConcepts(node.children || [], currentPath);
-          
+          const children = this.extractStructuralConcepts(
+            node.children || [],
+            currentPath
+          );
+
           // Capture element's own attributes (excluding events and styling which are handled separately)
           const elementAttributes: Record<string, any> = {};
           if (node.attributes) {
@@ -283,34 +289,42 @@ export class TemplateAnalyzer {
             }
           }
           if (node.expressionAttributes) {
-            for (const [name, value] of Object.entries(node.expressionAttributes)) {
+            for (const [name, value] of Object.entries(
+              node.expressionAttributes
+            )) {
               // Skip attributes that will be handled as behavioral concepts
               if (!this.shouldIgnoreAttribute(name)) {
                 elementAttributes[name] = value;
               }
             }
           }
-          
+
           return {
             nodeId,
             type: 'element',
             tag,
             children,
-            attributes: Object.keys(elementAttributes).length > 0 ? elementAttributes : undefined,
-            isSelfClosing: this.isSelfClosingTag(tag)
+            attributes:
+              Object.keys(elementAttributes).length > 0
+                ? elementAttributes
+                : undefined,
+            isSelfClosing: this.isSelfClosingTag(tag),
           } as StructuralConcept;
 
         // For special nodes like if/for/slot, we'll handle them as behavioral concepts
         // but still need to extract their structural children
         case 'if':
-        case 'for': 
+        case 'for':
         case 'slot':
           // These will be handled as behavioral concepts, but we still extract their structure
           // Treat special nodes as fragments for structural representation
           return {
             nodeId,
             type: 'fragment',
-            children: this.extractStructuralConcepts(node.children || [], currentPath)
+            children: this.extractStructuralConcepts(
+              node.children || [],
+              currentPath
+            ),
           } as FragmentConcept;
 
         default:
@@ -323,7 +337,10 @@ export class TemplateAnalyzer {
           return {
             nodeId,
             type: 'fragment',
-            children: this.extractStructuralConcepts(node.children || [], currentPath)
+            children: this.extractStructuralConcepts(
+              node.children || [],
+              currentPath
+            ),
           } as FragmentConcept;
       }
     });
@@ -333,8 +350,22 @@ export class TemplateAnalyzer {
    * Check if a tag is self-closing.
    */
   private isSelfClosingTag(tag: string): boolean {
-    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    const selfClosingTags = [
+      'area',
+      'base',
+      'br',
+      'col',
+      'embed',
+      'hr',
+      'img',
+      'input',
+      'link',
+      'meta',
+      'param',
+      'source',
+      'track',
+      'wbr',
+    ];
     return selfClosingTags.includes(tag.toLowerCase());
   }
 
@@ -365,7 +396,7 @@ export class TemplateAnalyzer {
       const nodeId = NodeIdGenerator.generateNodeId(currentPath);
 
       try {
-        this.extractNodeConcepts(node, concepts, nodeId, currentPath);
+        this.extractNodeConcepts(node, concepts, nodeId);
 
         // Recursively process children
         if (node.children) {
@@ -375,10 +406,16 @@ export class TemplateAnalyzer {
         // Handle special node types with nested content
         if (node.type === 'if') {
           if (node.then) {
-            this.traverseNodes(node.then, concepts, [...currentPath, 'then'] as any);
+            this.traverseNodes(node.then, concepts, [
+              ...currentPath,
+              'then',
+            ] as any);
           }
           if (node.else) {
-            this.traverseNodes(node.else, concepts, [...currentPath, 'else'] as any);
+            this.traverseNodes(node.else, concepts, [
+              ...currentPath,
+              'else',
+            ] as any);
           }
         }
       } catch (error) {
@@ -397,8 +434,7 @@ export class TemplateAnalyzer {
   private extractNodeConcepts(
     node: TemplateNode,
     concepts: ComponentConcept,
-    nodeId: string,
-    path: number[]
+    nodeId: string
   ): void {
     // Extract concepts based on node type
     switch (node.type) {
@@ -476,7 +512,7 @@ export class TemplateAnalyzer {
     // Check both regular attributes and expression attributes
     const allAttributes = {
       ...node.attributes,
-      ...node.expressionAttributes
+      ...node.expressionAttributes,
     };
 
     for (const [attrName, attrValue] of Object.entries(allAttributes)) {
@@ -487,9 +523,9 @@ export class TemplateAnalyzer {
           name: eventName,
           handler: String(attrValue),
           modifiers: this.extractEventModifiers(attrName),
-          parameters: this.extractEventParameters(String(attrValue))
+          parameters: this.extractEventParameters(String(attrValue)),
         };
-        
+
         events.push(event);
       }
     }
@@ -502,12 +538,14 @@ export class TemplateAnalyzer {
    */
   private extractEventName(attrName: string): string | null {
     // Sort prefixes by length (longest first) to ensure proper matching
-    const sortedPrefixes = [...this.options.eventPrefixes].sort((a, b) => b.length - a.length);
-    
+    const sortedPrefixes = [...this.options.eventPrefixes].sort(
+      (a, b) => b.length - a.length
+    );
+
     for (const prefix of sortedPrefixes) {
       if (attrName.startsWith(prefix)) {
         let eventName = attrName.substring(prefix.length);
-        
+
         // Handle modifiers (e.g., @click.prevent -> click, on:click|preventDefault -> click)
         if (eventName.includes('.')) {
           eventName = eventName.split('.')[0];
@@ -515,7 +553,7 @@ export class TemplateAnalyzer {
         if (eventName.includes('|')) {
           eventName = eventName.split('|')[0];
         }
-        
+
         return eventName;
       }
     }
@@ -527,17 +565,19 @@ export class TemplateAnalyzer {
    */
   private extractEventModifiers(attrName: string): string[] {
     const modifiers: string[] = [];
-    
+
     // Vue-style modifiers (e.g., @click.prevent)
     if (attrName.includes('.')) {
       const parts = attrName.split('.');
       modifiers.push(...parts.slice(1)); // Skip the event name part
     }
-    
+
     // Svelte-style modifiers (e.g., on:click|preventDefault)
     if (attrName.includes('|')) {
       // Extract the part after the event name, using sorted prefixes
-      const sortedPrefixes = [...this.options.eventPrefixes].sort((a, b) => b.length - a.length);
+      const sortedPrefixes = [...this.options.eventPrefixes].sort(
+        (a, b) => b.length - a.length
+      );
       for (const prefix of sortedPrefixes) {
         if (attrName.startsWith(prefix)) {
           const eventPart = attrName.substring(prefix.length);
@@ -549,7 +589,7 @@ export class TemplateAnalyzer {
         }
       }
     }
-    
+
     return modifiers;
   }
 
@@ -558,15 +598,15 @@ export class TemplateAnalyzer {
    */
   private extractEventParameters(handler: string): string[] {
     const parameters: string[] = [];
-    
+
     // Simple parameter extraction for common patterns
     // Look for function calls with parameters: handleClick($event, index)
     const match = handler.match(/\(([^)]+)\)/);
     if (match) {
       const paramStr = match[1];
-      parameters.push(...paramStr.split(',').map(p => p.trim()));
+      parameters.push(...paramStr.split(',').map((p) => p.trim()));
     }
-    
+
     return parameters;
   }
 
@@ -595,7 +635,7 @@ export class TemplateAnalyzer {
       if (node.expressionAttributes.className) {
         dynamicClasses.push(String(node.expressionAttributes.className));
       }
-      
+
       // Vue style: :class="expression"
       if (node.expressionAttributes[':class']) {
         dynamicClasses.push(String(node.expressionAttributes[':class']));
@@ -614,7 +654,7 @@ export class TemplateAnalyzer {
       if (node.expressionAttributes.style) {
         styleBindings.style = String(node.expressionAttributes.style);
       }
-      
+
       // Vue style: :style="expression"
       if (node.expressionAttributes[':style']) {
         styleBindings.style = String(node.expressionAttributes[':style']);
@@ -626,15 +666,17 @@ export class TemplateAnalyzer {
       if (!existingStyling.extensionData) {
         existingStyling.extensionData = {};
       }
-      
+
       // Merge extension data - this allows styling extensions to access their configuration
-      for (const [extensionKey, extensionData] of Object.entries(node.extensions)) {
+      for (const [extensionKey, extensionData] of Object.entries(
+        node.extensions
+      )) {
         if (!existingStyling.extensionData[extensionKey]) {
           existingStyling.extensionData[extensionKey] = [];
         }
         existingStyling.extensionData[extensionKey].push({
           nodeId,
-          data: extensionData
+          data: extensionData,
         });
       }
     }
@@ -651,24 +693,31 @@ export class TemplateAnalyzer {
    */
   private parseInlineStyles(styleStr: string): Record<string, string> {
     const styles: Record<string, string> = {};
-    
+
     const declarations = styleStr.split(';').filter(Boolean);
     for (const declaration of declarations) {
-      const [property, value] = declaration.split(':').map(s => s.trim());
+      const [property, value] = declaration.split(':').map((s) => s.trim());
       if (property && value) {
         styles[property] = value;
       }
     }
-    
+
     return styles;
   }
 
   /**
    * Extract conditional concept from if node.
    */
-  private extractConditional(node: TemplateNode, nodeId: string): ConditionalConcept | null {
+  private extractConditional(
+    node: TemplateNode,
+    nodeId: string
+  ): ConditionalConcept | null {
     if (!node.condition) {
-      this.errorCollector.addWarning('Conditional node missing condition', nodeId, 'analyzer');
+      this.errorCollector.addWarning(
+        'Conditional node missing condition',
+        nodeId,
+        'analyzer'
+      );
       return null;
     }
 
@@ -676,14 +725,17 @@ export class TemplateAnalyzer {
       nodeId,
       condition: node.condition,
       thenNodes: node.then || [],
-      elseNodes: node.else
+      elseNodes: node.else,
     };
   }
 
   /**
    * Extract iteration concept from for node.
    */
-  private extractIteration(node: TemplateNode, nodeId: string): IterationConcept | null {
+  private extractIteration(
+    node: TemplateNode,
+    nodeId: string
+  ): IterationConcept | null {
     if (!node.items || !node.item) {
       this.errorCollector.addWarning(
         'Iteration node missing required properties (items, item)',
@@ -699,7 +751,7 @@ export class TemplateAnalyzer {
       itemVariable: node.item,
       indexVariable: node.index,
       keyExpression: node.key,
-      childNodes: node.children || []
+      childNodes: node.children || [],
     };
   }
 
@@ -708,21 +760,28 @@ export class TemplateAnalyzer {
    */
   private extractSlot(node: TemplateNode, nodeId: string): SlotConcept | null {
     if (!node.name) {
-      this.errorCollector.addWarning('Slot node missing name', nodeId, 'analyzer');
+      this.errorCollector.addWarning(
+        'Slot node missing name',
+        nodeId,
+        'analyzer'
+      );
       return null;
     }
 
     return {
       nodeId,
       name: node.name,
-      fallback: node.fallback
+      fallback: node.fallback,
     };
   }
 
   /**
    * Extract attribute concepts from a node.
    */
-  private extractAttributes(node: TemplateNode, nodeId: string): AttributeConcept[] {
+  private extractAttributes(
+    node: TemplateNode,
+    nodeId: string
+  ): AttributeConcept[] {
     const attributes: AttributeConcept[] = [];
 
     if (!node.attributes && !node.expressionAttributes) {
@@ -741,7 +800,7 @@ export class TemplateAnalyzer {
           nodeId,
           name,
           value: value as string | boolean,
-          isExpression: false
+          isExpression: false,
         });
       }
     }
@@ -758,7 +817,7 @@ export class TemplateAnalyzer {
           nodeId,
           name,
           value: String(value),
-          isExpression: true
+          isExpression: true,
         });
       }
     }
@@ -776,7 +835,9 @@ export class TemplateAnalyzer {
     }
 
     // Ignore styling attributes (handled separately)
-    if (['class', 'className', 'style', ':class', ':style'].includes(attrName)) {
+    if (
+      ['class', 'className', 'style', ':class', ':style'].includes(attrName)
+    ) {
       return true;
     }
 
@@ -791,7 +852,7 @@ export class TemplateAnalyzer {
   /**
    * Extract component metadata from template.
    */
-  private extractMetadata(template: TemplateNode[]): ComponentMetadata {
+  private extractMetadata(): ComponentMetadata {
     // Return empty metadata - component metadata extraction handled by processors
     return {};
   }
@@ -805,7 +866,7 @@ export class TemplateAnalyzer {
       staticClasses: [],
       dynamicClasses: [],
       inlineStyles: {},
-      styleBindings: {}
+      styleBindings: {},
     };
   }
 }

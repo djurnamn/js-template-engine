@@ -12,10 +12,10 @@ export interface ValidationResult {
 
 export class FrameworkCompatibilityPlugin {
   checkFrameworkCompatibility(concept: any): ValidationResult {
-    return { 
-      isValid: true, 
-      warnings: [], 
-      suggestions: [] 
+    return {
+      isValid: true,
+      warnings: [],
+      suggestions: [],
     };
   }
 }

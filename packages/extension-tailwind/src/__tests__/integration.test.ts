@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TailwindExtension } from '../index';
 import type { TemplateNode } from '@js-template-engine/types';
-import type { ComponentConcept, StylingConcept, FrameworkExtension } from '@js-template-engine/core';
+import type {
+  ComponentConcept,
+  StylingConcept,
+  FrameworkExtension,
+} from '@js-template-engine/core';
 
 describe('Tailwind Extension Integration', () => {
   let extension: TailwindExtension;
@@ -19,15 +23,15 @@ describe('Tailwind Extension Integration', () => {
           attributes: {},
           extensions: {
             tailwind: {
-              class: 'bg-blue-500 text-white p-4'
-            }
+              class: 'bg-blue-500 text-white p-4',
+            },
           },
-          children: []
-        }
+          children: [],
+        },
       ];
 
       const processed = extension.processTemplate(template, {});
-      
+
       expect(processed).toHaveLength(1);
       const processedNode = processed[0] as any;
       expect(processedNode.attributes?.class).toContain('bg-blue-500');
@@ -43,8 +47,8 @@ describe('Tailwind Extension Integration', () => {
           attributes: {},
           extensions: {
             tailwind: {
-              class: 'container'
-            }
+              class: 'container',
+            },
           },
           children: [
             {
@@ -53,21 +57,21 @@ describe('Tailwind Extension Integration', () => {
               attributes: {},
               extensions: {
                 tailwind: {
-                  class: 'text-lg text-gray-800'
-                }
+                  class: 'text-lg text-gray-800',
+                },
               },
-              children: []
-            }
-          ]
-        }
+              children: [],
+            },
+          ],
+        },
       ];
 
       const processed = extension.processTemplate(template, {});
-      
+
       expect(processed).toHaveLength(1);
       const parentNode = processed[0] as any;
       const childNode = parentNode.children[0];
-      
+
       expect(parentNode.attributes?.class).toContain('container');
       expect(childNode.attributes?.class).toContain('text-lg');
       expect(childNode.attributes?.class).toContain('text-gray-800');
@@ -84,21 +88,21 @@ describe('Tailwind Extension Integration', () => {
               class: 'bg-blue-500',
               responsive: {
                 md: 'text-lg',
-                lg: 'px-8'
+                lg: 'px-8',
               },
               variants: {
                 hover: 'bg-blue-600',
-                focus: 'outline-none ring-2'
-              }
-            }
+                focus: 'outline-none ring-2',
+              },
+            },
           },
-          children: []
-        }
+          children: [],
+        },
       ];
 
       const processed = extension.processTemplate(template, {});
       const processedNode = processed[0] as any;
-      
+
       expect(processedNode.attributes?.class).toContain('bg-blue-500');
       expect(processedNode.attributes?.class).toContain('md:text-lg');
       expect(processedNode.attributes?.class).toContain('lg:px-8');
@@ -111,7 +115,7 @@ describe('Tailwind Extension Integration', () => {
       const template: TemplateNode[] = [
         {
           type: 'text',
-          content: 'Hello World'
+          content: 'Hello World',
         },
         {
           type: 'element',
@@ -119,28 +123,27 @@ describe('Tailwind Extension Integration', () => {
           attributes: {},
           extensions: {
             tailwind: {
-              class: 'font-bold'
-            }
+              class: 'font-bold',
+            },
           },
-          children: []
-        }
+          children: [],
+        },
       ];
 
       const processed = extension.processTemplate(template, {});
-      
+
       expect(processed).toHaveLength(2);
       expect(processed[0]).toEqual({ type: 'text', content: 'Hello World' });
-      
+
       const spanNode = processed[1] as any;
       expect(spanNode.attributes?.class).toContain('font-bold');
     });
   });
 
-
   describe('end-to-end processing', () => {
     it('should process complete component with all features', () => {
       extension.options.outputStrategy = 'css';
-      
+
       const stylingConcept: StylingConcept = {
         staticClasses: [
           'bg-blue-500',
@@ -152,25 +155,25 @@ describe('Tailwind Extension Integration', () => {
           'focus:outline-none',
           'focus:ring-2',
           'md:text-lg',
-          'lg:px-8'
+          'lg:px-8',
         ],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
-      
+
       // Should contain base styles
       expect(result.styles).toContain('background-color: #3b82f6');
       expect(result.styles).toContain('color: #ffffff');
       expect(result.styles).toContain('padding: 1rem');
       expect(result.styles).toContain('border-radius: 0.5rem');
       expect(result.styles).toContain('box-shadow:');
-      
+
       // Should contain pseudo-class styles
       expect(result.styles).toContain(':hover');
       expect(result.styles).toContain(':focus');
-      
+
       // Should contain responsive styles
       expect(result.styles).toContain('@media (min-width: 768px)');
       expect(result.styles).toContain('@media (min-width: 1024px)');
@@ -179,20 +182,20 @@ describe('Tailwind Extension Integration', () => {
     it('should handle mixed valid and invalid classes gracefully', () => {
       extension.options.unknownClassHandling = 'warn';
       extension.options.cssFallback = 'custom-class';
-      
+
       const stylingConcept: StylingConcept = {
         staticClasses: [
-          'bg-blue-500',      // valid
-          'custom-class',     // invalid
-          'text-white',       // valid
-          'another-invalid'   // invalid
+          'bg-blue-500', // valid
+          'custom-class', // invalid
+          'text-white', // valid
+          'another-invalid', // invalid
         ],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
-      
+
       // Should contain valid Tailwind styles
       expect(result.styles).toContain('background-color: #3b82f6');
       expect(result.styles).toContain('color: #ffffff');
@@ -202,19 +205,19 @@ describe('Tailwind Extension Integration', () => {
       // Tailwind to CSS
       const tailwindClasses = ['bg-blue-500', 'text-white', 'p-4'];
       const cssResult = extension.convertTailwindToCss(tailwindClasses);
-      
+
       expect(cssResult.styles).toContain('background-color: #3b82f6');
       expect(cssResult.styles).toContain('color: #ffffff');
       expect(cssResult.styles).toContain('padding: 1rem');
-      
+
       // CSS to Tailwind
       const cssStyles = {
         'background-color': '#3b82f6',
-        'color': '#ffffff',
-        'padding': '1rem'
+        color: '#ffffff',
+        padding: '1rem',
       };
       const tailwindResult = extension.convertCssToTailwind(cssStyles);
-      
+
       expect(tailwindResult.classes).toContain('bg-blue-500');
       expect(tailwindResult.classes).toContain('text-white');
       expect(tailwindResult.classes).toContain('p-4');
@@ -226,7 +229,7 @@ describe('Tailwind Extension Integration', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['bg-blue-500', 'text-white'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       // CSS output
@@ -248,13 +251,13 @@ describe('Tailwind Extension Integration', () => {
     it('should handle custom breakpoints', () => {
       extension.options.breakpoints = {
         tablet: '768px',
-        desktop: '1200px'
+        desktop: '1200px',
       };
 
       const stylingConcept: StylingConcept = {
         staticClasses: ['tablet:text-lg'], // This would be invalid with default breakpoints
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       // Would need custom validation logic for custom breakpoints
@@ -267,7 +270,7 @@ describe('Tailwind Extension Integration', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['unknown-class', 'bg-blue-500'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       // Test ignore configuration

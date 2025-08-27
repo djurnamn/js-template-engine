@@ -5,7 +5,7 @@ module.exports = {
     commonjs: true,
     es2021: true,
   },
-  extends: "eslint:recommended",
+  extends: ["eslint:recommended"],
   overrides: [
     {
       env: {
@@ -14,6 +14,26 @@ module.exports = {
       files: [".eslintrc.{js,cjs}"],
       parserOptions: {
         sourceType: "script",
+      },
+    },
+    {
+      files: ["**/*.ts", "**/*.tsx"],
+      parser: "@typescript-eslint/parser",
+      plugins: ["@typescript-eslint"],
+      extends: [
+        "eslint:recommended",
+        "@typescript-eslint/recommended"
+      ],
+      rules: {
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          { 
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_",
+            destructuredArrayIgnorePattern: "^_"
+          }
+        ],
+        "no-unused-vars": "off", // Turn off base rule as it can report incorrect errors
       },
     },
   ],

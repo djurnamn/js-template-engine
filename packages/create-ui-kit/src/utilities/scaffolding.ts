@@ -497,10 +497,10 @@ async function createConsumerCli(
         framework === 'react'
           ? 'ReactExtension'
           : framework === 'vue'
-          ? 'VueExtension'
-          : `${
-              framework.charAt(0).toUpperCase() + framework.slice(1)
-            }Extension`;
+            ? 'VueExtension'
+            : `${
+                framework.charAt(0).toUpperCase() + framework.slice(1)
+              }Extension`;
       return `import { ${className} } from '@js-template-engine/extension-${framework}';`;
     })
     .join('\n');
@@ -512,10 +512,10 @@ async function createConsumerCli(
         framework === 'react'
           ? 'ReactExtension'
           : framework === 'vue'
-          ? 'VueExtension'
-          : `${
-              framework.charAt(0).toUpperCase() + framework.slice(1)
-            }Extension`;
+            ? 'VueExtension'
+            : `${
+                framework.charAt(0).toUpperCase() + framework.slice(1)
+              }Extension`;
       return `      if (framework === '${framework}') {
         extensions.push(new ${className}(true));
       }`;

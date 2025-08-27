@@ -34,7 +34,6 @@ export interface Component {
   style?: string;
 }
 
-
 /**
  * Interface for component-specific options.
  * Controls how components are processed and named.

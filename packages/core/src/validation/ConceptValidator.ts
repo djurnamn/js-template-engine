@@ -1,6 +1,6 @@
 /**
  * Concept Validator for advanced processing: Enhanced Concept Processing
- * 
+ *
  * Comprehensive validation system for all concept types with helpful warnings
  * and suggestions. Follows the advanced processing approach of warnings without strict failures.
  */
@@ -14,7 +14,7 @@ import type {
   ConditionalConcept,
   IterationConcept,
   SlotConcept,
-  AttributeConcept
+  AttributeConcept,
 } from '../concepts';
 
 /**
@@ -23,7 +23,7 @@ import type {
 export enum ValidationSeverity {
   ERROR = 'error',
   WARNING = 'warning',
-  INFO = 'info'
+  INFO = 'info',
 }
 
 /**
@@ -61,7 +61,12 @@ export interface ValidationWarning {
  */
 export interface ValidationSuggestion {
   /** Suggestion type */
-  type: 'improvement' | 'optimization' | 'best-practice' | 'accessibility' | 'performance';
+  type:
+    | 'improvement'
+    | 'optimization'
+    | 'best-practice'
+    | 'accessibility'
+    | 'performance';
   /** Suggestion message */
   message: string;
   /** Element to improve */
@@ -154,20 +159,36 @@ export class ConceptValidator {
     const context: ValidationContext = {
       allConcepts: concepts,
       framework: options.framework,
-      options
+      options,
     };
 
     // Validate individual concept types
     const eventResult = this.validateEvents(concepts.events, options);
     const stylingResult = this.validateStyling(concepts.styling, options);
-    const conditionalResult = this.validateConditionals(concepts.conditionals, options);
-    const iterationResult = this.validateIterations(concepts.iterations, options);
+    const conditionalResult = this.validateConditionals(
+      concepts.conditionals,
+      options
+    );
+    const iterationResult = this.validateIterations(
+      concepts.iterations,
+      options
+    );
     const slotResult = this.validateSlots(concepts.slots, options);
-    const attributeResult = this.validateAttributes(concepts.attributes, options);
+    const attributeResult = this.validateAttributes(
+      concepts.attributes,
+      options
+    );
 
     // Aggregate results
-    const results = [eventResult, stylingResult, conditionalResult, iterationResult, slotResult, attributeResult];
-    
+    const results = [
+      eventResult,
+      stylingResult,
+      conditionalResult,
+      iterationResult,
+      slotResult,
+      attributeResult,
+    ];
+
     for (const result of results) {
       warnings.push(...result.warnings);
       suggestions.push(...result.suggestions);
@@ -191,40 +212,57 @@ export class ConceptValidator {
     }
 
     // Report to error collector
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       switch (warning.severity) {
         case ValidationSeverity.ERROR:
-          this.errorCollector.addSimpleError(warning.message, warning.source, 'concept-validator');
+          this.errorCollector.addSimpleError(
+            warning.message,
+            warning.source,
+            'concept-validator'
+          );
           break;
         case ValidationSeverity.WARNING:
-          this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+          this.errorCollector.addWarning(
+            warning.message,
+            warning.source,
+            'concept-validator'
+          );
           break;
         case ValidationSeverity.INFO:
-          this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+          this.errorCollector.addWarning(
+            warning.message,
+            warning.source,
+            'concept-validator'
+          );
           break;
       }
     });
 
     return {
-      isValid: warnings.filter(w => w.severity === ValidationSeverity.ERROR).length === 0,
+      isValid:
+        warnings.filter((w) => w.severity === ValidationSeverity.ERROR)
+          .length === 0,
       warnings,
       suggestions,
-      score: Math.max(0, totalScore)
+      score: Math.max(0, totalScore),
     };
   }
 
   /**
    * Validate event concepts.
    */
-  validateEvents(events: EventConcept[], options: ValidationOptions = {}): ValidationResult {
+  validateEvents(
+    events: EventConcept[],
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     for (const event of events) {
@@ -234,7 +272,8 @@ export class ConceptValidator {
           severity: ValidationSeverity.WARNING,
           message: `Invalid or uncommon event name: ${event.name}`,
           source: event.nodeId,
-          suggestion: 'Use standard HTML event names (click, change, submit, etc.)'
+          suggestion:
+            'Use standard HTML event names (click, change, submit, etc.)',
         });
         score -= 0.05;
       }
@@ -245,14 +284,17 @@ export class ConceptValidator {
           severity: ValidationSeverity.ERROR,
           message: 'Event has empty handler',
           source: event.nodeId,
-          suggestion: 'Provide a valid handler function'
+          suggestion: 'Provide a valid handler function',
         });
         score -= 0.25; // Larger penalty for empty handlers
       }
 
       // Framework-specific validation
       if (context.framework) {
-        const frameworkWarnings = this.validateEventForFramework(event, context.framework);
+        const frameworkWarnings = this.validateEventForFramework(
+          event,
+          context.framework
+        );
         warnings.push(...frameworkWarnings);
       }
 
@@ -270,32 +312,44 @@ export class ConceptValidator {
         type: 'performance',
         message: 'Consider event delegation for multiple similar events',
         target: 'component',
-        priority: 3
+        priority: 3,
       });
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate styling concepts.
    */
-  validateStyling(styling: StylingConcept, options: ValidationOptions = {}): ValidationResult {
+  validateStyling(
+    styling: StylingConcept,
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     // Validate static classes
@@ -305,7 +359,8 @@ export class ConceptValidator {
           severity: ValidationSeverity.WARNING,
           message: `Invalid CSS class name: ${className}`,
           source: styling.nodeId,
-          suggestion: 'Use valid CSS identifiers (alphanumeric, hyphen, underscore)'
+          suggestion:
+            'Use valid CSS identifiers (alphanumeric, hyphen, underscore)',
         });
         score -= 0.03;
       }
@@ -318,18 +373,21 @@ export class ConceptValidator {
           severity: ValidationSeverity.WARNING,
           message: `Invalid CSS property: ${property}`,
           source: styling.nodeId,
-          suggestion: 'Check CSS property spelling and browser support'
+          suggestion: 'Check CSS property spelling and browser support',
         });
         score -= 0.05;
       }
 
       // Validate CSS color values
-      if ((property === 'color' || property === 'backgroundColor') && !this.isValidCSSColorValue(value)) {
+      if (
+        (property === 'color' || property === 'backgroundColor') &&
+        !this.isValidCSSColorValue(value)
+      ) {
         warnings.push({
           severity: ValidationSeverity.WARNING,
           message: `Invalid color value: ${value}`,
           source: styling.nodeId,
-          suggestion: 'Use valid CSS color values (hex, rgb, named colors)'
+          suggestion: 'Use valid CSS color values (hex, rgb, named colors)',
         });
         score -= 0.05;
       }
@@ -338,7 +396,7 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.ERROR,
           message: `Empty CSS value for property: ${property}`,
-          source: styling.nodeId
+          source: styling.nodeId,
         });
         score -= 0.08;
       }
@@ -351,7 +409,7 @@ export class ConceptValidator {
           type: 'performance',
           message: 'Consider external CSS for better performance',
           target: styling.nodeId,
-          priority: 3
+          priority: 3,
         });
       }
     }
@@ -369,27 +427,39 @@ export class ConceptValidator {
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate conditional concepts.
    */
-  validateConditionals(conditionals: ConditionalConcept[], options: ValidationOptions = {}): ValidationResult {
+  validateConditionals(
+    conditionals: ConditionalConcept[],
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     for (const conditional of conditionals) {
@@ -398,26 +468,31 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.ERROR,
           message: 'Conditional missing condition expression',
-          source: conditional.nodeId
+          source: conditional.nodeId,
         });
         score -= 0.15;
       }
 
       // Check for complex conditions
-      if (conditional.condition && this.isComplexCondition(conditional.condition)) {
+      if (
+        conditional.condition &&
+        this.isComplexCondition(conditional.condition)
+      ) {
         if (conditional.condition.includes('&&')) {
           suggestions.push({
             type: 'best-practice',
-            message: 'Consider using optional chaining (?.) for safer property access',
+            message:
+              'Consider using optional chaining (?.) for safer property access',
             target: conditional.nodeId,
-            priority: 2
+            priority: 2,
           });
         } else {
           suggestions.push({
             type: 'best-practice',
-            message: 'Consider extracting complex condition to a computed property',
+            message:
+              'Consider extracting complex condition to a computed property',
             target: conditional.nodeId,
-            priority: 2
+            priority: 2,
           });
         }
       }
@@ -428,34 +503,46 @@ export class ConceptValidator {
           severity: ValidationSeverity.WARNING,
           message: 'Conditional has empty then branch',
           source: conditional.nodeId,
-          suggestion: 'Provide content for when condition is true'
+          suggestion: 'Provide content for when condition is true',
         });
         score -= 0.05;
       }
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate iteration concepts.
    */
-  validateIterations(iterations: IterationConcept[], options: ValidationOptions = {}): ValidationResult {
+  validateIterations(
+    iterations: IterationConcept[],
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     for (const iteration of iterations) {
@@ -464,7 +551,7 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.ERROR,
           message: 'Iteration missing items expression',
-          source: iteration.nodeId
+          source: iteration.nodeId,
         });
         score -= 0.15;
       }
@@ -473,7 +560,7 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.ERROR,
           message: 'Iteration missing item variable name',
-          source: iteration.nodeId
+          source: iteration.nodeId,
         });
         score -= 0.15;
       }
@@ -482,20 +569,25 @@ export class ConceptValidator {
       if (context.framework === 'react' && !iteration.keyExpression) {
         warnings.push({
           severity: ValidationSeverity.WARNING,
-          message: 'React iterations should have a key expression for performance',
+          message:
+            'React iterations should have a key expression for performance',
           source: iteration.nodeId,
-          suggestion: 'Add a unique key expression (e.g., item.id)'
+          suggestion: 'Add a unique key expression (e.g., item.id)',
         });
         score -= 0.08;
       }
 
       // Check for index as key anti-pattern
-      if (iteration.keyExpression === 'index' || iteration.keyExpression === iteration.indexVariable) {
+      if (
+        iteration.keyExpression === 'index' ||
+        iteration.keyExpression === iteration.indexVariable
+      ) {
         suggestions.push({
           type: 'best-practice',
-          message: 'Avoid using index as key - use unique item property instead',
+          message:
+            'Avoid using index as key - use unique item property instead',
           target: iteration.nodeId,
-          priority: 4
+          priority: 4,
         });
       }
 
@@ -505,33 +597,45 @@ export class ConceptValidator {
           type: 'performance',
           message: 'Add key expression for better rendering performance',
           target: iteration.nodeId,
-          priority: 4
+          priority: 4,
         });
       }
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate slot concepts.
    */
-  validateSlots(slots: SlotConcept[], options: ValidationOptions = {}): ValidationResult {
+  validateSlots(
+    slots: SlotConcept[],
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     const slotNames = new Set<string>();
@@ -545,7 +649,7 @@ export class ConceptValidator {
             severity: ValidationSeverity.WARNING,
             message: `Duplicate slot name: ${slot.name}`,
             source: slot.nodeId,
-            suggestion: 'Use unique slot names within a component'
+            suggestion: 'Use unique slot names within a component',
           });
           score -= 0.05;
         }
@@ -562,33 +666,45 @@ export class ConceptValidator {
           type: 'best-practice',
           message: 'Consider providing fallback content for slots',
           target: slot.nodeId,
-          priority: 2
+          priority: 2,
         });
       }
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate attribute concepts.
    */
-  validateAttributes(attributes: AttributeConcept[], options: ValidationOptions = {}): ValidationResult {
+  validateAttributes(
+    attributes: AttributeConcept[],
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: {} as ComponentConcept,
       framework: options.framework,
-      options
+      options,
     };
 
     const attributeNames = new Set<string>();
@@ -599,7 +715,7 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.ERROR,
           message: 'Attribute missing name',
-          source: attr.nodeId
+          source: attr.nodeId,
         });
         score -= 0.1;
         continue;
@@ -610,7 +726,7 @@ export class ConceptValidator {
         warnings.push({
           severity: ValidationSeverity.WARNING,
           message: `Duplicate attribute: ${attr.name}`,
-          source: attr.nodeId
+          source: attr.nodeId,
         });
         score -= 0.03;
       }
@@ -622,7 +738,7 @@ export class ConceptValidator {
           severity: ValidationSeverity.WARNING,
           message: `Invalid HTML attribute name: ${attr.name}`,
           source: attr.nodeId,
-          suggestion: 'Use valid HTML attribute names'
+          suggestion: 'Use valid HTML attribute names',
         });
         score -= 0.05;
       }
@@ -635,27 +751,39 @@ export class ConceptValidator {
     }
 
     // Report warnings to error collector for individual validation methods too
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       if (warning.severity === ValidationSeverity.WARNING) {
-        this.errorCollector.addWarning(warning.message, warning.source, 'concept-validator');
+        this.errorCollector.addWarning(
+          warning.message,
+          warning.source,
+          'concept-validator'
+        );
       }
     });
-    
-    return { isValid: score > 0, warnings, suggestions, score: Math.max(0, score) };
+
+    return {
+      isValid: score > 0,
+      warnings,
+      suggestions,
+      score: Math.max(0, score),
+    };
   }
 
   /**
    * Validate concept consistency across all concepts.
    */
-  validateConceptConsistency(concepts: ComponentConcept, options: ValidationOptions = {}): ValidationResult {
+  validateConceptConsistency(
+    concepts: ComponentConcept,
+    options: ValidationOptions = {}
+  ): ValidationResult {
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];
     let score = 1.0;
-    
+
     const context: ValidationContext = {
       allConcepts: concepts,
       framework: options.framework,
-      options
+      options,
     };
 
     // Check for conflicting patterns - safely handle styling object
@@ -666,9 +794,10 @@ export class ConceptValidator {
     if (hasInlineStyles && hasStyleClasses) {
       suggestions.push({
         type: 'best-practice',
-        message: 'Mixing inline styles and CSS classes can impact maintainability',
+        message:
+          'Mixing inline styles and CSS classes can impact maintainability',
         target: 'component',
-        priority: 2
+        priority: 2,
       });
     }
 
@@ -676,29 +805,42 @@ export class ConceptValidator {
     if (context.options.checkAccessibility) {
       const events = concepts.events || [];
       const attributes = concepts.attributes || [];
-      
-      if (events.some(e => e && e.name === 'click') && 
-          !attributes.some(a => a && a.name === 'role')) {
+
+      if (
+        events.some((e) => e && e.name === 'click') &&
+        !attributes.some((a) => a && a.name === 'role')
+      ) {
         suggestions.push({
           type: 'accessibility',
           message: 'Interactive elements should have appropriate ARIA roles',
           target: 'component',
-          priority: 4
+          priority: 4,
         });
       }
     }
 
     // Check for semantic mismatches between events and styling
     if (concepts.events && concepts.styling) {
-      const cancelEvents = concepts.events.filter(e => e && e.handler && e.handler.toLowerCase().includes('cancel'));
-      const successClasses = concepts.styling.staticClasses && concepts.styling.staticClasses.filter(c => c && c.includes('success'));
-      
-      if (cancelEvents.length > 0 && successClasses && successClasses.length > 0) {
+      const cancelEvents = concepts.events.filter(
+        (e) => e && e.handler && e.handler.toLowerCase().includes('cancel')
+      );
+      const successClasses =
+        concepts.styling.staticClasses &&
+        concepts.styling.staticClasses.filter(
+          (c) => c && c.includes('success')
+        );
+
+      if (
+        cancelEvents.length > 0 &&
+        successClasses &&
+        successClasses.length > 0
+      ) {
         suggestions.push({
           type: 'best-practice',
-          message: 'Potential semantic mismatch: cancel action with success styling',
+          message:
+            'Potential semantic mismatch: cancel action with success styling',
           target: 'component',
-          priority: 3
+          priority: 3,
         });
       }
     }
@@ -711,9 +853,22 @@ export class ConceptValidator {
    */
   private isValidEventName(name: string): boolean {
     const commonEvents = [
-      'click', 'change', 'submit', 'input', 'focus', 'blur',
-      'keydown', 'keyup', 'mousedown', 'mouseup', 'mouseover',
-      'mouseout', 'load', 'error', 'resize', 'scroll'
+      'click',
+      'change',
+      'submit',
+      'input',
+      'focus',
+      'blur',
+      'keydown',
+      'keyup',
+      'mousedown',
+      'mouseup',
+      'mouseover',
+      'mouseout',
+      'load',
+      'error',
+      'resize',
+      'scroll',
     ];
     // Mark obviously invalid events
     if (name.includes('invalid')) return false;
@@ -727,17 +882,54 @@ export class ConceptValidator {
   private isValidCSSProperty(property: string): boolean {
     // Common CSS properties - comprehensive list
     const validProperties = [
-      'color', 'background', 'background-color', 'background-image', 'border', 'border-color',
-      'border-width', 'border-style', 'margin', 'padding', 'width', 'height', 'max-width',
-      'max-height', 'min-width', 'min-height', 'font-size', 'font-weight', 'font-family',
-      'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'word-spacing',
-      'display', 'position', 'top', 'left', 'right', 'bottom', 'z-index', 'float', 'clear',
-      'overflow', 'visibility', 'opacity', 'cursor', 'transform', 'transition', 'animation'
+      'color',
+      'background',
+      'background-color',
+      'background-image',
+      'border',
+      'border-color',
+      'border-width',
+      'border-style',
+      'margin',
+      'padding',
+      'width',
+      'height',
+      'max-width',
+      'max-height',
+      'min-width',
+      'min-height',
+      'font-size',
+      'font-weight',
+      'font-family',
+      'text-align',
+      'text-decoration',
+      'line-height',
+      'letter-spacing',
+      'word-spacing',
+      'display',
+      'position',
+      'top',
+      'left',
+      'right',
+      'bottom',
+      'z-index',
+      'float',
+      'clear',
+      'overflow',
+      'visibility',
+      'opacity',
+      'cursor',
+      'transform',
+      'transition',
+      'animation',
     ];
     // Mark obviously invalid properties
     if (property.includes('invalid')) return false;
     // Check if property is in our list or follows CSS custom property pattern
-    return validProperties.includes(property) || (property.startsWith('--') && !property.startsWith('--invalid'));
+    return (
+      validProperties.includes(property) ||
+      (property.startsWith('--') && !property.startsWith('--invalid'))
+    );
   }
 
   private isValidAttributeName(name: string): boolean {
@@ -746,44 +938,66 @@ export class ConceptValidator {
 
   private isComplexCondition(condition: string): boolean {
     // Consider complex if it has multiple operators or function calls
-    return condition.includes('&&') || condition.includes('||') || condition.includes('(');
+    return (
+      condition.includes('&&') ||
+      condition.includes('||') ||
+      condition.includes('(')
+    );
   }
 
   private isValidCSSColorValue(value: string): boolean {
     // Basic validation for common CSS color formats
     if (!value || value.trim() === '') return false;
-    
+
     // Invalid known values
     if (value.includes('invalid')) return false;
-    
+
     // Hex colors
     if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) return true;
-    
+
     // RGB/RGBA
-    if (/^rgba?\(\s*([0-9]+\s*,\s*){2}[0-9]+\s*(,\s*[0-9.]+\s*)?\)$/.test(value)) return true;
-    
+    if (
+      /^rgba?\(\s*([0-9]+\s*,\s*){2}[0-9]+\s*(,\s*[0-9.]+\s*)?\)$/.test(value)
+    )
+      return true;
+
     // Named colors (basic set)
-    const namedColors = ['red', 'blue', 'green', 'white', 'black', 'yellow', 'purple', 'orange', 'pink', 'gray', 'brown'];
+    const namedColors = [
+      'red',
+      'blue',
+      'green',
+      'white',
+      'black',
+      'yellow',
+      'purple',
+      'orange',
+      'pink',
+      'gray',
+      'brown',
+    ];
     if (namedColors.includes(value.toLowerCase())) return true;
-    
+
     // Default to valid for other formats
     return true;
   }
 
-  private validateEventForFramework(event: EventConcept, framework: string): ValidationWarning[] {
+  private validateEventForFramework(
+    event: EventConcept,
+    framework: string
+  ): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
 
     // Check for framework attribute mismatch
     if ((event as any).frameworkAttribute) {
       const attr = (event as any).frameworkAttribute;
       const originalFramework = (event as any).originalFramework;
-      
+
       if (originalFramework && originalFramework !== framework) {
         warnings.push({
           severity: ValidationSeverity.WARNING,
           message: `Framework mismatch: ${originalFramework} syntax used in ${framework} context`,
           source: event.nodeId,
-          suggestion: `Convert ${attr} to ${framework}-compatible syntax`
+          suggestion: `Convert ${attr} to ${framework}-compatible syntax`,
         });
       }
     }
@@ -795,7 +1009,7 @@ export class ConceptValidator {
             severity: ValidationSeverity.WARNING,
             message: 'React does not support event modifiers directly',
             source: event.nodeId,
-            suggestion: 'Handle modifiers in the event handler function'
+            suggestion: 'Handle modifiers in the event handler function',
           });
         }
         break;
@@ -809,11 +1023,13 @@ export class ConceptValidator {
 
     // Only add accessibility warnings for problematic cases, not all click events
     // The suggestions will handle accessibility improvements
-    
+
     return warnings;
   }
 
-  private validateAttributeAccessibility(attr: AttributeConcept): ValidationWarning[] {
+  private validateAttributeAccessibility(
+    attr: AttributeConcept
+  ): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
 
     // Check for missing alt text on images
@@ -822,14 +1038,16 @@ export class ConceptValidator {
         severity: ValidationSeverity.WARNING,
         message: 'Images should have alt text for accessibility',
         source: attr.nodeId,
-        suggestion: 'Add alt attribute to describe the image'
+        suggestion: 'Add alt attribute to describe the image',
       });
     }
 
     return warnings;
   }
 
-  private suggestEventAccessibilityImprovements(event: EventConcept): ValidationSuggestion[] {
+  private suggestEventAccessibilityImprovements(
+    event: EventConcept
+  ): ValidationSuggestion[] {
     const suggestions: ValidationSuggestion[] = [];
 
     if (event.name === 'click') {
@@ -837,24 +1055,27 @@ export class ConceptValidator {
       if (elementTag === 'div' || elementTag === 'span') {
         suggestions.push({
           type: 'accessibility',
-          message: 'Consider using button element or add role="button" for better accessibility',
+          message:
+            'Consider using button element or add role="button" for better accessibility',
           target: event.nodeId,
-          priority: 4
+          priority: 4,
         });
       }
-      
+
       suggestions.push({
         type: 'accessibility',
         message: 'Add keyboard support for click events',
         target: event.nodeId,
-        priority: 3
+        priority: 3,
       });
     }
 
     return suggestions;
   }
 
-  private suggestStylingBestPractices(styling: StylingConcept): ValidationSuggestion[] {
+  private suggestStylingBestPractices(
+    styling: StylingConcept
+  ): ValidationSuggestion[] {
     const suggestions: ValidationSuggestion[] = [];
 
     if (styling.staticClasses.length > 8) {
@@ -862,7 +1083,7 @@ export class ConceptValidator {
         type: 'best-practice',
         message: 'Consider using fewer, more semantic CSS classes',
         target: styling.nodeId,
-        priority: 2
+        priority: 2,
       });
     }
 
@@ -870,9 +1091,10 @@ export class ConceptValidator {
     if (Object.keys(styling.inlineStyles).length > 5) {
       suggestions.push({
         type: 'best-practice',
-        message: 'Consider using external CSS classes instead of many inline styles',
+        message:
+          'Consider using external CSS classes instead of many inline styles',
         target: styling.nodeId,
-        priority: 3
+        priority: 3,
       });
     }
 

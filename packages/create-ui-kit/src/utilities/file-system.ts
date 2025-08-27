@@ -27,7 +27,7 @@ export class FileSystemUtils {
       retries = 3,
       backoff = 1000,
       createBackup = false,
-      overwrite = true
+      overwrite = true,
     } = options;
 
     let backupPath: string | undefined;
@@ -35,11 +35,11 @@ export class FileSystemUtils {
     try {
       // Check if file exists and handle accordingly
       const exists = await fs.pathExists(filePath);
-      
+
       if (exists && !overwrite) {
         return {
           success: false,
-          error: new Error(`File already exists: ${filePath}`)
+          error: new Error(`File already exists: ${filePath}`),
         };
       }
 
@@ -61,25 +61,26 @@ export class FileSystemUtils {
         } catch (error) {
           if (attempt === retries) {
             // Restore backup if final attempt fails
-            if (backupPath && await fs.pathExists(backupPath)) {
+            if (backupPath && (await fs.pathExists(backupPath))) {
               await fs.move(backupPath, filePath, { overwrite: true });
             }
             throw error;
           }
-          
+
           // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, backoff * attempt));
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoff * attempt)
+          );
         }
       }
 
       // This should never be reached
       throw new Error('Unexpected error in writeFileSafe');
-
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error : new Error(String(error)),
-        backupPath
+        backupPath,
       };
     }
   }
@@ -99,37 +100,41 @@ export class FileSystemUtils {
         return { success: true };
       } catch (error) {
         const err = error as NodeJS.ErrnoException;
-        
+
         // Some errors are not recoverable
         if (err.code === 'EACCES' || err.code === 'EPERM') {
           return {
             success: false,
-            error: new Error(`Permission denied: Cannot create directory ${dirPath}`)
+            error: new Error(
+              `Permission denied: Cannot create directory ${dirPath}`
+            ),
           };
         }
 
         if (err.code === 'ENOSPC') {
           return {
             success: false,
-            error: new Error(`No space left on device: Cannot create directory ${dirPath}`)
+            error: new Error(
+              `No space left on device: Cannot create directory ${dirPath}`
+            ),
           };
         }
 
         if (attempt === retries) {
           return {
             success: false,
-            error: error instanceof Error ? error : new Error(String(error))
+            error: error instanceof Error ? error : new Error(String(error)),
           };
         }
 
         // Wait before retry for transient errors
-        await new Promise(resolve => setTimeout(resolve, backoff * attempt));
+        await new Promise((resolve) => setTimeout(resolve, backoff * attempt));
       }
     }
 
     return {
       success: false,
-      error: new Error('Unexpected error in ensureDirSafe')
+      error: new Error('Unexpected error in ensureDirSafe'),
     };
   }
 
@@ -141,18 +146,14 @@ export class FileSystemUtils {
     dest: string,
     options: FileOperationOptions = {}
   ): Promise<FileOperationResult> {
-    const {
-      retries = 3,
-      backoff = 1000,
-      overwrite = true
-    } = options;
+    const { retries = 3, backoff = 1000, overwrite = true } = options;
 
     try {
       // Check if source exists
-      if (!await fs.pathExists(src)) {
+      if (!(await fs.pathExists(src))) {
         return {
           success: false,
-          error: new Error(`Source file does not exist: ${src}`)
+          error: new Error(`Source file does not exist: ${src}`),
         };
       }
 
@@ -161,7 +162,7 @@ export class FileSystemUtils {
       if (destExists && !overwrite) {
         return {
           success: false,
-          error: new Error(`Destination file already exists: ${dest}`)
+          error: new Error(`Destination file already exists: ${dest}`),
         };
       }
 
@@ -176,11 +177,11 @@ export class FileSystemUtils {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           await fs.copy(src, dest, { overwrite });
-          
+
           // Verify the copy was successful
           const srcStats = await fs.stat(src);
           const destStats = await fs.stat(dest);
-          
+
           if (srcStats.size !== destStats.size) {
             throw new Error('File copy verification failed: size mismatch');
           }
@@ -190,16 +191,17 @@ export class FileSystemUtils {
           if (attempt === retries) {
             throw error;
           }
-          await new Promise(resolve => setTimeout(resolve, backoff * attempt));
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoff * attempt)
+          );
         }
       }
 
       throw new Error('Unexpected error in copyFileSafe');
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       };
     }
   }
@@ -214,7 +216,7 @@ export class FileSystemUtils {
     const { retries = 3, backoff = 500 } = options;
 
     try {
-      if (!await fs.pathExists(target)) {
+      if (!(await fs.pathExists(target))) {
         return { success: true }; // Already doesn't exist
       }
 
@@ -224,12 +226,12 @@ export class FileSystemUtils {
           return { success: true };
         } catch (error) {
           const err = error as NodeJS.ErrnoException;
-          
+
           // Permission errors are not recoverable
           if (err.code === 'EACCES' || err.code === 'EPERM') {
             return {
               success: false,
-              error: new Error(`Permission denied: Cannot remove ${target}`)
+              error: new Error(`Permission denied: Cannot remove ${target}`),
             };
           }
 
@@ -237,16 +239,17 @@ export class FileSystemUtils {
             throw error;
           }
 
-          await new Promise(resolve => setTimeout(resolve, backoff * attempt));
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoff * attempt)
+          );
         }
       }
 
       throw new Error('Unexpected error in removeSafe');
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       };
     }
   }
@@ -269,35 +272,37 @@ export class FileSystemUtils {
         suggestions.push('Check if the file or directory path is correct');
         suggestions.push('Ensure parent directories exist');
         break;
-        
+
       case 'EACCES':
       case 'EPERM':
         suggestions.push('Check file/directory permissions');
-        suggestions.push('Try running with elevated privileges (if appropriate)');
+        suggestions.push(
+          'Try running with elevated privileges (if appropriate)'
+        );
         suggestions.push('Ensure you have write access to the target location');
         recoverable = false;
         break;
-        
+
       case 'ENOSPC':
         suggestions.push('Free up disk space');
         suggestions.push('Try using a different location with more space');
         recoverable = false;
         break;
-        
+
       case 'ENOTDIR':
         suggestions.push('Check that parent path components are directories');
         suggestions.push('Remove any files that conflict with directory names');
         break;
-        
+
       case 'EISDIR':
         suggestions.push('Target is a directory, specify a file path');
         break;
-        
+
       case 'EEXIST':
         suggestions.push('File or directory already exists');
         suggestions.push('Use overwrite option or choose different name');
         break;
-        
+
       default:
         suggestions.push('Check file system permissions and disk space');
         suggestions.push('Try the operation again');
@@ -308,7 +313,7 @@ export class FileSystemUtils {
       code: err.code,
       message: error.message,
       recoverable,
-      suggestions
+      suggestions,
     };
   }
 
@@ -335,13 +340,17 @@ export class FileSystemUtils {
 
         case 'write':
           if (!parentExists) {
-            errors.push(`Cannot write: parent directory ${parentDir} does not exist`);
+            errors.push(
+              `Cannot write: parent directory ${parentDir} does not exist`
+            );
           } else {
             // Check if we can write to the directory
             try {
               await fs.access(parentDir, fs.constants.W_OK);
             } catch {
-              errors.push(`Cannot write: no write permission for directory ${parentDir}`);
+              errors.push(
+                `Cannot write: no write permission for directory ${parentDir}`
+              );
             }
           }
           break;
@@ -351,7 +360,9 @@ export class FileSystemUtils {
             errors.push(`Cannot create: ${target} already exists`);
           }
           if (!parentExists) {
-            errors.push(`Cannot create: parent directory ${parentDir} does not exist`);
+            errors.push(
+              `Cannot create: parent directory ${parentDir} does not exist`
+            );
           }
           break;
 
@@ -361,14 +372,15 @@ export class FileSystemUtils {
           }
           break;
       }
-
     } catch (error) {
-      errors.push(`Validation failed: ${error instanceof Error ? error.message : error}`);
+      errors.push(
+        `Validation failed: ${error instanceof Error ? error.message : error}`
+      );
     }
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }

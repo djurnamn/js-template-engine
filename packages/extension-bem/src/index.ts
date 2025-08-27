@@ -12,7 +12,7 @@ import type {
   StylingConcept,
   ComponentConcept,
   RenderContext,
-  StyleOutput
+  StyleOutput,
 } from '@js-template-engine/core';
 import type { BemExtension as BemTypes } from './types';
 
@@ -83,7 +83,7 @@ function isElementNode(
 
 /**
  * BEM Styling Extension
- * 
+ *
  * Generates BEM classes and SCSS output for component styling.
  */
 export class BemStylingExtension
@@ -94,7 +94,7 @@ export class BemStylingExtension
     type: 'styling',
     key: 'bem',
     name: 'BEM Extension',
-    version: '1.0.0'
+    version: '1.0.0',
   };
 
   /** Styling approach */
@@ -344,100 +344,105 @@ export class BemStylingExtension
     };
   }
 
-
-
   /**
    * Process styling concepts through BEM methodology
    */
   processStyles(concepts: StylingConcept): StyleOutput {
     // Generate BEM classes per element from extension data
     const perElementClasses = this.generatePerElementBemClasses(concepts);
-    
-    // Generate SCSS from all BEM classes  
+
+    // Generate SCSS from all BEM classes
     const allBemClasses = Object.values(perElementClasses).flat();
     const scssOutput = this.generateScssFromClasses(allBemClasses);
-    
+
     // Return updated styling with per-element BEM classes
     const updatedStyling: StylingConcept = {
       ...concepts,
       perElementClasses: {
         ...concepts.perElementClasses,
-        ...perElementClasses
-      }
+        ...perElementClasses,
+      },
     };
-    
+
     return {
       styles: scssOutput,
       imports: [],
-      updatedStyling
+      updatedStyling,
     };
   }
 
   /**
    * Generate BEM classes per element from extension data
    */
-  private generatePerElementBemClasses(styling: StylingConcept): Record<string, string[]> {
+  private generatePerElementBemClasses(
+    styling: StylingConcept
+  ): Record<string, string[]> {
     const perElementClasses: Record<string, string[]> = {};
-    
+
     // Process BEM extension data if present
     if (styling.extensionData?.bem) {
       // Build block context map for element inheritance
       const blockContext = new Map<string, string>();
-      
+
       // First pass: collect all blocks
       for (const bemNode of styling.extensionData.bem) {
         if (bemNode.data.block) {
           blockContext.set(bemNode.nodeId, bemNode.data.block);
         }
       }
-      
+
       // Second pass: generate classes per element with proper inheritance
       for (const bemNode of styling.extensionData.bem) {
         const bemData = bemNode.data;
-        const block = bemData.block || this.findBlockForElement(bemNode.nodeId, blockContext);
-        
+        const block =
+          bemData.block ||
+          this.findBlockForElement(bemNode.nodeId, blockContext);
+
         if (block) {
           const classes: string[] = [];
-          
+
           // Generate base class (block or block__element)
           let baseClass = block;
           if (bemData.element) {
             baseClass = `${block}__${bemData.element}`;
           }
-          
+
           classes.push(baseClass);
-          
+
           // Generate modifier classes from both singular and plural forms
           const modifiers: string[] = [];
-          
+
           // Handle single modifier (string)
           if (bemData.modifier && typeof bemData.modifier === 'string') {
             modifiers.push(bemData.modifier);
           }
-          
-          // Handle multiple modifiers (array) 
+
+          // Handle multiple modifiers (array)
           if (bemData.modifiers && Array.isArray(bemData.modifiers)) {
             modifiers.push(...bemData.modifiers.filter(Boolean));
           }
-          
+
           // Generate modifier classes
           for (const modifier of modifiers) {
             classes.push(`${baseClass}--${modifier}`);
           }
-          
+
           // Store classes for this specific node
           perElementClasses[bemNode.nodeId] = classes;
         }
       }
     }
-    
+
     return perElementClasses;
   }
 
   /**
    * Find the appropriate block for an element by walking up the node hierarchy
    */
-  private findBlockForElement(nodeId: string, blockContext: Map<string, string>): string | undefined {
+  private findBlockForElement(
+    nodeId: string,
+    blockContext: Map<string, string>
+  ): string | undefined {
     // Walk up the node ID path to find a parent block
     const parts = nodeId.split('.');
     for (let i = parts.length - 1; i >= 0; i--) {
@@ -455,26 +460,33 @@ export class BemStylingExtension
   private isBemClass(className: string): boolean {
     const elementSep = this.options.separator?.element || '__';
     const modifierSep = this.options.separator?.modifier || '--';
-    
+
     // Build regex dynamically based on user configuration
     const escapedElementSep = elementSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedModifierSep = modifierSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    const pattern = new RegExp(`^[a-zA-Z][a-zA-Z0-9-]*(${escapedElementSep}[a-zA-Z][a-zA-Z0-9-]*)?(${escapedModifierSep}[a-zA-Z][a-zA-Z0-9-]*)?$`);
-    
+    const escapedModifierSep = modifierSep.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+
+    const pattern = new RegExp(
+      `^[a-zA-Z][a-zA-Z0-9-]*(${escapedElementSep}[a-zA-Z][a-zA-Z0-9-]*)?(${escapedModifierSep}[a-zA-Z][a-zA-Z0-9-]*)?$`
+    );
+
     // Check basic pattern and avoid invalid structures
     if (!pattern.test(className)) return false;
-    
+
     // Validate no triple separators or leading/trailing separators
     const tripleSep = elementSep + elementSep + elementSep;
     const tripleModSep = modifierSep + modifierSep + modifierSep;
-    
-    return !className.includes(tripleSep) &&
-           !className.includes(tripleModSep) &&
-           !className.endsWith(elementSep) &&
-           !className.endsWith(modifierSep) &&
-           !className.startsWith(elementSep) &&
-           !className.startsWith(modifierSep);
+
+    return (
+      !className.includes(tripleSep) &&
+      !className.includes(tripleModSep) &&
+      !className.endsWith(elementSep) &&
+      !className.endsWith(modifierSep) &&
+      !className.startsWith(elementSep) &&
+      !className.startsWith(modifierSep)
+    );
   }
 
   /**
@@ -482,19 +494,19 @@ export class BemStylingExtension
    */
   private generateScssFromClasses(classes: string[]): string {
     if (classes.length === 0) return '';
-    
+
     const scssLines: string[] = [];
     const processedBlocks = new Set<string>();
-    
+
     for (const className of classes) {
       const blockName = this.extractBlockName(className);
       if (blockName && !processedBlocks.has(blockName)) {
         processedBlocks.add(blockName);
         scssLines.push(`.${blockName} {`);
-        
+
         // Add basic styling structure
         scssLines.push('  /* Add your styling here */');
-        
+
         // Add element and modifier rules
         for (const relatedClass of classes) {
           if (relatedClass.startsWith(blockName)) {
@@ -512,12 +524,12 @@ export class BemStylingExtension
             }
           }
         }
-        
+
         scssLines.push('}');
         scssLines.push('');
       }
     }
-    
+
     return scssLines.join('\n');
   }
 
@@ -529,11 +541,12 @@ export class BemStylingExtension
     return match ? match[1] : null;
   }
 
-
   /**
    * Determines the appropriate file extension for BEM HTML output.
    */
-  public getFileExtension(options: { language?: 'typescript' | 'javascript' }): string {
+  public getFileExtension(options: {
+    language?: 'typescript' | 'javascript';
+  }): string {
     return '.html';
   }
 }

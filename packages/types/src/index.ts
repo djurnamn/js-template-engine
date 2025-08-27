@@ -295,31 +295,35 @@ export type { ImportDefinition } from './Component';
  */
 export function isTemplateNode(node: any): node is TemplateNode {
   if (typeof node !== 'object' || node === null) return false;
-  
+
   if (node.type === 'text') {
     return typeof node.content === 'string';
   }
-  
+
   if (node.type === 'slot') {
     return typeof node.name === 'string';
   }
-  
+
   if (node.type === 'fragment') {
     return Array.isArray(node.children);
   }
-  
+
   if (node.type === 'comment') {
     return typeof node.content === 'string';
   }
-  
+
   if (node.type === 'if') {
     return typeof node.condition === 'string' && Array.isArray(node.then);
   }
-  
+
   if (node.type === 'for') {
-    return typeof node.items === 'string' && typeof node.item === 'string' && Array.isArray(node.children);
+    return (
+      typeof node.items === 'string' &&
+      typeof node.item === 'string' &&
+      Array.isArray(node.children)
+    );
   }
-  
+
   // Default: treat as element if type is 'element' or undefined
   return typeof node.tag === 'string';
 }

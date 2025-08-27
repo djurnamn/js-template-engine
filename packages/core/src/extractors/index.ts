@@ -1,6 +1,6 @@
 /**
  * Advanced Concept Extractors
- * 
+ *
  * Export all advanced extractors for comprehensive concept extraction.
  */
 
@@ -10,11 +10,11 @@ export { StylingExtractor } from './StylingExtractor';
 // Re-export types
 export type {
   EventExtractionOptions,
-  EventExtractionResult
+  EventExtractionResult,
 } from './EventExtractor';
 
 export type {
   StylingExtractionOptions,
   StylingExtractionResult,
-  CSSValidationResult
+  CSSValidationResult,
 } from './StylingExtractor';

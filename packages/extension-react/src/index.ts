@@ -1,10 +1,10 @@
 /**
  * React Framework Extension for generating JSX/TypeScript components.
- * 
+ *
  * This extension transforms framework-agnostic template concepts into React-specific
  * JSX syntax, handling events, conditionals, iterations, slots, and attributes with
  * proper React conventions and best practices.
- * 
+ *
  * Key capabilities:
  * - Event handler transformation with modifier support
  * - JSX conditional rendering patterns
@@ -13,20 +13,20 @@
  * - HTML to React attribute transformation
  * - TypeScript interface generation
  * - Hook usage optimization
- * 
+ *
  * @example
  * ```typescript
  * const extension = new ReactFrameworkExtension();
  * const registry = new ExtensionRegistry();
  * registry.registerFramework(extension);
- * 
+ *
  * const concepts = analyzer.extractConcepts(templateNodes);
  * const reactCode = extension.renderComponent(concepts, {
  *   component: { name: 'MyComponent' },
  *   options: { language: 'typescript' }
  * });
  * ```
- * 
+ *
  * @since 2.0.0
  */
 
@@ -38,7 +38,7 @@ import type {
   FrameworkConditionalOutput,
   FrameworkIterationOutput,
   FrameworkSlotOutput,
-  FrameworkAttributeOutput
+  FrameworkAttributeOutput,
 } from '@js-template-engine/core';
 
 import type {
@@ -51,7 +51,7 @@ import type {
   StructuralConcept,
   TextConcept,
   CommentConcept,
-  FragmentConcept
+  FragmentConcept,
 } from '@js-template-engine/core';
 
 import {
@@ -59,19 +59,19 @@ import {
   ComponentPropertyProcessor,
   ScriptMergeProcessor,
   ImportProcessor,
-  DEFAULT_MERGE_STRATEGIES
+  DEFAULT_MERGE_STRATEGIES,
 } from '@js-template-engine/core';
 
 import type {
   ImportDefinition,
   ScriptMergeStrategy,
   PropMergeStrategy,
-  ImportMergeStrategy
+  ImportMergeStrategy,
 } from '@js-template-engine/core';
 
 /**
  * React-specific event processing output containing JSX event handler syntax.
- * 
+ *
  * @public
  */
 export interface ReactEventOutput {
@@ -143,11 +143,11 @@ export interface ReactComponentConfig {
 
 /**
  * React Framework Extension that generates JSX components from template concepts.
- * 
+ *
  * This class implements the FrameworkExtension interface to provide React-specific
  * rendering capabilities, transforming abstract template concepts into production-ready
  * JSX/TypeScript components with proper event handling, styling, and component patterns.
- * 
+ *
  * The extension handles:
  * - Event handler transformation (onClick, onChange, etc.)
  * - Conditional rendering with JSX patterns
@@ -156,24 +156,24 @@ export interface ReactComponentConfig {
  * - HTML attribute transformation to React props
  * - TypeScript interface generation
  * - Import management and hook optimization
- * 
+ *
  * @example
  * ```typescript
  * // Basic usage
  * const extension = new ReactFrameworkExtension();
- * 
+ *
  * // Process events from template
  * const eventOutput = extension.processEvents([
  *   { nodeId: '0', name: 'click', handler: 'handleClick', modifiers: ['prevent'] }
  * ]);
- * 
+ *
  * // Render complete component
  * const jsxCode = extension.renderComponent(concepts, {
  *   component: { name: 'Button', props: { variant: 'string' } },
  *   options: { language: 'typescript' }
  * });
  * ```
- * 
+ *
  * @since 2.0.0
  */
 export class ReactFrameworkExtension implements FrameworkExtension {
@@ -181,7 +181,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'react',
     name: 'React Framework Extension',
-    version: '1.0.0'
+    version: '1.0.0',
   };
 
   public framework = 'react' as const;
@@ -193,10 +193,12 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   private importProcessor = new ImportProcessor();
 
   // Merge strategies (can be configured)
-  private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
+  private scriptMergeStrategy: ScriptMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
-  private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
-  
+  private importMergeStrategy: ImportMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.imports;
+
   /** Current concepts being rendered (for per-element class access) */
   private concepts?: ComponentConcept;
 
@@ -204,41 +206,45 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     this.propertyProcessor = new ComponentPropertyProcessor({
       script: this.scriptMergeStrategy,
       props: this.propMergeStrategy,
-      imports: this.importMergeStrategy
+      imports: this.importMergeStrategy,
     });
     this.scriptMerger = new ScriptMergeProcessor();
   }
 
   /**
    * Transforms event concepts into React JSX event handlers.
-   * 
+   *
    * Converts framework-agnostic event concepts into React-specific event handling
    * patterns, including proper attribute naming (onClick, onChange, etc.), modifier
    * handling (preventDefault, stopPropagation), and parameter transformation.
-   * 
+   *
    * @param events - Array of event concepts to process
    * @returns Framework event output with React-specific attributes and imports
-   * 
+   *
    * @example
    * ```typescript
    * const events: EventConcept[] = [
    *   { nodeId: '0', name: 'click', handler: 'handleClick', modifiers: ['prevent'] },
    *   { nodeId: '1', name: 'change', handler: 'handleChange', parameters: ['$event'] }
    * ];
-   * 
+   *
    * const output = extension.processEvents(events);
    * // Output: { attributes: { onClick: 'handleClick', onChange: 'handleChange' } }
    * ```
    */
   processEvents(events: EventConcept[]): FrameworkEventOutput {
-    const processedEvents = events.map(event => {
+    const processedEvents = events.map((event) => {
       // Normalize event to React format: 'click' → 'onClick'
       const normalizedEvent = this.eventNormalizer.normalizeEvent(event, {
         framework: 'react',
-        preserveModifiers: true
+        preserveModifiers: true,
       });
 
-      const handler = this.formatHandler(event.handler, event.parameters || [], event.modifiers || []);
+      const handler = this.formatHandler(
+        event.handler,
+        event.parameters || [],
+        event.modifiers || []
+      );
       const syntax = `${normalizedEvent.frameworkAttribute}={${handler}}`;
 
       return {
@@ -246,7 +252,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
         handler: event.handler,
         modifiers: event.modifiers || [],
         parameters: event.parameters || [],
-        syntax
+        syntax,
       } as ReactEventOutput;
     });
 
@@ -260,23 +266,27 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes,
-      imports
+      imports,
     };
   }
 
   /**
    * Format event handler with parameters and modifiers
    */
-  private formatHandler(handler: string, parameters: string[], modifiers: string[] = []): string {
+  private formatHandler(
+    handler: string,
+    parameters: string[],
+    modifiers: string[] = []
+  ): string {
     // Transform parameters: '$event' → 'e', 'index' → 'index'
-    const reactParams = parameters.map(param =>
+    const reactParams = parameters.map((param) =>
       param === '$event' ? 'e' : param
     );
 
     // Handle modifiers by wrapping the handler
     if (modifiers.length > 0) {
       const modifierCode = this.generateModifierCode(modifiers);
-      
+
       if (parameters.length === 0) {
         return `(e) => { ${modifierCode} ${handler}(); }`;
       } else {
@@ -307,7 +317,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
           break;
         case 'once':
           // React doesn't have built-in once modifier, but we can implement it
-          code.push('if (e.target.dataset.handlerExecuted) return; e.target.dataset.handlerExecuted = "true";');
+          code.push(
+            'if (e.target.dataset.handlerExecuted) return; e.target.dataset.handlerExecuted = "true";'
+          );
           break;
         case 'self':
           code.push('if (e.target !== e.currentTarget) return;');
@@ -324,27 +336,34 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   /**
    * Process conditional concepts for JSX conditional rendering
    */
-  processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput {
-    const processedConditionals = conditionals.map(conditional => {
+  processConditionals(
+    conditionals: ConditionalConcept[]
+  ): FrameworkConditionalOutput {
+    const processedConditionals = conditionals.map((conditional) => {
       const thenContent = this.renderNodes(conditional.thenNodes);
-      const elseContent = conditional.elseNodes ?
-        this.renderNodes(conditional.elseNodes) : null;
+      const elseContent = conditional.elseNodes
+        ? this.renderNodes(conditional.elseNodes)
+        : null;
 
       return {
         condition: conditional.condition,
         thenContent,
         elseContent,
         nodeId: conditional.nodeId,
-        syntax: this.generateConditionalSyntax(conditional, thenContent, elseContent)
+        syntax: this.generateConditionalSyntax(
+          conditional,
+          thenContent,
+          elseContent
+        ),
       } as ReactConditionalOutput;
     });
 
     // Generate the combined syntax for all conditionals
-    const syntax = processedConditionals.map(c => c.syntax).join('\n');
+    const syntax = processedConditionals.map((c) => c.syntax).join('\n');
 
     return {
       syntax,
-      imports: []
+      imports: [],
     };
   }
 
@@ -360,11 +379,16 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     // Clean up content indentation
     const cleanThenContent = this.cleanJSXContent(thenContent);
-    const cleanElseContent = elseContent ? this.cleanJSXContent(elseContent) : null;
+    const cleanElseContent = elseContent
+      ? this.cleanJSXContent(elseContent)
+      : null;
 
     if (cleanElseContent) {
       // Ternary operator for if-else
-      if (this.isSingleElement(cleanThenContent) && this.isSingleElement(cleanElseContent)) {
+      if (
+        this.isSingleElement(cleanThenContent) &&
+        this.isSingleElement(cleanElseContent)
+      ) {
         return `{${condition} ? ${cleanThenContent} : ${cleanElseContent}}`;
       } else {
         return `{${condition} ? (\n    ${cleanThenContent}\n  ) : (\n    ${cleanElseContent}\n  )}`;
@@ -391,18 +415,22 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private isSingleElement(content: string): boolean {
     const trimmed = content.trim();
-    return trimmed.startsWith('<') && trimmed.endsWith('>') && 
-           !trimmed.includes('\n') && trimmed.length < 80; // Keep simple elements inline
+    return (
+      trimmed.startsWith('<') &&
+      trimmed.endsWith('>') &&
+      !trimmed.includes('\n') &&
+      trimmed.length < 80
+    ); // Keep simple elements inline
   }
 
   /**
    * Process iteration concepts for JSX array mapping
    */
   processIterations(iterations: IterationConcept[]): FrameworkIterationOutput {
-    const processedIterations = iterations.map(iteration => {
+    const processedIterations = iterations.map((iteration) => {
       const childContent = this.renderNodes(iteration.childNodes);
-      const keyExpression = iteration.keyExpression ||
-        (iteration.indexVariable || 'index');
+      const keyExpression =
+        iteration.keyExpression || iteration.indexVariable || 'index';
 
       return {
         items: iteration.items,
@@ -411,15 +439,19 @@ export class ReactFrameworkExtension implements FrameworkExtension {
         keyExpression,
         childContent,
         nodeId: iteration.nodeId,
-        syntax: this.generateIterationSyntax(iteration, childContent, keyExpression)
+        syntax: this.generateIterationSyntax(
+          iteration,
+          childContent,
+          keyExpression
+        ),
       } as ReactIterationOutput;
     });
 
-    const syntax = processedIterations.map(i => i.syntax).join('\n');
+    const syntax = processedIterations.map((i) => i.syntax).join('\n');
 
     return {
       syntax,
-      imports: ['React'] // Need React for Fragment
+      imports: ['React'], // Need React for Fragment
     };
   }
 
@@ -431,9 +463,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     childContent: string,
     keyExpression: string
   ): string {
-    const mapParams = iteration.indexVariable ?
-      `(${iteration.itemVariable}, ${iteration.indexVariable})` :
-      `${iteration.itemVariable}`;
+    const mapParams = iteration.indexVariable
+      ? `(${iteration.itemVariable}, ${iteration.indexVariable})`
+      : `${iteration.itemVariable}`;
 
     const cleanContent = this.cleanJSXContent(childContent);
 
@@ -451,7 +483,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   private isSingleElementWithoutKey(content: string): boolean {
     const trimmed = content.trim();
     if (!this.isSingleElement(trimmed)) return false;
-    
+
     // Check if element already has a key attribute
     return !trimmed.includes(' key=') && !trimmed.includes(' key={');
   }
@@ -461,14 +493,14 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private addKeyToElement(content: string, keyExpression: string): string {
     const trimmed = content.trim();
-    
+
     // Find the position to insert the key
     const tagEndIndex = trimmed.indexOf('>');
     if (tagEndIndex === -1) return content;
-    
+
     const beforeTag = trimmed.substring(0, tagEndIndex);
     const afterTag = trimmed.substring(tagEndIndex);
-    
+
     return `${beforeTag} key={${keyExpression}}${afterTag}`;
   }
 
@@ -484,21 +516,22 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Process slot concepts for React props transformation
    */
   processSlots(slots: SlotConcept[]): FrameworkSlotOutput {
-    const processedSlots = slots.map(slot => {
+    const processedSlots = slots.map((slot) => {
       const propName = this.normalizeSlotName(slot.name);
-      const fallbackContent = slot.fallback ?
-        this.renderNodes(slot.fallback) : null;
+      const fallbackContent = slot.fallback
+        ? this.renderNodes(slot.fallback)
+        : null;
 
       return {
         name: slot.name,
         propName,
         fallback: fallbackContent,
         nodeId: slot.nodeId,
-        syntax: this.generateSlotSyntax(propName, fallbackContent)
+        syntax: this.generateSlotSyntax(propName, fallbackContent),
       } as ReactSlotOutput;
     });
 
-    const syntax = processedSlots.map(s => s.syntax).join('\n');
+    const syntax = processedSlots.map((s) => s.syntax).join('\n');
     const props: Record<string, string> = {};
 
     // Collect props for TypeScript interfaces
@@ -509,7 +542,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     return {
       syntax,
       props,
-      imports: ['React']
+      imports: ['React'],
     };
   }
 
@@ -520,7 +553,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   private normalizeSlotName(name: string): string {
     // Handle special slot names
     if (name === 'default') return 'children';
-    
+
     // Convert to camelCase
     let normalized = name
       .toLowerCase()
@@ -535,12 +568,42 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     normalized = normalized.replace(/[^a-zA-Z0-9_$]/g, '');
 
     // Handle reserved keywords
-    const reserved = ['break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 
-                      'default', 'delete', 'do', 'else', 'export', 'extends', 'finally', 
-                      'for', 'function', 'if', 'import', 'in', 'instanceof', 'new', 
-                      'return', 'super', 'switch', 'this', 'throw', 'try', 'typeof', 
-                      'var', 'void', 'while', 'with', 'yield'];
-    
+    const reserved = [
+      'break',
+      'case',
+      'catch',
+      'class',
+      'const',
+      'continue',
+      'debugger',
+      'default',
+      'delete',
+      'do',
+      'else',
+      'export',
+      'extends',
+      'finally',
+      'for',
+      'function',
+      'if',
+      'import',
+      'in',
+      'instanceof',
+      'new',
+      'return',
+      'super',
+      'switch',
+      'this',
+      'throw',
+      'try',
+      'typeof',
+      'var',
+      'void',
+      'while',
+      'with',
+      'yield',
+    ];
+
     if (reserved.includes(normalized)) {
       normalized = normalized + 'Prop';
     }
@@ -551,13 +614,16 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   /**
    * Generate slot JSX syntax with proper fallback handling
    */
-  private generateSlotSyntax(propName: string, fallback: string | null): string {
+  private generateSlotSyntax(
+    propName: string,
+    fallback: string | null
+  ): string {
     if (!fallback) {
       return `{props.${propName}}`;
     }
 
     const cleanFallback = this.cleanJSXContent(fallback);
-    
+
     // Handle special case for children prop
     if (propName === 'children') {
       if (this.isSingleElement(cleanFallback)) {
@@ -579,7 +645,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Process attribute concepts for HTML to React attribute transformation
    */
   processAttributes(attributes: AttributeConcept[]): FrameworkAttributeOutput {
-    const processedAttributes = attributes.map(attribute => {
+    const processedAttributes = attributes.map((attribute) => {
       const reactAttributeName = this.transformAttributeName(attribute.name);
 
       return {
@@ -588,7 +654,11 @@ export class ReactFrameworkExtension implements FrameworkExtension {
         value: attribute.value,
         isExpression: attribute.isExpression,
         nodeId: attribute.nodeId,
-        syntax: this.generateAttributeSyntax(reactAttributeName, attribute.value, attribute.isExpression)
+        syntax: this.generateAttributeSyntax(
+          reactAttributeName,
+          attribute.value,
+          attribute.isExpression
+        ),
       } as ReactAttributeOutput;
     });
 
@@ -603,7 +673,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes: attributeMap,
-      imports: []
+      imports: [],
     };
   }
 
@@ -613,80 +683,80 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private transformAttributeName(htmlName: string): string {
     const lowerName = htmlName.toLowerCase();
-    
+
     // HTML → React transformations (comprehensive)
     const transformations: Record<string, string> = {
       // Common HTML attributes
-      'class': 'className',
-      'for': 'htmlFor',
-      'tabindex': 'tabIndex',
-      'contenteditable': 'contentEditable',
-      'draggable': 'draggable',
-      'spellcheck': 'spellCheck',
-      'translate': 'translate',
-      
+      class: 'className',
+      for: 'htmlFor',
+      tabindex: 'tabIndex',
+      contenteditable: 'contentEditable',
+      draggable: 'draggable',
+      spellcheck: 'spellCheck',
+      translate: 'translate',
+
       // Form attributes
-      'readonly': 'readOnly',
-      'maxlength': 'maxLength',
-      'minlength': 'minLength',
-      'formaction': 'formAction',
-      'formenctype': 'formEncType',
-      'formmethod': 'formMethod',
-      'formnovalidate': 'formNoValidate',
-      'formtarget': 'formTarget',
-      'novalidate': 'noValidate',
-      'autofocus': 'autoFocus',
-      'autocomplete': 'autoComplete',
-      'autoplay': 'autoPlay',
-      'controls': 'controls',
-      'defer': 'defer',
-      'disabled': 'disabled',
-      'hidden': 'hidden',
-      'loop': 'loop',
-      'multiple': 'multiple',
-      'muted': 'muted',
-      'open': 'open',
-      'required': 'required',
-      'reversed': 'reversed',
-      'selected': 'selected',
-      'checked': 'checked',
-      
+      readonly: 'readOnly',
+      maxlength: 'maxLength',
+      minlength: 'minLength',
+      formaction: 'formAction',
+      formenctype: 'formEncType',
+      formmethod: 'formMethod',
+      formnovalidate: 'formNoValidate',
+      formtarget: 'formTarget',
+      novalidate: 'noValidate',
+      autofocus: 'autoFocus',
+      autocomplete: 'autoComplete',
+      autoplay: 'autoPlay',
+      controls: 'controls',
+      defer: 'defer',
+      disabled: 'disabled',
+      hidden: 'hidden',
+      loop: 'loop',
+      multiple: 'multiple',
+      muted: 'muted',
+      open: 'open',
+      required: 'required',
+      reversed: 'reversed',
+      selected: 'selected',
+      checked: 'checked',
+
       // Table attributes
-      'cellpadding': 'cellPadding',
-      'cellspacing': 'cellSpacing',
-      'rowspan': 'rowSpan',
-      'colspan': 'colSpan',
-      'useMap': 'useMap',
-      
+      cellpadding: 'cellPadding',
+      cellspacing: 'cellSpacing',
+      rowspan: 'rowSpan',
+      colspan: 'colSpan',
+      useMap: 'useMap',
+
       // Media attributes
-      'crossorigin': 'crossOrigin',
-      'usemap': 'useMap',
-      
+      crossorigin: 'crossOrigin',
+      usemap: 'useMap',
+
       // ARIA attributes (keep kebab-case)
       // React handles aria-* and data-* attributes as-is
-      
+
       // SVG and additional attributes
-      'allowfullscreen': 'allowFullScreen',
-      'datetime': 'dateTime',
-      'frameborder': 'frameBorder',
-      'marginheight': 'marginHeight',
-      'marginwidth': 'marginWidth',
-      'mediagroup': 'mediaGroup',
-      'radiogroup': 'radioGroup',
-      'srcdoc': 'srcDoc',
-      'srclang': 'srcLang',
-      'srcset': 'srcSet'
+      allowfullscreen: 'allowFullScreen',
+      datetime: 'dateTime',
+      frameborder: 'frameBorder',
+      marginheight: 'marginHeight',
+      marginwidth: 'marginWidth',
+      mediagroup: 'mediaGroup',
+      radiogroup: 'radioGroup',
+      srcdoc: 'srcDoc',
+      srclang: 'srcLang',
+      srcset: 'srcSet',
     };
 
     // Return transformed name or original if no transformation needed
     const transformed = transformations[lowerName];
     if (transformed) return transformed;
-    
+
     // Handle aria-* and data-* attributes (keep as-is)
     if (lowerName.startsWith('aria-') || lowerName.startsWith('data-')) {
       return lowerName;
     }
-    
+
     // Return original name if no transformation needed
     return htmlName;
   }
@@ -711,7 +781,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     // Handle string values
     const stringValue = String(value);
-    
+
     // Special cases for React
     if (name === 'style' && !isExpression) {
       // Convert CSS string to object if it looks like CSS
@@ -731,33 +801,35 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private parseCSSToObject(cssString: string): Record<string, string> {
     const styleObj: Record<string, string> = {};
-    
+
     // Split by semicolon and process each declaration
-    const declarations = cssString.split(';').filter(d => d.trim());
-    
+    const declarations = cssString.split(';').filter((d) => d.trim());
+
     for (const declaration of declarations) {
-      const [property, value] = declaration.split(':').map(s => s.trim());
+      const [property, value] = declaration.split(':').map((s) => s.trim());
       if (property && value) {
         // Convert kebab-case to camelCase for React
-        const reactProperty = property.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+        const reactProperty = property.replace(/-([a-z])/g, (_, letter) =>
+          letter.toUpperCase()
+        );
         styleObj[reactProperty] = value;
       }
     }
-    
+
     return styleObj;
   }
 
   /**
    * Renders a complete React component from template concepts.
-   * 
+   *
    * This is the main entry point for component generation, orchestrating the
    * transformation of all template concepts into a complete, production-ready
    * React component with proper imports, TypeScript interfaces, and JSX rendering.
-   * 
+   *
    * @param concepts - Complete set of extracted template concepts
    * @param context - Rendering context with component metadata and options
    * @returns Complete React component source code as string
-   * 
+   *
    * @example
    * ```typescript
    * const concepts: ComponentConcept = {
@@ -766,19 +838,19 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    *   styling: { nodeId: 'root', staticClasses: ['btn'] },
    *   // ... other concepts
    * };
-   * 
+   *
    * const reactCode = extension.renderComponent(concepts, {
    *   component: { name: 'Button', props: { variant: 'string' } },
    *   options: { language: 'typescript' }
    * });
-   * 
+   *
    * // Returns complete React component with imports, interfaces, and JSX
    * ```
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
     // Store concepts for per-element class access
     this.concepts = concepts;
-    
+
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'react', component: context.component },
@@ -816,24 +888,24 @@ export class ReactFrameworkExtension implements FrameworkExtension {
       script,
       props,
       concepts,
-      context
+      context,
     });
   }
 
   /**
    * Get default React imports based on concepts
    */
-  private getDefaultReactImports(concepts: ComponentConcept): ImportDefinition[] {
-    const imports: ImportDefinition[] = [
-      { from: 'react', default: 'React' }
-    ];
+  private getDefaultReactImports(
+    concepts: ComponentConcept
+  ): ImportDefinition[] {
+    const imports: ImportDefinition[] = [{ from: 'react', default: 'React' }];
 
     // Add React hooks if needed based on script content
     const needsHooks = this.analyzeHookUsage(concepts);
     if (needsHooks.length > 0) {
       imports.push({
         from: 'react',
-        named: needsHooks
+        named: needsHooks,
       });
     }
 
@@ -845,23 +917,24 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private analyzeHookUsage(concepts: ComponentConcept): string[] {
     const hooks: string[] = [];
-    
+
     // Analyze concepts to determine needed hooks
     if (concepts.events.length > 0) {
       hooks.push('useCallback');
     }
-    
-    if (concepts.styling && (
-      concepts.styling.dynamicClasses.length > 0 ||
-      Object.keys(concepts.styling.inlineStyles).length > 0
-    )) {
+
+    if (
+      concepts.styling &&
+      (concepts.styling.dynamicClasses.length > 0 ||
+        Object.keys(concepts.styling.inlineStyles).length > 0)
+    ) {
       hooks.push('useMemo');
     }
-    
+
     if (concepts.conditionals.length > 0 || concepts.iterations.length > 0) {
       hooks.push('useMemo');
     }
-    
+
     // Remove duplicates and return
     return Array.from(new Set(hooks));
   }
@@ -882,7 +955,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Format imports to string array
    */
   private formatImports(imports: ImportDefinition[]): string[] {
-    return imports.map(imp => {
+    return imports.map((imp) => {
       const parts: string[] = [];
 
       if (imp.default && imp.named) {
@@ -904,19 +977,15 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Generate complete React component
    */
   private generateReactComponent(config: ReactComponentConfig): string {
-    const {
-      name,
-      imports,
-      script,
-      props,
-      concepts,
-      context
-    } = config;
+    const { name, imports, script, props, concepts, context } = config;
 
     // Generate TypeScript interface if needed
-    const useTypeScript = (context.options?.language || 'javascript') === 'typescript';
-    const propsInterface = useTypeScript && Object.keys(props).length > 0 ?
-      this.generatePropsInterface(name, props) : '';
+    const useTypeScript =
+      (context.options?.language || 'javascript') === 'typescript';
+    const propsInterface =
+      useTypeScript && Object.keys(props).length > 0
+        ? this.generatePropsInterface(name, props)
+        : '';
 
     // Process all concepts to JSX
     const template = this.renderTemplate(concepts);
@@ -924,24 +993,30 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     // Generate component sections
     const importSection = imports.length > 0 ? imports.join('\n') + '\n' : '';
     const interfaceSection = propsInterface ? propsInterface + '\n' : '';
-    const componentSection = this.generateComponentFunction(name, props, script, template, useTypeScript);
+    const componentSection = this.generateComponentFunction(
+      name,
+      props,
+      script,
+      template,
+      useTypeScript
+    );
     const exportSection = `\nexport default ${name};`;
 
-    return [
-      importSection,
-      interfaceSection,
-      componentSection,
-      exportSection
-    ].join('\n').trim();
+    return [importSection, interfaceSection, componentSection, exportSection]
+      .join('\n')
+      .trim();
   }
 
   /**
    * Generate TypeScript props interface
    */
-  private generatePropsInterface(componentName: string, props: Record<string, string>): string {
-    const propEntries = Object.entries(props).map(([key, type]) =>
-      `  ${key}?: ${type};`
-    ).join('\n');
+  private generatePropsInterface(
+    componentName: string,
+    props: Record<string, string>
+  ): string {
+    const propEntries = Object.entries(props)
+      .map(([key, type]) => `  ${key}?: ${type};`)
+      .join('\n');
 
     return `interface ${componentName}Props {\n${propEntries}\n}`;
   }
@@ -966,7 +1041,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
         ? `const ${name} = (props) => {`
         : `const ${name} = () => {`;
 
-    const scriptSection = script ? `  ${script.split('\n').join('\n  ')}\n\n` : '';
+    const scriptSection = script
+      ? `  ${script.split('\n').join('\n  ')}\n\n`
+      : '';
 
     return `${signature}\n${scriptSection}  return (\n    ${template}\n  );\n};`;
   }
@@ -994,9 +1071,10 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     if (concepts.styling) {
       const staticClasses = concepts.styling.staticClasses.join(' ');
       const dynamicClasses = concepts.styling.dynamicClasses.join(' ');
-      
+
       if (staticClasses || dynamicClasses) {
-        const classValue = staticClasses + (dynamicClasses ? ` ${dynamicClasses}` : '');
+        const classValue =
+          staticClasses + (dynamicClasses ? ` ${dynamicClasses}` : '');
         allAttributes['className'] = classValue;
       }
 
@@ -1006,7 +1084,10 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     }
 
     // Render structural concepts
-    const structuralOutput = this.renderStructuralConcepts(concepts.structure || [], allAttributes);
+    const structuralOutput = this.renderStructuralConcepts(
+      concepts.structure || [],
+      allAttributes
+    );
 
     // Process behavioral concepts that generate their own syntax
     const parts: string[] = [structuralOutput];
@@ -1040,33 +1121,43 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Render structural concepts to JSX
    */
   private renderStructuralConcepts(
-    structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
+    structuralConcepts: (
+      | StructuralConcept
+      | TextConcept
+      | CommentConcept
+      | FragmentConcept
+    )[],
     attributes: Record<string, string>
   ): string {
     if (!structuralConcepts || structuralConcepts.length === 0) {
       return '';
     }
-    return structuralConcepts.map(concept => {
-      switch (concept.type) {
-        case 'text':
-          const textConcept = concept as TextConcept;
-          return textConcept.content;
+    return structuralConcepts
+      .map((concept) => {
+        switch (concept.type) {
+          case 'text':
+            const textConcept = concept as TextConcept;
+            return textConcept.content;
 
-        case 'comment':
-          const commentConcept = concept as CommentConcept;
-          return `{/* ${commentConcept.content} */}`;
+          case 'comment':
+            const commentConcept = concept as CommentConcept;
+            return `{/* ${commentConcept.content} */}`;
 
-        case 'fragment':
-          const fragmentConcept = concept as FragmentConcept;
-          return this.renderStructuralConcepts(fragmentConcept.children || [], {});
+          case 'fragment':
+            const fragmentConcept = concept as FragmentConcept;
+            return this.renderStructuralConcepts(
+              fragmentConcept.children || [],
+              {}
+            );
 
-        case 'element':
-        default:
-          // StructuralConcept (element)
-          const structuralConcept = concept as StructuralConcept;
-          return this.renderStructuralElement(structuralConcept, attributes);
-      }
-    }).join('');
+          case 'element':
+          default:
+            // StructuralConcept (element)
+            const structuralConcept = concept as StructuralConcept;
+            return this.renderStructuralElement(structuralConcept, attributes);
+        }
+      })
+      .join('');
   }
 
   /**
@@ -1077,53 +1168,65 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     globalAttributes: Record<string, string>
   ): string {
     const tag = concept.tag;
-    
+
     // Render children
-    const childrenOutput = this.renderStructuralConcepts(concept.children || [], {});
-    
+    const childrenOutput = this.renderStructuralConcepts(
+      concept.children || [],
+      {}
+    );
+
     // Check for per-element classes using nodeId (e.g., from BEM extension)
     let perElementClasses: string[] = [];
     if (concept.nodeId && this.concepts?.styling?.perElementClasses) {
-      const elementClasses = this.concepts.styling.perElementClasses[concept.nodeId];
+      const elementClasses =
+        this.concepts.styling.perElementClasses[concept.nodeId];
       if (elementClasses && elementClasses.length > 0) {
         perElementClasses = elementClasses;
       }
     }
-    
+
     // Merge global attributes, concept attributes, and per-element classes
-    const mergedAttributes = { 
+    const mergedAttributes = {
       ...globalAttributes,
-      ...(concept.attributes || {})
+      ...(concept.attributes || {}),
     };
-    
+
     if (perElementClasses.length > 0) {
-      const existingClassName = mergedAttributes.className || mergedAttributes.class || '';
-      const allClasses = existingClassName ? 
-        `${existingClassName} ${perElementClasses.join(' ')}` : 
-        perElementClasses.join(' ');
+      const existingClassName =
+        mergedAttributes.className || mergedAttributes.class || '';
+      const allClasses = existingClassName
+        ? `${existingClassName} ${perElementClasses.join(' ')}`
+        : perElementClasses.join(' ');
       mergedAttributes.className = allClasses;
-      
+
       // Remove the 'class' attribute if present (React uses className)
       delete mergedAttributes.class;
     }
-    
+
     // Transform attribute names for React (e.g., class -> className)
     if (mergedAttributes.class && !mergedAttributes.className) {
       mergedAttributes.className = mergedAttributes.class;
       delete mergedAttributes.class;
     }
-    
+
     // Apply attributes (global + per-element)
     let attributeString = '';
     if (Object.keys(mergedAttributes).length > 0) {
       for (const [name, value] of Object.entries(mergedAttributes)) {
         // Handle JSX event handlers and expressions correctly
-        if (name.startsWith('on') && name.charAt(2) === name.charAt(2).toUpperCase()) {
+        if (
+          name.startsWith('on') &&
+          name.charAt(2) === name.charAt(2).toUpperCase()
+        ) {
           // React event handlers like onClick, onChange
           attributeString += ` ${name}={${value}}`;
         } else if (name === 'className' || name === 'style') {
           // Handle React-specific attributes
-          if (name === 'style' && typeof value === 'string' && value.startsWith('{')) {
+          if (
+            name === 'style' &&
+            typeof value === 'string' &&
+            value.startsWith('{')
+          ) {
             attributeString += ` ${name}={${value}}`;
           } else {
             attributeString += ` ${name}="${value}"`;
@@ -1148,7 +1251,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   private renderNodes(nodes: any[]): string {
     if (!nodes || nodes.length === 0) return '';
 
-    return nodes.map(node => this.renderSingleNode(node)).join('');
+    return nodes.map((node) => this.renderSingleNode(node)).join('');
   }
 
   /**
@@ -1177,7 +1280,12 @@ export class ReactFrameworkExtension implements FrameworkExtension {
         const thenContent = this.renderNodes(node.then || []);
         const elseContent = node.else ? this.renderNodes(node.else) : null;
         return this.generateConditionalSyntax(
-          { condition: node.condition, thenNodes: node.then, elseNodes: node.else, nodeId: node.id || 'unknown' },
+          {
+            condition: node.condition,
+            thenNodes: node.then,
+            elseNodes: node.else,
+            nodeId: node.id || 'unknown',
+          },
           thenContent,
           elseContent
         );
@@ -1191,7 +1299,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
             indexVariable: node.index,
             keyExpression: node.key,
             childNodes: node.children,
-            nodeId: node.id || 'unknown'
+            nodeId: node.id || 'unknown',
           },
           iterationContent,
           node.key || 'index'
@@ -1216,7 +1324,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    */
   private renderElementNode(node: any): string {
     const tag = node.tag || 'div';
-    
+
     // Get children content - check both children array and content property
     let children = '';
     if (node.children && node.children.length > 0) {
@@ -1224,7 +1332,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     } else if (node.content) {
       children = node.content;
     }
-    
+
     // Process attributes
     let attributes = '';
     if (node.attributes) {
@@ -1240,7 +1348,9 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     // Process expression attributes
     if (node.expressionAttributes) {
-      for (const [name, expression] of Object.entries(node.expressionAttributes)) {
+      for (const [name, expression] of Object.entries(
+        node.expressionAttributes
+      )) {
         const reactName = this.transformAttributeName(name);
         attributes += ` ${reactName}={${expression}}`;
       }
@@ -1251,13 +1361,16 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     if (this.concepts?.styling?.perElementClasses && node.extensions) {
       // Find the nodeId that matches this node's extension data
       let matchedClasses: string[] = [];
-      
+
       if (this.concepts.styling.extensionData?.bem) {
         for (const bemNode of this.concepts.styling.extensionData.bem) {
           // Check if this BEM node data matches the current node's extension data
-          if (node.extensions.bem && 
-              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
-            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+          if (
+            node.extensions.bem &&
+            JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)
+          ) {
+            const elementClasses =
+              this.concepts.styling.perElementClasses[bemNode.nodeId];
             if (elementClasses && elementClasses.length > 0) {
               matchedClasses = elementClasses;
               break;
@@ -1265,31 +1378,46 @@ export class ReactFrameworkExtension implements FrameworkExtension {
           }
         }
       }
-      
+
       if (matchedClasses.length > 0) {
         const classNames = matchedClasses.join(' ');
         // Merge with existing className attribute if present
-        const existingClass = node.attributes?.className || node.attributes?.class || '';
-        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        const existingClass =
+          node.attributes?.className || node.attributes?.class || '';
+        const combinedClasses = existingClass
+          ? `${existingClass} ${classNames}`
+          : classNames;
         // Use className for React
         attributes += ` className="${combinedClasses}"`;
       }
     }
 
     // Self-closing tags
-    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 
-                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
-    
+    const selfClosingTags = [
+      'area',
+      'base',
+      'br',
+      'col',
+      'embed',
+      'hr',
+      'img',
+      'input',
+      'link',
+      'meta',
+      'param',
+      'source',
+      'track',
+      'wbr',
+    ];
+
     if (selfClosingTags.includes(tag.toLowerCase()) && !children) {
       return `<${tag}${attributes} />`;
     }
 
     return `<${tag}${attributes}>${children}</${tag}>`;
   }
-
 }
 
 // Main exports
 export default ReactFrameworkExtension;
 export { ReactFrameworkExtension as ReactExtension };
-

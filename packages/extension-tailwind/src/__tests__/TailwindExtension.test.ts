@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TailwindExtension } from '../index';
-import type { TailwindExtensionOptions, TailwindNodeExtensions } from '../types';
-import type { StylingConcept, ComponentConcept, FrameworkExtension } from '@js-template-engine/core';
+import type {
+  TailwindExtensionOptions,
+  TailwindNodeExtensions,
+} from '../types';
+import type {
+  StylingConcept,
+  ComponentConcept,
+  FrameworkExtension,
+} from '@js-template-engine/core';
 
 describe('TailwindExtension', () => {
   let extension: TailwindExtension;
@@ -32,7 +39,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['bg-blue-500', 'text-white', 'p-4'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -45,7 +52,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['md:text-lg', 'lg:px-4'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -57,7 +64,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['hover:bg-red-500', 'focus:ring-2'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -69,7 +76,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: ['custom-class', 'another-class'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -78,11 +85,11 @@ describe('TailwindExtension', () => {
 
     it('should handle SCSS @apply output strategy', () => {
       extension.options.outputStrategy = 'scss-apply';
-      
+
       const stylingConcept: StylingConcept = {
         staticClasses: ['bg-blue-500', 'text-white'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -91,11 +98,11 @@ describe('TailwindExtension', () => {
 
     it('should handle pass-through output strategy', () => {
       extension.options.outputStrategy = 'pass-through';
-      
+
       const stylingConcept: StylingConcept = {
         staticClasses: ['bg-blue-500', 'text-white'],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -105,7 +112,10 @@ describe('TailwindExtension', () => {
 
   describe('convertTailwindToCss', () => {
     it('should convert basic utility classes', () => {
-      const result = extension.convertTailwindToCss(['bg-blue-500', 'text-white']);
+      const result = extension.convertTailwindToCss([
+        'bg-blue-500',
+        'text-white',
+      ]);
       expect(result.styles).toContain('background-color: #3b82f6');
       expect(result.styles).toContain('color: #ffffff');
     });
@@ -132,7 +142,10 @@ describe('TailwindExtension', () => {
     });
 
     it('should handle pseudo-class variants', () => {
-      const result = extension.convertTailwindToCss(['hover:bg-red-500', 'focus:outline-none']);
+      const result = extension.convertTailwindToCss([
+        'hover:bg-red-500',
+        'focus:outline-none',
+      ]);
       expect(result.styles).toContain(':hover');
       expect(result.styles).toContain(':focus');
     });
@@ -142,8 +155,8 @@ describe('TailwindExtension', () => {
     it('should convert CSS to Tailwind classes', () => {
       const cssStyles = {
         'background-color': '#3b82f6',
-        'color': '#ffffff',
-        'padding': '1rem'
+        color: '#ffffff',
+        padding: '1rem',
       };
 
       const result = extension.convertCssToTailwind(cssStyles);
@@ -156,8 +169,8 @@ describe('TailwindExtension', () => {
     it('should handle conversion fallbacks', () => {
       const cssStyles = {
         'background-color': '#123456', // Unknown color
-        'padding': '1rem',
-        'custom-property': 'custom-value' // Unknown property
+        padding: '1rem',
+        'custom-property': 'custom-value', // Unknown property
       };
 
       const result = extension.convertCssToTailwind(cssStyles);
@@ -168,28 +181,27 @@ describe('TailwindExtension', () => {
 
     it('should convert display properties', () => {
       const cssStyles = {
-        'display': 'flex',
-        'display2': 'block',
-        'display3': 'none'
+        display: 'flex',
+        display2: 'block',
+        display3: 'none',
       };
 
       const result = extension.convertCssToTailwind({
-        'display': 'flex'
+        display: 'flex',
       });
       expect(result.classes).toContain('flex');
 
       const result2 = extension.convertCssToTailwind({
-        'display': 'block'
+        display: 'block',
       });
       expect(result2.classes).toContain('block');
 
       const result3 = extension.convertCssToTailwind({
-        'display': 'none'
+        display: 'none',
       });
       expect(result3.classes).toContain('hidden');
     });
   });
-
 
   describe('options and configuration', () => {
     it('should have default options', () => {
@@ -207,9 +219,9 @@ describe('TailwindExtension', () => {
         cssFallback: 'inline',
         customClassPrefix: 'my-custom',
         breakpoints: {
-          'tablet': '768px',
-          'desktop': '1024px'
-        }
+          tablet: '768px',
+          desktop: '1024px',
+        },
       };
 
       expect(customExtension.options.outputStrategy).toBe('scss-apply');
@@ -219,15 +231,21 @@ describe('TailwindExtension', () => {
 
   describe('utility validation', () => {
     it('should validate known Tailwind utilities', () => {
-      const validClasses = ['bg-blue-500', 'text-white', 'p-4', 'flex', 'hidden'];
-      
+      const validClasses = [
+        'bg-blue-500',
+        'text-white',
+        'p-4',
+        'flex',
+        'hidden',
+      ];
+
       for (const className of validClasses) {
         const stylingConcept: StylingConcept = {
           staticClasses: [className],
           dynamicClasses: [],
-          inlineStyles: {}
+          inlineStyles: {},
         };
-        
+
         const result = extension.processStyles(stylingConcept);
         expect(result.styles).not.toBe('');
       }
@@ -238,7 +256,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: [complexClass],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -252,7 +270,7 @@ describe('TailwindExtension', () => {
       const stylingConcept: StylingConcept = {
         staticClasses: [],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);
@@ -261,24 +279,36 @@ describe('TailwindExtension', () => {
     });
 
     it('should handle whitespace in class strings', () => {
-      const result = extension.convertTailwindToCss(['  bg-blue-500  ', '  text-white  ']);
+      const result = extension.convertTailwindToCss([
+        '  bg-blue-500  ',
+        '  text-white  ',
+      ]);
       expect(result.styles).toContain('background-color: #3b82f6');
       expect(result.styles).toContain('color: #ffffff');
     });
 
     it('should handle duplicate classes', () => {
-      const result = extension.convertTailwindToCss(['bg-blue-500', 'bg-blue-500', 'text-white']);
+      const result = extension.convertTailwindToCss([
+        'bg-blue-500',
+        'bg-blue-500',
+        'text-white',
+      ]);
       expect(result.styles).toContain('background-color: #3b82f6');
       expect(result.styles).toContain('color: #ffffff');
     });
 
     it('should handle mixed valid and invalid classes', () => {
       extension.options.unknownClassHandling = 'ignore';
-      
+
       const stylingConcept: StylingConcept = {
-        staticClasses: ['bg-blue-500', 'invalid-class', 'text-white', 'another-invalid'],
+        staticClasses: [
+          'bg-blue-500',
+          'invalid-class',
+          'text-white',
+          'another-invalid',
+        ],
         dynamicClasses: [],
-        inlineStyles: {}
+        inlineStyles: {},
       };
 
       const result = extension.processStyles(stylingConcept);

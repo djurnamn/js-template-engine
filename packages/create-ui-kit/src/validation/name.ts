@@ -29,10 +29,16 @@ export function validateProjectName(name: string): true | string {
 
   // Reserved names
   const reservedNames = [
-    'node_modules', '.git', '.gitignore', '.npmignore', 
-    'package.json', 'readme', 'license', 'changelog'
+    'node_modules',
+    '.git',
+    '.gitignore',
+    '.npmignore',
+    'package.json',
+    'readme',
+    'license',
+    'changelog',
   ];
-  
+
   if (reservedNames.includes(name.toLowerCase())) {
     return `"${name}" is a reserved name and cannot be used`;
   }

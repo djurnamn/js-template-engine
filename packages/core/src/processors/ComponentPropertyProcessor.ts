@@ -1,6 +1,6 @@
 /**
  * Component Property Processor for advanced processing: Template Properties Abstraction
- * 
+ *
  * Handles merging of component properties (script, props, imports, component name)
  * using configurable strategies as defined in the advanced processing plan.
  */
@@ -140,7 +140,8 @@ export class ComponentPropertyProcessor {
     }
 
     // Priority 2: Framework-specific override
-    const frameworkSpecific = options.component?.extensions?.[options.framework]?.name;
+    const frameworkSpecific =
+      options.component?.extensions?.[options.framework]?.name;
     if (frameworkSpecific) {
       return frameworkSpecific;
     }
@@ -180,7 +181,7 @@ export class ComponentPropertyProcessor {
         common.script || '',
         framework.script || '',
         this.strategy.script
-      )
+      ),
     };
   }
 
@@ -235,7 +236,7 @@ export class ComponentPropertyProcessor {
 
     if (conflicts.length > 0) {
       const conflictMsg = `Props conflicts detected: ${conflicts.join(', ')}`;
-      
+
       switch (conflictResolution) {
         case 'error':
           this.errorCollector.addSimpleError(
@@ -244,10 +245,7 @@ export class ComponentPropertyProcessor {
           );
           break;
         case 'warn':
-          this.errorCollector.addWarning(
-            conflictMsg,
-            'component-processor'
-          );
+          this.errorCollector.addWarning(conflictMsg, 'component-processor');
           break;
         case 'framework-wins':
           // Already handled - framework props override
@@ -283,7 +281,9 @@ export class ComponentPropertyProcessor {
     strategy: ScriptMergeStrategy
   ): string {
     const separator = strategy.separator ?? '\n\n';
-    const comment = strategy.includeComments ? `\n// Merged: ${strategy.mode}\n` : '';
+    const comment = strategy.includeComments
+      ? `\n// Merged: ${strategy.mode}\n`
+      : '';
 
     switch (strategy.mode) {
       case 'prepend':
@@ -315,37 +315,53 @@ export class ComponentPropertyProcessor {
   ): string {
     if (!common.trim()) return framework;
     if (!framework.trim()) return common;
-    
+
     // Basic intelligent merging implementation
     const commonLines = common.split('\n');
     const frameworkLines = framework.split('\n');
-    
+
     // Detect and handle imports
-    const commonImports = commonLines.filter(line => line.trim().startsWith('import'));
-    const frameworkImports = frameworkLines.filter(line => line.trim().startsWith('import'));
-    const commonCode = commonLines.filter(line => !line.trim().startsWith('import')).join('\n');
-    const frameworkCode = frameworkLines.filter(line => !line.trim().startsWith('import')).join('\n');
-    
+    const commonImports = commonLines.filter((line) =>
+      line.trim().startsWith('import')
+    );
+    const frameworkImports = frameworkLines.filter((line) =>
+      line.trim().startsWith('import')
+    );
+    const commonCode = commonLines
+      .filter((line) => !line.trim().startsWith('import'))
+      .join('\n');
+    const frameworkCode = frameworkLines
+      .filter((line) => !line.trim().startsWith('import'))
+      .join('\n');
+
     // Merge imports, removing duplicates
-    const allImports = Array.from(new Set([...commonImports, ...frameworkImports]));
-    
+    const allImports = Array.from(
+      new Set([...commonImports, ...frameworkImports])
+    );
+
     // Detect function declarations and variable assignments
-    const hasCommonFunctions = commonCode.includes('function ') || commonCode.includes('const ') || commonCode.includes('let ');
-    const hasFrameworkFunctions = frameworkCode.includes('function ') || frameworkCode.includes('const ') || frameworkCode.includes('let ');
-    
+    const hasCommonFunctions =
+      commonCode.includes('function ') ||
+      commonCode.includes('const ') ||
+      commonCode.includes('let ');
+    const hasFrameworkFunctions =
+      frameworkCode.includes('function ') ||
+      frameworkCode.includes('const ') ||
+      frameworkCode.includes('let ');
+
     // Build final result
     let result = '';
-    
+
     if (allImports.length > 0) {
       result += allImports.join('\n') + '\n\n';
     }
-    
+
     if (hasCommonFunctions && hasFrameworkFunctions) {
       result += commonCode.trim() + '\n\n' + comment + frameworkCode.trim();
     } else {
       result += common.trim() + '\n\n' + comment + framework.trim();
     }
-    
+
     return result;
   }
 
@@ -361,12 +377,21 @@ export class ComponentPropertyProcessor {
       case 'override':
         return frameworkImports;
       case 'framework-first':
-        return this.processImports([...frameworkImports, ...commonImports], strategy);
+        return this.processImports(
+          [...frameworkImports, ...commonImports],
+          strategy
+        );
       case 'common-first':
-        return this.processImports([...commonImports, ...frameworkImports], strategy);
+        return this.processImports(
+          [...commonImports, ...frameworkImports],
+          strategy
+        );
       case 'merge':
       default:
-        return this.processImports([...commonImports, ...frameworkImports], strategy);
+        return this.processImports(
+          [...commonImports, ...frameworkImports],
+          strategy
+        );
     }
   }
 
@@ -398,7 +423,7 @@ export class ComponentPropertyProcessor {
 
     for (const imp of imports) {
       const existing = importMap.get(imp.from);
-      
+
       if (!existing) {
         importMap.set(imp.from, { ...imp });
         continue;
@@ -407,7 +432,7 @@ export class ComponentPropertyProcessor {
       // Merge imports from same source
       const merged: ImportDefinition = {
         from: imp.from,
-        typeOnly: existing.typeOnly || imp.typeOnly
+        typeOnly: existing.typeOnly || imp.typeOnly,
       };
 
       // Handle default imports (last one wins)
@@ -427,10 +452,10 @@ export class ComponentPropertyProcessor {
       // Merge named imports
       const namedSet = new Set<string>();
       if (existing.named) {
-        existing.named.forEach(name => namedSet.add(name));
+        existing.named.forEach((name) => namedSet.add(name));
       }
       if (imp.named) {
-        imp.named.forEach(name => namedSet.add(name));
+        imp.named.forEach((name) => namedSet.add(name));
       }
       if (namedSet.size > 0) {
         merged.named = Array.from(namedSet).sort();
@@ -476,15 +501,15 @@ export const DEFAULT_MERGE_STRATEGIES: ComponentResolutionStrategy = {
   script: {
     mode: 'append',
     separator: '\n\n',
-    includeComments: false
+    includeComments: false,
   },
   props: {
     mode: 'merge',
-    conflictResolution: 'warn'
+    conflictResolution: 'warn',
   },
   imports: {
     mode: 'merge',
     deduplication: true,
-    grouping: true
-  }
+    grouping: true,
+  },
 };

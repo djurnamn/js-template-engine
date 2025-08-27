@@ -1,6 +1,6 @@
 /**
  * advanced processing Validation - Concept Validation with Warnings
- * 
+ *
  * Export all validation utilities for comprehensive concept validation.
  */
 
@@ -16,10 +16,10 @@ export type {
   ValidationOptions,
   ValidationRule,
   ValidationContext,
-  ValidationSeverity
+  ValidationSeverity,
 } from './ConceptValidator';
 
 export type {
   ConsistencyReport,
-  ConsistencyRecommendation
+  ConsistencyRecommendation,
 } from './FrameworkConsistencyChecker';

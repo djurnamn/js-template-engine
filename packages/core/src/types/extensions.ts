@@ -1,4 +1,4 @@
-import { TemplateNode, TemplateOptions } from './index';
+import { TemplateOptions } from './index';
 import type { DeepPartial, ExtensionKey } from '@js-template-engine/types';
 
 /**
@@ -154,11 +154,9 @@ export interface NodeExtensions<
 /**
  * Generic extension interface defining the structure of an extension.
  * @template T - The extension options type.
- * @template U - The node extensions type.
  */
 export interface Extension<
   T extends BaseExtensionOptions = BaseExtensionOptions,
-  U extends Record<string, any> = Record<string, any>,
 > {
   /**
    * The unique key identifying this extension.

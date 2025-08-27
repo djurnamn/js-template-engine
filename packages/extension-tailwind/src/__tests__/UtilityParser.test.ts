@@ -62,7 +62,7 @@ describe('UtilityParser', () => {
     it('should parse array of utility classes', () => {
       const classes = ['bg-blue-500', 'text-white', 'p-4'];
       const results = parser.parseUtilities(classes);
-      
+
       expect(results).toHaveLength(3);
       expect(results[0].base).toBe('bg-blue-500');
       expect(results[1].base).toBe('text-white');
@@ -72,7 +72,7 @@ describe('UtilityParser', () => {
     it('should parse space-separated string of utility classes', () => {
       const classString = 'bg-blue-500 text-white p-4';
       const results = parser.parseUtilities(classString);
-      
+
       expect(results).toHaveLength(3);
       expect(results[0].base).toBe('bg-blue-500');
       expect(results[1].base).toBe('text-white');
@@ -88,7 +88,7 @@ describe('UtilityParser', () => {
     it('should handle multiple spaces in string', () => {
       const classString = '  bg-blue-500   text-white    p-4  ';
       const results = parser.parseUtilities(classString);
-      
+
       expect(results).toHaveLength(3);
       expect(results[0].base).toBe('bg-blue-500');
       expect(results[1].base).toBe('text-white');
@@ -106,7 +106,7 @@ describe('UtilityParser', () => {
         'hidden',
         'absolute',
         'rounded',
-        'shadow'
+        'shadow',
       ];
 
       for (const className of validClasses) {
@@ -121,7 +121,7 @@ describe('UtilityParser', () => {
       const invalidClasses = [
         'unknown-class',
         'invalid-utility',
-        'not-tailwind'
+        'not-tailwind',
       ];
 
       for (const className of invalidClasses) {
@@ -157,12 +157,36 @@ describe('UtilityParser', () => {
 
     it('should return correct CSS properties for utilities', () => {
       const testCases = [
-        { class: 'bg-blue-500', expectedProps: ['background-color', 'background-image', 'background-size'] },
-        { class: 'text-white', expectedProps: ['color', 'font-size', 'text-align', 'text-decoration'] },
+        {
+          class: 'bg-blue-500',
+          expectedProps: [
+            'background-color',
+            'background-image',
+            'background-size',
+          ],
+        },
+        {
+          class: 'text-white',
+          expectedProps: [
+            'color',
+            'font-size',
+            'text-align',
+            'text-decoration',
+          ],
+        },
         { class: 'p-4', expectedProps: ['padding'] },
-        { class: 'flex', expectedProps: ['display', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink'] },
+        {
+          class: 'flex',
+          expectedProps: [
+            'display',
+            'flex-direction',
+            'flex-wrap',
+            'flex-grow',
+            'flex-shrink',
+          ],
+        },
         { class: 'w-full', expectedProps: ['width'] },
-        { class: 'h-64', expectedProps: ['height'] }
+        { class: 'h-64', expectedProps: ['height'] },
       ];
 
       for (const testCase of testCases) {
@@ -185,7 +209,9 @@ describe('UtilityParser', () => {
     });
 
     it('should handle mixed valid and invalid prefixes', () => {
-      const result = parser.parseUtilityClass('hover:invalid:focus:bg-blue-500');
+      const result = parser.parseUtilityClass(
+        'hover:invalid:focus:bg-blue-500'
+      );
       expect(result.base).toBe('bg-blue-500');
       expect(result.variants).toContain('hover');
       expect(result.variants).toContain('focus');
@@ -200,7 +226,7 @@ describe('UtilityParser', () => {
         'w-1/2',
         'top-1.5',
         'scale-110',
-        'rotate-45'
+        'rotate-45',
       ];
 
       for (const testCase of testCases) {

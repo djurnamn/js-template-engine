@@ -1,12 +1,15 @@
 /**
  * Import Processor for advanced processing: Template Properties Abstraction
- * 
+ *
  * Dedicated processor for handling import merging, deduplication, and organization.
  * Supports both object-based and string-based import definitions.
  */
 
 import { ErrorCollector } from '../metadata';
-import type { ImportDefinition, ImportMergeStrategy } from './ComponentPropertyProcessor';
+import type {
+  ImportDefinition,
+  ImportMergeStrategy,
+} from './ComponentPropertyProcessor';
 
 /**
  * String-based import representation for parsing.
@@ -137,7 +140,7 @@ export class ImportProcessor {
       if (typeof imp === 'string') {
         const parseResult = this.parseImportString(imp);
         if (parseResult.errors?.length) {
-          parseResult.errors.forEach(error => {
+          parseResult.errors.forEach((error) => {
             this.errorCollector.addWarning(
               `Import parse error: ${error}`,
               'import-processor',
@@ -164,7 +167,10 @@ export class ImportProcessor {
     // Handle basic import patterns
     try {
       // Remove import keyword and semicolon
-      let cleaned = trimmed.replace(/^import\s+/, '').replace(/;$/, '').trim();
+      let cleaned = trimmed
+        .replace(/^import\s+/, '')
+        .replace(/;$/, '')
+        .trim();
 
       // Extract type-only imports
       const typeOnly = cleaned.startsWith('type ');
@@ -179,7 +185,7 @@ export class ImportProcessor {
         return {
           original: importStr,
           definition: { from: '', typeOnly },
-          errors
+          errors,
         };
       }
 
@@ -202,7 +208,7 @@ export class ImportProcessor {
         if (braceMatch) {
           const namedImports = braceMatch[1]
             .split(',')
-            .map(item => item.trim())
+            .map((item) => item.trim())
             .filter(Boolean);
           definition.named = namedImports;
 
@@ -226,14 +232,16 @@ export class ImportProcessor {
       return {
         original: importStr,
         definition,
-        errors: errors.length > 0 ? errors : undefined
+        errors: errors.length > 0 ? errors : undefined,
       };
     } catch (error) {
-      errors.push(`Parse error: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(
+        `Parse error: ${error instanceof Error ? error.message : String(error)}`
+      );
       return {
         original: importStr,
         definition: { from: '', typeOnly: false },
-        errors
+        errors,
       };
     }
   }
@@ -256,7 +264,7 @@ export class ImportProcessor {
       // Merge imports from same source and type
       const merged: ImportDefinition = {
         from: imp.from,
-        typeOnly: imp.typeOnly
+        typeOnly: imp.typeOnly,
       };
 
       // Handle default imports (later definition wins)
@@ -267,9 +275,9 @@ export class ImportProcessor {
 
       // Merge named imports
       const namedSet = new Set<string>();
-      existing.named?.forEach(name => namedSet.add(name));
-      imp.named?.forEach(name => namedSet.add(name));
-      
+      existing.named?.forEach((name) => namedSet.add(name));
+      imp.named?.forEach((name) => namedSet.add(name));
+
       if (namedSet.size > 0) {
         merged.named = Array.from(namedSet).sort();
       }
@@ -310,9 +318,9 @@ export class ImportProcessor {
 
     for (const imp of imports) {
       const validation = this.validateImport(imp);
-      
+
       if (validation.errors.length > 0) {
-        validation.errors.forEach(error => {
+        validation.errors.forEach((error) => {
           this.errorCollector.addSimpleError(
             `Invalid import from '${imp.from}': ${error}`,
             'import-processor'
@@ -322,7 +330,7 @@ export class ImportProcessor {
       }
 
       if (validation.warnings.length > 0) {
-        validation.warnings.forEach(warning => {
+        validation.warnings.forEach((warning) => {
           this.errorCollector.addWarning(
             `Import warning for '${imp.from}': ${warning}`,
             'import-processor',
@@ -383,7 +391,7 @@ export class ImportProcessor {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -391,7 +399,7 @@ export class ImportProcessor {
    * Generate import strings from ImportDefinition objects.
    */
   generateImportStrings(imports: ImportDefinition[]): string[] {
-    return imports.map(imp => this.generateImportString(imp));
+    return imports.map((imp) => this.generateImportString(imp));
   }
 
   /**
@@ -454,7 +462,7 @@ export const DEFAULT_IMPORT_OPTIONS: ImportProcessingOptions = {
   strategy: {
     mode: 'merge',
     deduplication: true,
-    grouping: true
+    grouping: true,
   },
-  validateImports: true
+  validateImports: true,
 };

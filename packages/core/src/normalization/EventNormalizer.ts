@@ -1,6 +1,6 @@
 /**
  * Cross-Framework Event Normalization for advanced processing: Enhanced Concept Processing
- * 
+ *
  * Normalizes event names across React, Vue, and Svelte frameworks as defined
  * in the advanced processing plan with the EVENT_NORMALIZATION mapping.
  */
@@ -61,24 +61,40 @@ export interface EventNormalizationOptions {
  * advanced processing event normalization mapping.
  */
 export const EVENT_NORMALIZATION: EventNormalization = {
-  'click': { vue: '@click', react: 'onClick', svelte: 'on:click' },
-  'change': { vue: '@change', react: 'onChange', svelte: 'on:change' },
-  'submit': { vue: '@submit', react: 'onSubmit', svelte: 'on:submit' },
-  'input': { vue: '@input', react: 'onInput', svelte: 'on:input' },
-  'focus': { vue: '@focus', react: 'onFocus', svelte: 'on:focus' },
-  'blur': { vue: '@blur', react: 'onBlur', svelte: 'on:blur' },
-  'keydown': { vue: '@keydown', react: 'onKeyDown', svelte: 'on:keydown' },
-  'keyup': { vue: '@keyup', react: 'onKeyUp', svelte: 'on:keyup' },
-  'mousedown': { vue: '@mousedown', react: 'onMouseDown', svelte: 'on:mousedown' },
-  'mouseup': { vue: '@mouseup', react: 'onMouseUp', svelte: 'on:mouseup' },
-  'mouseover': { vue: '@mouseover', react: 'onMouseOver', svelte: 'on:mouseover' },
-  'mouseout': { vue: '@mouseout', react: 'onMouseOut', svelte: 'on:mouseout' },
-  'mouseenter': { vue: '@mouseenter', react: 'onMouseEnter', svelte: 'on:mouseenter' },
-  'mouseleave': { vue: '@mouseleave', react: 'onMouseLeave', svelte: 'on:mouseleave' },
-  'load': { vue: '@load', react: 'onLoad', svelte: 'on:load' },
-  'error': { vue: '@error', react: 'onError', svelte: 'on:error' },
-  'resize': { vue: '@resize', react: 'onResize', svelte: 'on:resize' },
-  'scroll': { vue: '@scroll', react: 'onScroll', svelte: 'on:scroll' }
+  click: { vue: '@click', react: 'onClick', svelte: 'on:click' },
+  change: { vue: '@change', react: 'onChange', svelte: 'on:change' },
+  submit: { vue: '@submit', react: 'onSubmit', svelte: 'on:submit' },
+  input: { vue: '@input', react: 'onInput', svelte: 'on:input' },
+  focus: { vue: '@focus', react: 'onFocus', svelte: 'on:focus' },
+  blur: { vue: '@blur', react: 'onBlur', svelte: 'on:blur' },
+  keydown: { vue: '@keydown', react: 'onKeyDown', svelte: 'on:keydown' },
+  keyup: { vue: '@keyup', react: 'onKeyUp', svelte: 'on:keyup' },
+  mousedown: {
+    vue: '@mousedown',
+    react: 'onMouseDown',
+    svelte: 'on:mousedown',
+  },
+  mouseup: { vue: '@mouseup', react: 'onMouseUp', svelte: 'on:mouseup' },
+  mouseover: {
+    vue: '@mouseover',
+    react: 'onMouseOver',
+    svelte: 'on:mouseover',
+  },
+  mouseout: { vue: '@mouseout', react: 'onMouseOut', svelte: 'on:mouseout' },
+  mouseenter: {
+    vue: '@mouseenter',
+    react: 'onMouseEnter',
+    svelte: 'on:mouseenter',
+  },
+  mouseleave: {
+    vue: '@mouseleave',
+    react: 'onMouseLeave',
+    svelte: 'on:mouseleave',
+  },
+  load: { vue: '@load', react: 'onLoad', svelte: 'on:load' },
+  error: { vue: '@error', react: 'onError', svelte: 'on:error' },
+  resize: { vue: '@resize', react: 'onResize', svelte: 'on:resize' },
+  scroll: { vue: '@scroll', react: 'onScroll', svelte: 'on:scroll' },
 };
 
 /**
@@ -103,7 +119,7 @@ export class EventNormalizer {
     events: EventConcept[],
     options: EventNormalizationOptions
   ): NormalizedEvent[] {
-    return events.map(event => this.normalizeEvent(event, options));
+    return events.map((event) => this.normalizeEvent(event, options));
   }
 
   /**
@@ -113,14 +129,18 @@ export class EventNormalizer {
     event: EventConcept,
     options: EventNormalizationOptions
   ): NormalizedEvent {
-    const { framework, preserveModifiers = true, validateEvents = true } = options;
+    const {
+      framework,
+      preserveModifiers = true,
+      validateEvents = true,
+    } = options;
 
     // Extract common event name from the event
     const commonName = this.extractCommonEventName(event.name);
-    
+
     // Find normalization mapping
     const mapping = this.findEventMapping(commonName, options.customMappings);
-    
+
     if (!mapping) {
       if (validateEvents) {
         this.errorCollector.addWarning(
@@ -136,16 +156,16 @@ export class EventNormalizer {
         commonName,
         frameworkAttribute: event.name,
         modifiers: event.modifiers || [],
-        wasNormalized: false
+        wasNormalized: false,
       };
     }
 
     // Get framework-specific attribute
     const frameworkAttribute = mapping[framework];
-    
+
     // Process modifiers
-    const modifiers = preserveModifiers ? (event.modifiers || []) : [];
-    
+    const modifiers = preserveModifiers ? event.modifiers || [] : [];
+
     // Validate event for framework compatibility
     if (validateEvents) {
       this.validateEventForFramework(event, framework, mapping);
@@ -156,7 +176,7 @@ export class EventNormalizer {
       commonName,
       frameworkAttribute,
       modifiers,
-      wasNormalized: true
+      wasNormalized: true,
     };
   }
 
@@ -171,17 +191,17 @@ export class EventNormalizer {
     if (commonName.startsWith('@')) {
       commonName = commonName.substring(1);
     }
-    
+
     // React: onClick -> click
     if (commonName.startsWith('on') && commonName.length > 2) {
       commonName = commonName.substring(2).toLowerCase();
     }
-    
+
     // Svelte: on:click -> click
     if (commonName.startsWith('on:')) {
       commonName = commonName.substring(3);
     }
-    
+
     // Vue verbose: v-on:click -> click
     if (commonName.startsWith('v-on:')) {
       commonName = commonName.substring(5);
@@ -229,8 +249,9 @@ export class EventNormalizer {
    * Get all supported events for a framework.
    */
   getSupportedEvents(framework: 'vue' | 'react' | 'svelte'): string[] {
-    return Object.entries(this.normalizationMap)
-      .map(([_, mapping]) => mapping[framework]);
+    return Object.entries(this.normalizationMap).map(
+      ([_, mapping]) => mapping[framework]
+    );
   }
 
   /**
@@ -265,7 +286,10 @@ export class EventNormalizer {
   /**
    * Validate React-specific event compatibility.
    */
-  private validateReactEvent(event: EventConcept, mapping: FrameworkEventMapping): void {
+  private validateReactEvent(
+    event: EventConcept,
+    mapping: FrameworkEventMapping
+  ): void {
     // React events should be camelCase and start with 'on'
     if (!mapping.react.startsWith('on')) {
       this.errorCollector.addWarning(
@@ -288,7 +312,10 @@ export class EventNormalizer {
   /**
    * Validate Vue-specific event compatibility.
    */
-  private validateVueEvent(event: EventConcept, mapping: FrameworkEventMapping): void {
+  private validateVueEvent(
+    event: EventConcept,
+    mapping: FrameworkEventMapping
+  ): void {
     // Vue events should start with '@'
     if (!mapping.vue.startsWith('@')) {
       this.errorCollector.addWarning(
@@ -301,10 +328,21 @@ export class EventNormalizer {
     // Validate Vue modifiers
     if (event.modifiers) {
       const validVueModifiers = [
-        'stop', 'prevent', 'capture', 'self', 'once', 'passive',
-        'left', 'right', 'middle', 'ctrl', 'alt', 'shift', 'meta'
+        'stop',
+        'prevent',
+        'capture',
+        'self',
+        'once',
+        'passive',
+        'left',
+        'right',
+        'middle',
+        'ctrl',
+        'alt',
+        'shift',
+        'meta',
       ];
-      
+
       for (const modifier of event.modifiers) {
         if (!validVueModifiers.includes(modifier)) {
           this.errorCollector.addWarning(
@@ -320,7 +358,10 @@ export class EventNormalizer {
   /**
    * Validate Svelte-specific event compatibility.
    */
-  private validateSvelteEvent(event: EventConcept, mapping: FrameworkEventMapping): void {
+  private validateSvelteEvent(
+    event: EventConcept,
+    mapping: FrameworkEventMapping
+  ): void {
     // Svelte events should start with 'on:'
     if (!mapping.svelte.startsWith('on:')) {
       this.errorCollector.addWarning(
@@ -333,10 +374,15 @@ export class EventNormalizer {
     // Validate Svelte modifiers
     if (event.modifiers) {
       const validSvelteModifiers = [
-        'preventDefault', 'stopPropagation', 'passive', 'capture',
-        'once', 'self', 'trusted'
+        'preventDefault',
+        'stopPropagation',
+        'passive',
+        'capture',
+        'once',
+        'self',
+        'trusted',
       ];
-      
+
       for (const modifier of event.modifiers) {
         if (!validSvelteModifiers.includes(modifier)) {
           this.errorCollector.addWarning(

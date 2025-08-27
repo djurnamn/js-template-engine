@@ -1,38 +1,37 @@
 /**
  * Type-safe registry for managing framework, styling, and utility extensions.
- * 
+ *
  * The ExtensionRegistry provides centralized management of all extensions,
  * ensuring type safety, validation, and proper lifecycle management for
  * different types of extensions in the template processing pipeline.
- * 
+ *
  * @example
  * ```typescript
  * const registry = new ExtensionRegistry();
- * 
+ *
  * // Register extensions
  * registry.registerFramework(new ReactFrameworkExtension());
  * registry.registerStyling(new TailwindStylingExtension());
  * registry.registerUtility(new MyUtilityExtension());
- * 
+ *
  * // Use extensions
  * const reactExtension = registry.getFramework('react');
  * const availableFrameworks = registry.getAvailableFrameworks();
  * ```
- * 
+ *
  * @since 2.0.0
  */
 
-import type { 
-  Extension, 
-  FrameworkExtension, 
-  StylingExtension, 
+import type {
+  Extension,
+  FrameworkExtension,
+  StylingExtension,
   UtilityExtension,
-  ExtensionMetadata 
 } from '../extensions';
 
 /**
  * Result object from extension validation operations.
- * 
+ *
  * @public
  */
 export interface ValidationResult {
@@ -46,30 +45,30 @@ export interface ValidationResult {
 
 /**
  * Type-safe registry for managing and coordinating extensions across the template processing pipeline.
- * 
+ *
  * The ExtensionRegistry serves as the central hub for all extension management operations,
  * providing type-safe registration, validation, retrieval, and lifecycle management for
  * framework, styling, and utility extensions.
- * 
+ *
  * @example
  * ```typescript
  * const registry = new ExtensionRegistry();
- * 
+ *
  * // Register different types of extensions
  * const result = registry.registerFramework(new ReactFrameworkExtension());
  * if (result.isValid) {
  *   console.log('React extension registered successfully');
  * }
- * 
+ *
  * // Retrieve and use extensions
  * const reactExt = registry.getFramework('react');
  * const tailwindExt = registry.getStyling('tailwind');
- * 
+ *
  * // Query registry state
  * console.log('Available frameworks:', registry.getAvailableFrameworks());
  * console.log('Total extensions:', registry.getExtensionCount());
  * ```
- * 
+ *
  * @since 2.0.0
  */
 export class ExtensionRegistry {
@@ -79,15 +78,15 @@ export class ExtensionRegistry {
 
   /**
    * Registers a framework extension with validation.
-   * 
+   *
    * @param extension - Framework extension instance to register
    * @returns Validation result indicating success or failure with error details
-   * 
+   *
    * @example
    * ```typescript
    * const reactExtension = new ReactFrameworkExtension();
    * const result = registry.registerFramework(reactExtension);
-   * 
+   *
    * if (result.isValid) {
    *   console.log('Framework extension registered successfully');
    * } else {
@@ -104,8 +103,10 @@ export class ExtensionRegistry {
     if (this.frameworks.has(extension.metadata.key)) {
       return {
         isValid: false,
-        errors: [`Framework extension with key '${extension.metadata.key}' already registered`],
-        warnings: []
+        errors: [
+          `Framework extension with key '${extension.metadata.key}' already registered`,
+        ],
+        warnings: [],
       };
     }
 
@@ -113,21 +114,21 @@ export class ExtensionRegistry {
     return {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
   /**
    * Registers a styling extension with validation.
-   * 
+   *
    * @param extension - Styling extension instance to register
    * @returns Validation result indicating success or failure with error details
-   * 
+   *
    * @example
    * ```typescript
    * const tailwindExtension = new TailwindStylingExtension();
    * const result = registry.registerStyling(tailwindExtension);
-   * 
+   *
    * if (!result.isValid) {
    *   console.error('Styling extension registration failed:', result.errors);
    * }
@@ -142,8 +143,10 @@ export class ExtensionRegistry {
     if (this.styling.has(extension.metadata.key)) {
       return {
         isValid: false,
-        errors: [`Styling extension with key '${extension.metadata.key}' already registered`],
-        warnings: []
+        errors: [
+          `Styling extension with key '${extension.metadata.key}' already registered`,
+        ],
+        warnings: [],
       };
     }
 
@@ -151,21 +154,21 @@ export class ExtensionRegistry {
     return {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
   /**
    * Registers a utility extension with validation.
-   * 
+   *
    * @param extension - Utility extension instance to register
    * @returns Validation result indicating success or failure with error details
-   * 
+   *
    * @example
    * ```typescript
    * const myUtility = new CustomUtilityExtension();
    * const result = registry.registerUtility(myUtility);
-   * 
+   *
    * if (result.isValid) {
    *   console.log('Utility extension ready for use');
    * }
@@ -180,8 +183,10 @@ export class ExtensionRegistry {
     if (this.utilities.has(extension.metadata.key)) {
       return {
         isValid: false,
-        errors: [`Utility extension with key '${extension.metadata.key}' already registered`],
-        warnings: []
+        errors: [
+          `Utility extension with key '${extension.metadata.key}' already registered`,
+        ],
+        warnings: [],
       };
     }
 
@@ -189,16 +194,16 @@ export class ExtensionRegistry {
     return {
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
   /**
    * Retrieves a framework extension by its key.
-   * 
+   *
    * @param key - Unique identifier for the framework extension
    * @returns Framework extension instance or undefined if not found
-   * 
+   *
    * @example
    * ```typescript
    * const reactExt = registry.getFramework('react');
@@ -213,10 +218,10 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves a styling extension by its key.
-   * 
+   *
    * @param key - Unique identifier for the styling extension
    * @returns Styling extension instance or undefined if not found
-   * 
+   *
    * @example
    * ```typescript
    * const tailwindExt = registry.getStyling('tailwind');
@@ -231,10 +236,10 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves a utility extension by its key.
-   * 
+   *
    * @param key - Unique identifier for the utility extension
    * @returns Utility extension instance or undefined if not found
-   * 
+   *
    * @example
    * ```typescript
    * const utilityExt = registry.getUtility('my-utility');
@@ -249,9 +254,9 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves all registered framework extension keys.
-   * 
+   *
    * @returns Array of framework extension keys
-   * 
+   *
    * @example
    * ```typescript
    * const frameworks = registry.getAvailableFrameworks();
@@ -264,9 +269,9 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves all registered styling extension keys.
-   * 
+   *
    * @returns Array of styling extension keys
-   * 
+   *
    * @example
    * ```typescript
    * const stylingOptions = registry.getAvailableStyling();
@@ -279,9 +284,9 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves all registered utility extension keys.
-   * 
+   *
    * @returns Array of utility extension keys
-   * 
+   *
    * @example
    * ```typescript
    * const utilities = registry.getAvailableUtilities();
@@ -294,15 +299,15 @@ export class ExtensionRegistry {
 
   /**
    * Retrieves all extension instances of a specific type.
-   * 
+   *
    * @param type - Extension type to retrieve ('framework', 'styling', or 'utility')
    * @returns Array of extension instances of the specified type
-   * 
+   *
    * @example
    * ```typescript
    * const frameworkExtensions = registry.getExtensionsByType('framework');
    * const stylingExtensions = registry.getExtensionsByType('styling');
-   * 
+   *
    * frameworkExtensions.forEach(ext => {
    *   console.log(`Framework: ${ext.metadata.name}`);
    * });
@@ -327,7 +332,10 @@ export class ExtensionRegistry {
   /**
    * Check if an extension is registered.
    */
-  hasExtension(key: string, type?: 'framework' | 'styling' | 'utility'): boolean {
+  hasExtension(
+    key: string,
+    type?: 'framework' | 'styling' | 'utility'
+  ): boolean {
     if (type) {
       switch (type) {
         case 'framework':
@@ -340,14 +348,21 @@ export class ExtensionRegistry {
           return false;
       }
     }
-    
-    return this.frameworks.has(key) || this.styling.has(key) || this.utilities.has(key);
+
+    return (
+      this.frameworks.has(key) ||
+      this.styling.has(key) ||
+      this.utilities.has(key)
+    );
   }
 
   /**
    * Remove an extension by key and type.
    */
-  removeExtension(key: string, type: 'framework' | 'styling' | 'utility'): boolean {
+  removeExtension(
+    key: string,
+    type: 'framework' | 'styling' | 'utility'
+  ): boolean {
     switch (type) {
       case 'framework':
         return this.frameworks.delete(key);
@@ -399,27 +414,27 @@ export class ExtensionRegistry {
           return 0;
       }
     }
-    
+
     return this.frameworks.size + this.styling.size + this.utilities.size;
   }
 
   /**
    * Validates an extension against registry requirements and standards.
-   * 
+   *
    * Performs comprehensive validation including:
    * - Metadata completeness and format validation
    * - Type-specific interface compliance
    * - Semantic versioning validation
    * - Required method presence checks
-   * 
+   *
    * @param extension - Extension instance to validate
    * @returns Validation result with success status, errors, and warnings
-   * 
+   *
    * @example
    * ```typescript
    * const extension = new MyFrameworkExtension();
    * const validation = registry.validateExtension(extension);
-   * 
+   *
    * if (!validation.isValid) {
    *   console.error('Validation errors:', validation.errors);
    *   console.warn('Validation warnings:', validation.warnings);
@@ -442,7 +457,9 @@ export class ExtensionRegistry {
     if (!metadata.key || typeof metadata.key !== 'string') {
       errors.push('Extension metadata.key is required and must be a string');
     } else if (!/^[a-z][a-z0-9\-]*[a-z0-9]$|^[a-z]$/.test(metadata.key)) {
-      errors.push('Extension metadata.key must be lowercase alphanumeric with hyphens, starting with a letter');
+      errors.push(
+        'Extension metadata.key must be lowercase alphanumeric with hyphens, starting with a letter'
+      );
     }
 
     if (!metadata.name || typeof metadata.name !== 'string') {
@@ -450,9 +467,13 @@ export class ExtensionRegistry {
     }
 
     if (!metadata.version || typeof metadata.version !== 'string') {
-      errors.push('Extension metadata.version is required and must be a string');
+      errors.push(
+        'Extension metadata.version is required and must be a string'
+      );
     } else if (!/^\d+\.\d+\.\d+$/.test(metadata.version)) {
-      errors.push('Extension metadata.version must follow semantic versioning (e.g., "1.0.0")');
+      errors.push(
+        'Extension metadata.version must follow semantic versioning (e.g., "1.0.0")'
+      );
     }
 
     if (!['framework', 'styling', 'utility'].includes(metadata.type)) {
@@ -462,12 +483,24 @@ export class ExtensionRegistry {
     // Type-specific validation
     if (metadata.type === 'framework') {
       const frameworkExt = extension as FrameworkExtension;
-      if (!frameworkExt.framework || !['react', 'vue', 'svelte'].includes(frameworkExt.framework)) {
-        errors.push('Framework extension must specify a valid framework: "react", "vue", or "svelte"');
+      if (
+        !frameworkExt.framework ||
+        !['react', 'vue', 'svelte'].includes(frameworkExt.framework)
+      ) {
+        errors.push(
+          'Framework extension must specify a valid framework: "react", "vue", or "svelte"'
+        );
       }
 
       // Check required methods
-      const requiredMethods = ['processEvents', 'processConditionals', 'processIterations', 'processSlots', 'processAttributes', 'renderComponent'];
+      const requiredMethods = [
+        'processEvents',
+        'processConditionals',
+        'processIterations',
+        'processSlots',
+        'processAttributes',
+        'renderComponent',
+      ];
       for (const method of requiredMethods) {
         if (typeof (frameworkExt as any)[method] !== 'function') {
           errors.push(`Framework extension must implement method: ${method}`);
@@ -477,8 +510,15 @@ export class ExtensionRegistry {
 
     if (metadata.type === 'styling') {
       const stylingExt = extension as StylingExtension;
-      if (!stylingExt.styling || !['bem', 'tailwind', 'css-modules', 'styled-components'].includes(stylingExt.styling)) {
-        warnings.push('Styling extension should specify a valid styling approach');
+      if (
+        !stylingExt.styling ||
+        !['bem', 'tailwind', 'css-modules', 'styled-components'].includes(
+          stylingExt.styling
+        )
+      ) {
+        warnings.push(
+          'Styling extension should specify a valid styling approach'
+        );
       }
 
       if (typeof stylingExt.processStyles !== 'function') {
@@ -496,7 +536,7 @@ export class ExtensionRegistry {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 }

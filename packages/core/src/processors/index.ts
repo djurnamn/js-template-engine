@@ -1,6 +1,6 @@
 /**
  * advanced processing Processors - Template Properties Abstraction
- * 
+ *
  * Export all processors for template property merging and component resolution.
  */
 
@@ -18,7 +18,7 @@ export type {
   ImportMergeStrategy,
   ComponentResolutionStrategy,
   ComponentDefinition,
-  RenderOptions
+  RenderOptions,
 } from './ComponentPropertyProcessor';
 
 export { DEFAULT_MERGE_STRATEGIES } from './ComponentPropertyProcessor';
@@ -28,18 +28,18 @@ export type {
   ImportInput,
   ParsedImport,
   ImportProcessingOptions,
-  ImportValidationResult
+  ImportValidationResult,
 } from './ImportProcessor';
 
 export type {
   ScriptElement,
   ScriptAnalysis,
   ScriptConflict,
-  ScriptMergeResult
+  ScriptMergeResult,
 } from './ScriptMergeProcessor';
 
 export type {
   ComponentNameContext,
   NameResolutionPriority,
-  NameResolutionResult
+  NameResolutionResult,
 } from './ComponentNameResolver';

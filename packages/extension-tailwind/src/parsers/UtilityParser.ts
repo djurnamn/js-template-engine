@@ -26,7 +26,7 @@ export class UtilityParser {
     const parts = className.split(':');
     const base = parts[parts.length - 1];
     const prefixes = parts.slice(0, -1);
-    
+
     let responsive: string | undefined;
     const variants: string[] = [];
 
@@ -47,7 +47,7 @@ export class UtilityParser {
       base,
       responsive,
       variants,
-      original: className
+      original: className,
     };
   }
 
@@ -57,11 +57,11 @@ export class UtilityParser {
    * @returns Array of parsed utilities
    */
   parseUtilities(classNames: string | string[]): ParsedUtility[] {
-    const classes = Array.isArray(classNames) 
-      ? classNames.map(c => c.trim()).filter(Boolean)
+    const classes = Array.isArray(classNames)
+      ? classNames.map((c) => c.trim()).filter(Boolean)
       : classNames.split(/\s+/).filter(Boolean);
-    
-    return classes.map(className => this.parseUtilityClass(className.trim()));
+
+    return classes.map((className) => this.parseUtilityClass(className.trim()));
   }
 
   /**
@@ -71,13 +71,13 @@ export class UtilityParser {
    */
   validateUtility(className: string): ValidationResult {
     const parsed = this.parseUtilityClass(className);
-    
+
     // Check if base utility is recognized
     const basePrefix = parsed.base.split('-')[0];
     if (!this.validUtilities.has(basePrefix)) {
       return {
         valid: false,
-        error: `Unknown utility prefix: ${basePrefix}`
+        error: `Unknown utility prefix: ${basePrefix}`,
       };
     }
 
@@ -85,7 +85,7 @@ export class UtilityParser {
     if (parsed.responsive && !(parsed.responsive in this.breakpoints)) {
       return {
         valid: false,
-        error: `Unknown breakpoint: ${parsed.responsive}`
+        error: `Unknown breakpoint: ${parsed.responsive}`,
       };
     }
 
@@ -93,22 +93,25 @@ export class UtilityParser {
     for (const variant of parsed.variants) {
       if (!this.validVariants.has(variant)) {
         // Check if it looks like a breakpoint (ending with common breakpoint names)
-        if (variant.includes('breakpoint') || variant.match(/^(xs|sm|md|lg|xl|2xl|unknown-breakpoint)$/)) {
+        if (
+          variant.includes('breakpoint') ||
+          variant.match(/^(xs|sm|md|lg|xl|2xl|unknown-breakpoint)$/)
+        ) {
           return {
             valid: false,
-            error: `Unknown breakpoint: ${variant}`
+            error: `Unknown breakpoint: ${variant}`,
           };
         }
         return {
           valid: false,
-          error: `Unknown variant: ${variant}`
+          error: `Unknown variant: ${variant}`,
         };
       }
     }
 
     return {
       valid: true,
-      properties: this.getAffectedProperties(parsed.base)
+      properties: this.getAffectedProperties(parsed.base),
     };
   }
 
@@ -117,38 +120,40 @@ export class UtilityParser {
    * @param className - The class name to validate
    * @returns Promise resolving to validation result
    */
-  async validateUtilityWithTailwind(className: string): Promise<ValidationResult> {
+  async validateUtilityWithTailwind(
+    className: string
+  ): Promise<ValidationResult> {
     const isValid = await this.tailwindProcessor.isValidUtility(className);
-    
+
     if (!isValid) {
       const parsed = this.parseUtilityClass(className);
-      
+
       // Check specific error types
       if (parsed.responsive && !(parsed.responsive in this.breakpoints)) {
         return {
           valid: false,
-          error: `Unknown breakpoint: ${parsed.responsive}`
+          error: `Unknown breakpoint: ${parsed.responsive}`,
         };
       }
-      
+
       for (const variant of parsed.variants) {
         if (!this.validVariants.has(variant)) {
           return {
             valid: false,
-            error: `Unknown variant: ${variant}`
+            error: `Unknown variant: ${variant}`,
           };
         }
       }
-      
+
       return {
         valid: false,
-        error: `Invalid Tailwind utility: ${className}`
+        error: `Invalid Tailwind utility: ${className}`,
       };
     }
-    
+
     return {
       valid: true,
-      properties: this.getAffectedProperties(className)
+      properties: this.getAffectedProperties(className),
     };
   }
 
@@ -159,51 +164,59 @@ export class UtilityParser {
    */
   private getAffectedProperties(utility: string): string[] {
     // Extract base utility from full class name
-    const baseUtility = utility.includes(':') ? utility.split(':').pop()! : utility;
+    const baseUtility = utility.includes(':')
+      ? utility.split(':').pop()!
+      : utility;
     const prefix = baseUtility.split('-')[0];
-    
+
     const propertyMap: Record<string, string[]> = {
-      'bg': ['background-color', 'background-image', 'background-size'],
-      'text': ['color', 'font-size', 'text-align', 'text-decoration'],
-      'border': ['border-width', 'border-color', 'border-style'],
-      'rounded': ['border-radius'],
-      'shadow': ['box-shadow'],
-      'p': ['padding'],
-      'px': ['padding-left', 'padding-right'],
-      'py': ['padding-top', 'padding-bottom'],
-      'pt': ['padding-top'],
-      'pr': ['padding-right'],
-      'pb': ['padding-bottom'],
-      'pl': ['padding-left'],
-      'm': ['margin'],
-      'mx': ['margin-left', 'margin-right'],
-      'my': ['margin-top', 'margin-bottom'],
-      'mt': ['margin-top'],
-      'mr': ['margin-right'],
-      'mb': ['margin-bottom'],
-      'ml': ['margin-left'],
-      'w': ['width'],
-      'h': ['height'],
+      bg: ['background-color', 'background-image', 'background-size'],
+      text: ['color', 'font-size', 'text-align', 'text-decoration'],
+      border: ['border-width', 'border-color', 'border-style'],
+      rounded: ['border-radius'],
+      shadow: ['box-shadow'],
+      p: ['padding'],
+      px: ['padding-left', 'padding-right'],
+      py: ['padding-top', 'padding-bottom'],
+      pt: ['padding-top'],
+      pr: ['padding-right'],
+      pb: ['padding-bottom'],
+      pl: ['padding-left'],
+      m: ['margin'],
+      mx: ['margin-left', 'margin-right'],
+      my: ['margin-top', 'margin-bottom'],
+      mt: ['margin-top'],
+      mr: ['margin-right'],
+      mb: ['margin-bottom'],
+      ml: ['margin-left'],
+      w: ['width'],
+      h: ['height'],
       'max-w': ['max-width'],
       'max-h': ['max-height'],
       'min-w': ['min-width'],
       'min-h': ['min-height'],
-      'flex': ['display', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink'],
-      'grid': ['display', 'grid-template-columns', 'grid-template-rows'],
-      'block': ['display'],
-      'hidden': ['display'],
-      'inline': ['display'],
-      'absolute': ['position'],
-      'relative': ['position'],
-      'fixed': ['position'],
-      'sticky': ['position'],
-      'top': ['top'],
-      'right': ['right'],
-      'bottom': ['bottom'],
-      'left': ['left'],
-      'z': ['z-index'],
-      'opacity': ['opacity'],
-      'font': ['font-family', 'font-weight', 'font-size']
+      flex: [
+        'display',
+        'flex-direction',
+        'flex-wrap',
+        'flex-grow',
+        'flex-shrink',
+      ],
+      grid: ['display', 'grid-template-columns', 'grid-template-rows'],
+      block: ['display'],
+      hidden: ['display'],
+      inline: ['display'],
+      absolute: ['position'],
+      relative: ['position'],
+      fixed: ['position'],
+      sticky: ['position'],
+      top: ['top'],
+      right: ['right'],
+      bottom: ['bottom'],
+      left: ['left'],
+      z: ['z-index'],
+      opacity: ['opacity'],
+      font: ['font-family', 'font-weight', 'font-size'],
     };
 
     return propertyMap[prefix] || [prefix];

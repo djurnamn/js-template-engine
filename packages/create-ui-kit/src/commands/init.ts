@@ -13,9 +13,21 @@ const frameworkOptions: FrameworkOption[] = [
 ];
 
 const stylingOptions: StylingOption[] = [
-  { name: 'CSS (separate files)', value: 'css', description: 'Generate separate .css files (BEM optional)' },
-  { name: 'SCSS (separate files)', value: 'scss', description: 'Generate .scss files with nesting (BEM optional)' },
-  { name: 'Inline styles', value: 'inline', description: 'Styles directly in component attributes' },
+  {
+    name: 'CSS (separate files)',
+    value: 'css',
+    description: 'Generate separate .css files (BEM optional)',
+  },
+  {
+    name: 'SCSS (separate files)',
+    value: 'scss',
+    description: 'Generate .scss files with nesting (BEM optional)',
+  },
+  {
+    name: 'Inline styles',
+    value: 'inline',
+    description: 'Styles directly in component attributes',
+  },
 ];
 
 export class InitCommand {
@@ -29,7 +41,7 @@ export class InitCommand {
     outputDir: string;
   }): Promise<void> {
     const targetDir = path.resolve(options.outputDir, options.name);
-    
+
     // Validate project name
     const nameValidation = validateProjectName(options.name);
     if (nameValidation !== true) {
@@ -51,9 +63,18 @@ export class InitCommand {
 
 export const initCommand = new Command('init')
   .description('Initialize a new UI kit project with interactive setup')
-  .argument('[project-name]', 'Name of the UI kit project (kebab-case, e.g., "my-design-system")')
-  .option('-d, --dir <directory>', 'Target directory for project creation (default: current directory)', process.cwd())
-  .addHelpText('before', `
+  .argument(
+    '[project-name]',
+    'Name of the UI kit project (kebab-case, e.g., "my-design-system")'
+  )
+  .option(
+    '-d, --dir <directory>',
+    'Target directory for project creation (default: current directory)',
+    process.cwd()
+  )
+  .addHelpText(
+    'before',
+    `
 🎨 Create UI Kit - Project Initialization
 
 This command creates a complete UI kit project with:
@@ -62,8 +83,11 @@ This command creates a complete UI kit project with:
   • Consumer CLI for end users
   • Documentation generation
   • Testing setup with comprehensive examples
-`)
-  .addHelpText('after', `
+`
+  )
+  .addHelpText(
+    'after',
+    `
 Examples:
   $ npx create-ui-kit init                      # Interactive setup
   $ npx create-ui-kit init my-design-system     # Create "my-design-system" project
@@ -87,7 +111,8 @@ After creation:
   4. npm publish              # Publish to NPM (when ready)
 
 Learn more: https://docs.js-template-engine.dev/create-ui-kit
-`)
+`
+  )
   .action(async (projectName?: string, options?: { dir?: string }) => {
     console.log('🎨 Welcome to Create UI Kit!\n');
 
@@ -114,7 +139,7 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
       // Determine target directory - project will be created inside the specified/current directory
       const parentDir = options?.dir || process.cwd();
       const targetDir = path.resolve(parentDir, projectName);
-      
+
       // Only check if the specific project directory exists and isn't empty
       if (await fs.pathExists(targetDir)) {
         const files = await fs.readdir(targetDir);
@@ -125,7 +150,7 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
             message: `Directory ${projectName} already exists and is not empty. Continue anyway?`,
             initial: false,
           });
-          
+
           if (!overwriteResponse.overwrite) {
             console.log('❌ Operation cancelled');
             process.exit(1);
@@ -138,17 +163,24 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
         type: 'multiselect',
         name: 'frameworks',
         message: 'Which frameworks do you want to support?',
-        choices: frameworkOptions.map(fw => ({
+        choices: frameworkOptions.map((fw) => ({
           name: fw.value,
           message: `${fw.name} - ${fw.description}`,
           enabled: fw.value === 'react', // Default to React
         })),
-        validate: (value: any) => Array.isArray(value) && value.length > 0 ? true : 'Please select at least one framework',
+        validate: (value: any) =>
+          Array.isArray(value) && value.length > 0
+            ? true
+            : 'Please select at least one framework',
       });
 
       // Filter styling options based on selected frameworks
-      const availableStyling = stylingOptions.filter(style => 
-        !style.frameworks || style.frameworks.some(fw => frameworkResponse.frameworks.includes(fw))
+      const availableStyling = stylingOptions.filter(
+        (style) =>
+          !style.frameworks ||
+          style.frameworks.some((fw) =>
+            frameworkResponse.frameworks.includes(fw)
+          )
       );
 
       // Styling selection
@@ -156,17 +188,23 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
         type: 'multiselect',
         name: 'styling',
         message: 'Which styling approaches do you want to support?',
-        choices: availableStyling.map(style => ({
+        choices: availableStyling.map((style) => ({
           name: style.value,
           message: `${style.name} - ${style.description}`,
           enabled: style.value === 'css', // Default to CSS
         })),
-        validate: (value: any) => Array.isArray(value) && value.length > 0 ? true : 'Please select at least one styling approach',
+        validate: (value: any) =>
+          Array.isArray(value) && value.length > 0
+            ? true
+            : 'Please select at least one styling approach',
       });
 
       // BEM methodology support (only if CSS or SCSS is selected)
       let bemEnabled = false;
-      if (stylingResponse.styling.includes('css') || stylingResponse.styling.includes('scss')) {
+      if (
+        stylingResponse.styling.includes('css') ||
+        stylingResponse.styling.includes('scss')
+      ) {
         const bemResponse = await prompt<{ bem: boolean }>({
           type: 'confirm',
           name: 'bem',
@@ -218,18 +256,26 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
       console.log('  pnpm install');
       console.log('  pnpm build');
       console.log('\n📚 Check the README.md for more information.');
-
     } catch (error) {
       console.error('\n❌ Failed to create UI kit\n');
-      
+
       if (error instanceof Error) {
         // Provide specific guidance based on error type
-        if (error.message.includes('EACCES') || error.message.includes('permission denied')) {
+        if (
+          error.message.includes('EACCES') ||
+          error.message.includes('permission denied')
+        ) {
           console.error('🔐 Permission error');
-          console.error('   You don\'t have permission to create files in this location.');
+          console.error(
+            "   You don't have permission to create files in this location."
+          );
           console.error('\n💡 Try:');
-          console.error('   • Use sudo (if appropriate): sudo npx create-ui-kit init');
-          console.error('   • Choose a different directory where you have write access');
+          console.error(
+            '   • Use sudo (if appropriate): sudo npx create-ui-kit init'
+          );
+          console.error(
+            '   • Choose a different directory where you have write access'
+          );
           console.error('   • Check directory permissions\n');
         } else if (error.message.includes('ENOSPC')) {
           console.error('💾 Disk space error');
@@ -247,11 +293,18 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
           console.error('📝 Invalid project name');
           console.error(`   ${error.message}`);
           console.error('\n💡 Try:');
-          console.error('   • Use only lowercase letters, numbers, hyphens, and underscores');
+          console.error(
+            '   • Use only lowercase letters, numbers, hyphens, and underscores'
+          );
           console.error('   • Start and end with alphanumeric characters');
           console.error('   • Keep the name between 2-214 characters');
-          console.error('   • Avoid reserved names like "package.json" or "node_modules"\n');
-        } else if (error.message.includes('frameworks') || error.message.includes('styling')) {
+          console.error(
+            '   • Avoid reserved names like "package.json" or "node_modules"\n'
+          );
+        } else if (
+          error.message.includes('frameworks') ||
+          error.message.includes('styling')
+        ) {
           console.error('⚙️  Configuration error');
           console.error('   Invalid framework or styling selection.');
           console.error('\n💡 Try:');
@@ -264,9 +317,11 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
           console.error('💡 For help:');
           console.error('   • Try running the command again');
           console.error('   • Check file permissions in the target directory');
-          console.error('   • Report issues at: https://github.com/djurnamn/js-template-engine/issues\n');
+          console.error(
+            '   • Report issues at: https://github.com/djurnamn/js-template-engine/issues\n'
+          );
         }
-        
+
         // Show stack trace in verbose mode or for development
         if (process.env.NODE_ENV === 'development' && error.stack) {
           console.error('📋 Full error details:');
@@ -275,7 +330,7 @@ Learn more: https://docs.js-template-engine.dev/create-ui-kit
       } else {
         console.error('❌ An unexpected error occurred:', error);
       }
-      
+
       process.exit(1);
     }
   });

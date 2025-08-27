@@ -14,7 +14,7 @@ export class NodeIdGenerator {
    */
   static generateNodeId(path: number[]): string {
     if (path.length === 0) return 'root';
-    
+
     let id = 'root';
     for (const index of path) {
       id += `.children[${index}]`;
@@ -27,11 +27,11 @@ export class NodeIdGenerator {
    */
   static parseNodeId(nodeId: string): number[] {
     if (nodeId === 'root') return [];
-    
+
     const matches = nodeId.match(/children\[(\d+)\]/g);
     if (!matches) return [];
-    
-    return matches.map(match => {
+
+    return matches.map((match) => {
       const num = match.match(/\d+/);
       return num ? parseInt(num[0], 10) : 0;
     });
@@ -75,7 +75,7 @@ export class ErrorCollector {
       message,
       nodeId,
       extension,
-      severity: 'error'
+      severity: 'error',
     });
   }
 
@@ -87,7 +87,7 @@ export class ErrorCollector {
       message,
       nodeId,
       extension,
-      severity: 'warning'
+      severity: 'warning',
     });
   }
 
@@ -99,7 +99,7 @@ export class ErrorCollector {
       message,
       nodeId,
       extension,
-      severity: 'info'
+      severity: 'info',
     });
   }
 
@@ -113,22 +113,24 @@ export class ErrorCollector {
   /**
    * Get errors by severity.
    */
-  getErrorsBySeverity(severity: 'error' | 'warning' | 'info'): ProcessingError[] {
-    return this.errors.filter(error => error.severity === severity);
+  getErrorsBySeverity(
+    severity: 'error' | 'warning' | 'info'
+  ): ProcessingError[] {
+    return this.errors.filter((error) => error.severity === severity);
   }
 
   /**
    * Check if there are any errors.
    */
   hasErrors(): boolean {
-    return this.errors.some(error => error.severity === 'error');
+    return this.errors.some((error) => error.severity === 'error');
   }
 
   /**
    * Check if there are any warnings.
    */
   hasWarnings(): boolean {
-    return this.errors.some(error => error.severity === 'warning');
+    return this.errors.some((error) => error.severity === 'warning');
   }
 
   /**
@@ -143,7 +145,7 @@ export class ErrorCollector {
    */
   getErrorCount(severity?: 'error' | 'warning' | 'info'): number {
     if (severity) {
-      return this.errors.filter(error => error.severity === severity).length;
+      return this.errors.filter((error) => error.severity === severity).length;
     }
     return this.errors.length;
   }
@@ -170,14 +172,21 @@ export class ErrorCollector {
     // Format errors by node
     for (const [nodeId, nodeErrors] of errorsByNode) {
       errorMessages.push(`\nNode: ${nodeId}`);
-      
+
       for (const error of nodeErrors) {
-        const prefix = error.severity === 'error' ? '  ❌' : error.severity === 'warning' ? '  ⚠️' : '  ℹ️';
+        const prefix =
+          error.severity === 'error'
+            ? '  ❌'
+            : error.severity === 'warning'
+              ? '  ⚠️'
+              : '  ℹ️';
         const extension = error.extension ? ` [${error.extension}]` : '';
         errorMessages.push(`${prefix} ${error.message}${extension}`);
-        
+
         if (error.context) {
-          errorMessages.push(`     Context: ${JSON.stringify(error.context, null, 2).replace(/\n/g, '\n     ')}`);
+          errorMessages.push(
+            `     Context: ${JSON.stringify(error.context, null, 2).replace(/\n/g, '\n     ')}`
+          );
         }
       }
     }
@@ -199,7 +208,9 @@ export class MetadataValidator {
     if (!metadata.key || typeof metadata.key !== 'string') {
       errors.push('Extension key is required and must be a string');
     } else if (!/^[a-z][a-z0-9\-]*[a-z0-9]$|^[a-z]$/.test(metadata.key)) {
-      errors.push('Extension key must be lowercase alphanumeric with hyphens, starting with a letter');
+      errors.push(
+        'Extension key must be lowercase alphanumeric with hyphens, starting with a letter'
+      );
     }
 
     if (!metadata.name || typeof metadata.name !== 'string') {
@@ -209,10 +220,15 @@ export class MetadataValidator {
     if (!metadata.version || typeof metadata.version !== 'string') {
       errors.push('Extension version is required and must be a string');
     } else if (!/^\d+\.\d+\.\d+$/.test(metadata.version)) {
-      errors.push('Extension version must follow semantic versioning (e.g., "1.0.0")');
+      errors.push(
+        'Extension version must follow semantic versioning (e.g., "1.0.0")'
+      );
     }
 
-    if (!metadata.type || !['framework', 'styling', 'utility'].includes(metadata.type)) {
+    if (
+      !metadata.type ||
+      !['framework', 'styling', 'utility'].includes(metadata.type)
+    ) {
       errors.push('Extension type must be one of: framework, styling, utility');
     }
 
@@ -282,7 +298,8 @@ export class PerformanceTracker {
     const startTime = this.extensionStarts[extensionKey];
     if (startTime) {
       const duration = performance.now() - startTime;
-      this.extensionTimes[extensionKey] = (this.extensionTimes[extensionKey] || 0) + duration;
+      this.extensionTimes[extensionKey] =
+        (this.extensionTimes[extensionKey] || 0) + duration;
       delete this.extensionStarts[extensionKey];
     }
   }
@@ -299,13 +316,13 @@ export class PerformanceTracker {
    */
   getMetrics(): PerformanceMetrics {
     const totalTime = performance.now() - this.startTime;
-    
+
     let memoryUsage;
     if (typeof process !== 'undefined' && process.memoryUsage) {
       const memory = process.memoryUsage();
       memoryUsage = {
         heapUsed: memory.heapUsed,
-        heapTotal: memory.heapTotal
+        heapTotal: memory.heapTotal,
       };
     }
 
@@ -313,7 +330,7 @@ export class PerformanceTracker {
       totalTime,
       extensionTimes: { ...this.extensionTimes },
       conceptCount: this.conceptCount,
-      memoryUsage
+      memoryUsage,
     };
   }
 
@@ -326,7 +343,7 @@ export class PerformanceTracker {
 
     lines.push(`Total Processing Time: ${metrics.totalTime.toFixed(2)}ms`);
     lines.push(`Concepts Processed: ${metrics.conceptCount}`);
-    
+
     if (Object.keys(metrics.extensionTimes).length > 0) {
       lines.push('\nExtension Performance:');
       for (const [extension, time] of Object.entries(metrics.extensionTimes)) {

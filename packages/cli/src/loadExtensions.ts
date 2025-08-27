@@ -5,7 +5,10 @@ import { TailwindExtension } from '@js-template-engine/extension-tailwind';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
 import { SvelteExtension } from '@js-template-engine/extension-svelte';
-import type { FrameworkExtension, StylingExtension } from '@js-template-engine/core';
+import type {
+  FrameworkExtension,
+  StylingExtension,
+} from '@js-template-engine/core';
 
 type ExtensionMap = {
   '@js-template-engine/extension-bem': typeof BemExtension;
@@ -23,7 +26,9 @@ const EXTENSION_MAP: ExtensionMap = {
   '@js-template-engine/extension-svelte': SvelteExtension,
 } as const;
 
-export async function loadConfig(configPath = './template.config'): Promise<any> {
+export async function loadConfig(
+  configPath = './template.config'
+): Promise<any> {
   try {
     const config = await import(path.resolve(configPath));
     return config.default || config;
@@ -31,19 +36,21 @@ export async function loadConfig(configPath = './template.config'): Promise<any>
     console.warn(`Config file ${configPath} not found, using defaults`);
     return {
       framework: 'react',
-      extensions: ['@js-template-engine/extension-react']
+      extensions: ['@js-template-engine/extension-react'],
     };
   }
 }
 
-export async function loadExtensions(config: any): Promise<(FrameworkExtension | StylingExtension)[]> {
+export async function loadExtensions(
+  config: any
+): Promise<(FrameworkExtension | StylingExtension)[]> {
   const extensions: (FrameworkExtension | StylingExtension)[] = [];
   const extensionNames = config.extensions || [];
 
   for (const extensionName of extensionNames) {
     try {
       let ExtensionClass;
-      
+
       if (extensionName in EXTENSION_MAP) {
         ExtensionClass = EXTENSION_MAP[extensionName as keyof ExtensionMap];
       } else {
@@ -59,7 +66,6 @@ export async function loadExtensions(config: any): Promise<(FrameworkExtension |
 
       const extension = new ExtensionClass();
       extensions.push(extension as FrameworkExtension | StylingExtension);
-      
     } catch (err) {
       console.error(`Failed loading extension ${extensionName}:`, err);
     }
@@ -78,14 +84,14 @@ export async function writeOutput(result: any, options: any): Promise<void> {
   const outputDir = options.outputDir || './output';
   const name = options.name || 'component';
   const language = options.language || 'javascript';
-  
+
   // Create output directory if it doesn't exist
   await fs.mkdir(outputDir, { recursive: true });
-  
+
   // Determine file extension
   const ext = language === 'typescript' ? '.tsx' : '.jsx';
   const outputPath = path.join(outputDir, `${name}${ext}`);
-  
+
   await fs.writeFile(outputPath, result.output || '');
   console.log(`Output written to: ${outputPath}`);
-} 
+}

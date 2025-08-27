@@ -1,6 +1,6 @@
 /**
  * Framework Consistency Checker for advanced processing: Enhanced Concept Processing
- * 
+ *
  * Checks concept compatibility and consistency across different frameworks.
  * Provides suggestions for framework-specific optimizations and alternatives.
  */
@@ -14,7 +14,7 @@ import type {
   ConditionalConcept,
   IterationConcept,
   SlotConcept,
-  AttributeConcept
+  AttributeConcept,
 } from '../concepts';
 
 /**
@@ -102,74 +102,87 @@ const FRAMEWORK_CONSTRAINTS: Record<string, FrameworkConstraints> = {
     events: {
       supportedModifiers: [],
       namingConvention: 'camelCase',
-      prefix: 'on'
+      prefix: 'on',
     },
     styling: {
       classAttribute: 'className',
       styleBinding: 'style',
-      supportsModules: true
+      supportsModules: true,
     },
     conditionals: {
       syntax: '{condition && <Component />}',
-      supportsElse: false
+      supportsElse: false,
     },
     iterations: {
       requiresKey: true,
-      syntax: '{items.map((item, index) => <Component key={item.id} />)}'
+      syntax: '{items.map((item, index) => <Component key={item.id} />)}',
     },
     slots: {
       mechanism: 'children',
-      namedSlots: 'props'
-    }
+      namedSlots: 'props',
+    },
   },
   vue: {
     events: {
-      supportedModifiers: ['stop', 'prevent', 'capture', 'self', 'once', 'passive'],
+      supportedModifiers: [
+        'stop',
+        'prevent',
+        'capture',
+        'self',
+        'once',
+        'passive',
+      ],
       namingConvention: 'kebab-case',
-      prefix: '@'
+      prefix: '@',
     },
     styling: {
       classAttribute: 'class',
       styleBinding: ':style',
-      supportsScoped: true
+      supportsScoped: true,
     },
     conditionals: {
       syntax: 'v-if="condition"',
-      supportsElse: true
+      supportsElse: true,
     },
     iterations: {
       requiresKey: false,
-      syntax: 'v-for="item in items" :key="item.id"'
+      syntax: 'v-for="item in items" :key="item.id"',
     },
     slots: {
       mechanism: 'slot',
-      namedSlots: 'template #slotName'
-    }
+      namedSlots: 'template #slotName',
+    },
   },
   svelte: {
     events: {
-      supportedModifiers: ['preventDefault', 'stopPropagation', 'passive', 'capture', 'once'],
+      supportedModifiers: [
+        'preventDefault',
+        'stopPropagation',
+        'passive',
+        'capture',
+        'once',
+      ],
       namingConvention: 'kebab-case',
-      prefix: 'on:'
+      prefix: 'on:',
     },
     styling: {
       classAttribute: 'class',
       styleBinding: 'style:',
-      supportsScoped: true
+      supportsScoped: true,
     },
     conditionals: {
       syntax: '{#if condition}',
-      supportsElse: true
+      supportsElse: true,
     },
     iterations: {
       requiresKey: false,
-      syntax: '{#each items as item (item.id)}'
+      syntax: '{#each items as item (item.id)}',
     },
     slots: {
       mechanism: 'slot',
-      namedSlots: 'slot name="slotName"'
-    }
-  }
+      namedSlots: 'slot name="slotName"',
+    },
+  },
 };
 
 /**
@@ -179,7 +192,10 @@ export class FrameworkConsistencyChecker {
   private errorCollector: ErrorCollector;
   private eventNormalizer: EventNormalizer;
 
-  constructor(errorCollector?: ErrorCollector, eventNormalizer?: EventNormalizer) {
+  constructor(
+    errorCollector?: ErrorCollector,
+    eventNormalizer?: EventNormalizer
+  ) {
     this.errorCollector = errorCollector || new ErrorCollector();
     this.eventNormalizer = eventNormalizer || new EventNormalizer();
   }
@@ -188,26 +204,39 @@ export class FrameworkConsistencyChecker {
    * Check component concepts for cross-framework consistency.
    */
   checkConsistency(concepts: ComponentConcept): ConsistencyReport {
-    const frameworks: ('vue' | 'react' | 'svelte')[] = ['vue', 'react', 'svelte'];
+    const frameworks: ('vue' | 'react' | 'svelte')[] = [
+      'vue',
+      'react',
+      'svelte',
+    ];
     const frameworkResults: Record<string, FrameworkCompatibilityResult> = {};
-    
+
     // Check compatibility with each framework
     for (const framework of frameworks) {
-      frameworkResults[framework] = this.checkFrameworkCompatibility(concepts, framework);
+      frameworkResults[framework] = this.checkFrameworkCompatibility(
+        concepts,
+        framework
+      );
     }
 
     // Calculate overall score
-    const scores = Object.values(frameworkResults).map(result => result.score);
-    const overallScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const scores = Object.values(frameworkResults).map(
+      (result) => result.score
+    );
+    const overallScore =
+      scores.reduce((sum, score) => sum + score, 0) / scores.length;
 
     // Generate cross-framework recommendations
-    const recommendations = this.generateConsistencyRecommendations(concepts, frameworkResults);
+    const recommendations = this.generateConsistencyRecommendations(
+      concepts,
+      frameworkResults
+    );
 
     return {
       concepts,
       frameworkResults,
       overallScore,
-      recommendations
+      recommendations,
     };
   }
 
@@ -224,25 +253,37 @@ export class FrameworkConsistencyChecker {
     let score = 100;
 
     // Check event compatibility
-    const eventResult = this.checkEventCompatibility(concepts.events, framework);
+    const eventResult = this.checkEventCompatibility(
+      concepts.events,
+      framework
+    );
     warnings.push(...eventResult.warnings);
     alternatives.push(...eventResult.alternatives);
     score = Math.min(score, eventResult.score);
 
     // Check styling compatibility
-    const stylingResult = this.checkStylingCompatibility(concepts.styling, framework);
+    const stylingResult = this.checkStylingCompatibility(
+      concepts.styling,
+      framework
+    );
     warnings.push(...stylingResult.warnings);
     alternatives.push(...stylingResult.alternatives);
     score = Math.min(score, stylingResult.score);
 
     // Check conditional compatibility
-    const conditionalResult = this.checkConditionalCompatibility(concepts.conditionals, framework);
+    const conditionalResult = this.checkConditionalCompatibility(
+      concepts.conditionals,
+      framework
+    );
     warnings.push(...conditionalResult.warnings);
     alternatives.push(...conditionalResult.alternatives);
     score = Math.min(score, conditionalResult.score);
 
     // Check iteration compatibility
-    const iterationResult = this.checkIterationCompatibility(concepts.iterations, framework);
+    const iterationResult = this.checkIterationCompatibility(
+      concepts.iterations,
+      framework
+    );
     warnings.push(...iterationResult.warnings);
     alternatives.push(...iterationResult.alternatives);
     score = Math.min(score, iterationResult.score);
@@ -254,7 +295,10 @@ export class FrameworkConsistencyChecker {
     score = Math.min(score, slotResult.score);
 
     // Check attribute compatibility
-    const attributeResult = this.checkAttributeCompatibility(concepts.attributes, framework);
+    const attributeResult = this.checkAttributeCompatibility(
+      concepts.attributes,
+      framework
+    );
     warnings.push(...attributeResult.warnings);
     alternatives.push(...attributeResult.alternatives);
     score = Math.min(score, attributeResult.score);
@@ -265,7 +309,7 @@ export class FrameworkConsistencyChecker {
       score: Math.max(0, score),
       warnings,
       alternatives,
-      adaptations
+      adaptations,
     };
   }
 
@@ -279,45 +323,55 @@ export class FrameworkConsistencyChecker {
     const warnings: string[] = [];
     const alternatives: string[] = [];
     let score = 100;
-    
+
     const constraints = FRAMEWORK_CONSTRAINTS[framework].events;
 
     for (const event of events) {
       // Check event modifiers
       if (event.modifiers && event.modifiers.length > 0) {
         const unsupportedModifiers = event.modifiers.filter(
-          modifier => !constraints.supportedModifiers.includes(modifier)
+          (modifier) => !constraints.supportedModifiers.includes(modifier)
         );
 
         if (unsupportedModifiers.length > 0) {
           warnings.push(
             `${framework} doesn't support modifiers: ${unsupportedModifiers.join(', ')} for event ${event.name}`
           );
-          
+
           switch (framework) {
             case 'react':
-              alternatives.push('Handle modifiers in the event handler function');
+              alternatives.push(
+                'Handle modifiers in the event handler function'
+              );
               break;
             case 'vue':
-              alternatives.push(`Use supported Vue modifiers: ${constraints.supportedModifiers.join(', ')}`);
+              alternatives.push(
+                `Use supported Vue modifiers: ${constraints.supportedModifiers.join(', ')}`
+              );
               break;
             case 'svelte':
-              alternatives.push(`Use supported Svelte modifiers: ${constraints.supportedModifiers.join(', ')}`);
+              alternatives.push(
+                `Use supported Svelte modifiers: ${constraints.supportedModifiers.join(', ')}`
+              );
               break;
           }
-          
+
           score -= 10;
         }
       }
 
       // Check event name normalization
-      const commonName = this.eventNormalizer.extractCommonEventName(event.name);
+      const commonName = this.eventNormalizer.extractCommonEventName(
+        event.name
+      );
       const mapping = this.eventNormalizer.findEventMapping(commonName);
-      
+
       if (mapping) {
         const frameworkEvent = mapping[framework];
         if (event.name !== frameworkEvent) {
-          alternatives.push(`Use ${frameworkEvent} instead of ${event.name} for ${framework}`);
+          alternatives.push(
+            `Use ${frameworkEvent} instead of ${event.name} for ${framework}`
+          );
         }
       }
     }
@@ -335,7 +389,7 @@ export class FrameworkConsistencyChecker {
     const warnings: string[] = [];
     const alternatives: string[] = [];
     let score = 100;
-    
+
     const constraints = FRAMEWORK_CONSTRAINTS[framework].styling;
 
     // Check class attribute naming
@@ -344,7 +398,10 @@ export class FrameworkConsistencyChecker {
     }
 
     // Check style binding approach
-    if (styling.styleBindings && Object.keys(styling.styleBindings).length > 0) {
+    if (
+      styling.styleBindings &&
+      Object.keys(styling.styleBindings).length > 0
+    ) {
       switch (framework) {
         case 'react':
           alternatives.push('Use style prop with object syntax for React');
@@ -375,9 +432,13 @@ export class FrameworkConsistencyChecker {
     for (const conditional of conditionals) {
       switch (framework) {
         case 'react':
-          alternatives.push('Use {condition && <Component />} syntax for React');
+          alternatives.push(
+            'Use {condition && <Component />} syntax for React'
+          );
           if (conditional.elseNodes) {
-            alternatives.push('Use ternary operator for React if-else: {condition ? <Then /> : <Else />}');
+            alternatives.push(
+              'Use ternary operator for React if-else: {condition ? <Then /> : <Else />}'
+            );
           }
           break;
         case 'vue':
@@ -450,8 +511,12 @@ export class FrameworkConsistencyChecker {
           alternatives.push('Use <template #slotName> for Vue named slots');
           break;
         case 'svelte':
-          alternatives.push('Use <slot> elements for Svelte content projection');
-          alternatives.push('Use <slot name="slotName"> for Svelte named slots');
+          alternatives.push(
+            'Use <slot> elements for Svelte content projection'
+          );
+          alternatives.push(
+            'Use <slot name="slotName"> for Svelte named slots'
+          );
           break;
       }
     }
@@ -476,13 +541,17 @@ export class FrameworkConsistencyChecker {
         switch (framework) {
           case 'react':
             if (attr.name.includes('-')) {
-              warnings.push(`React prefers camelCase for attributes: ${attr.name}`);
+              warnings.push(
+                `React prefers camelCase for attributes: ${attr.name}`
+              );
               alternatives.push(`Use ${this.toCamelCase(attr.name)} instead`);
               score -= 5;
             }
             break;
           case 'vue':
-            alternatives.push(`Use v-bind:${attr.name} or :${attr.name} for Vue dynamic attributes`);
+            alternatives.push(
+              `Use v-bind:${attr.name} or :${attr.name} for Vue dynamic attributes`
+            );
             break;
         }
       }
@@ -501,7 +570,9 @@ export class FrameworkConsistencyChecker {
     const recommendations: ConsistencyRecommendation[] = [];
 
     // Check if there are common issues across frameworks
-    const allWarnings = Object.values(frameworkResults).flatMap(result => result.warnings);
+    const allWarnings = Object.values(frameworkResults).flatMap(
+      (result) => result.warnings
+    );
     const commonPatterns = this.findCommonPatterns(allWarnings);
 
     for (const pattern of commonPatterns) {
@@ -509,7 +580,7 @@ export class FrameworkConsistencyChecker {
         type: 'portability',
         message: `Common issue across frameworks: ${pattern}`,
         frameworks: ['vue', 'react', 'svelte'],
-        priority: 4
+        priority: 4,
       });
     }
 
@@ -517,19 +588,23 @@ export class FrameworkConsistencyChecker {
     if (concepts.events.length > 0) {
       recommendations.push({
         type: 'optimization',
-        message: 'Use framework-specific event normalization for better performance',
+        message:
+          'Use framework-specific event normalization for better performance',
         frameworks: ['vue', 'react', 'svelte'],
         priority: 3,
         steps: [
           'Implement event name normalization',
           'Use framework-appropriate event modifiers',
-          'Consider event delegation for multiple events'
-        ]
+          'Consider event delegation for multiple events',
+        ],
       });
     }
 
     // Recommend styling consistency
-    if (concepts.styling.staticClasses.length > 0 || Object.keys(concepts.styling.inlineStyles).length > 0) {
+    if (
+      concepts.styling.staticClasses.length > 0 ||
+      Object.keys(concepts.styling.inlineStyles).length > 0
+    ) {
       recommendations.push({
         type: 'best-practice',
         message: 'Maintain consistent styling approach across frameworks',
@@ -538,8 +613,8 @@ export class FrameworkConsistencyChecker {
         steps: [
           'Use CSS classes over inline styles when possible',
           'Implement consistent class naming conventions',
-          'Consider CSS-in-JS solutions for React, scoped styles for Vue/Svelte'
-        ]
+          'Consider CSS-in-JS solutions for React, scoped styles for Vue/Svelte',
+        ],
       });
     }
 
@@ -551,12 +626,13 @@ export class FrameworkConsistencyChecker {
    */
   private findCommonPatterns(warnings: string[]): string[] {
     const patterns: Record<string, number> = {};
-    
+
     for (const warning of warnings) {
       // Extract key phrases from warnings
-      const keyPhrases = warning.split(/[,.:;]/).map(phrase => phrase.trim());
+      const keyPhrases = warning.split(/[,.:;]/).map((phrase) => phrase.trim());
       for (const phrase of keyPhrases) {
-        if (phrase.length > 10) { // Only consider substantial phrases
+        if (phrase.length > 10) {
+          // Only consider substantial phrases
           patterns[phrase] = (patterns[phrase] || 0) + 1;
         }
       }
@@ -594,12 +670,14 @@ export class FrameworkConsistencyChecker {
     // Add framework-specific suggestions
     const constraints = FRAMEWORK_CONSTRAINTS[framework].events;
     if (event.modifiers && event.modifiers.length > 0) {
-      const supportedModifiers = event.modifiers.filter(
-        modifier => constraints.supportedModifiers.includes(modifier)
+      const supportedModifiers = event.modifiers.filter((modifier) =>
+        constraints.supportedModifiers.includes(modifier)
       );
-      
+
       if (supportedModifiers.length > 0) {
-        alternatives.push(`Supported modifiers for ${framework}: ${supportedModifiers.join(', ')}`);
+        alternatives.push(
+          `Supported modifiers for ${framework}: ${supportedModifiers.join(', ')}`
+        );
       }
     }
 
@@ -643,7 +721,7 @@ export class FrameworkConsistencyChecker {
     const eventNormalizationOptions = {
       framework,
       preserveModifiers: true,
-      validateEvents: true
+      validateEvents: true,
     };
 
     const normalizedEvents = this.eventNormalizer.normalizeEvents(
@@ -651,10 +729,10 @@ export class FrameworkConsistencyChecker {
       eventNormalizationOptions
     );
 
-    normalized.events = normalizedEvents.map(ne => ({
+    normalized.events = normalizedEvents.map((ne) => ({
       ...ne.original,
       name: ne.commonName,
-      modifiers: ne.modifiers
+      modifiers: ne.modifiers,
     }));
 
     return normalized;

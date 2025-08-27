@@ -1,6 +1,6 @@
 /**
  * Svelte Framework Extension
- * 
+ *
  * Generates Svelte components with reactive statements and event handlers.
  */
 
@@ -12,7 +12,7 @@ import type {
   FrameworkConditionalOutput,
   FrameworkIterationOutput,
   FrameworkSlotOutput,
-  FrameworkAttributeOutput
+  FrameworkAttributeOutput,
 } from '@js-template-engine/core';
 
 import type {
@@ -25,7 +25,7 @@ import type {
   StructuralConcept,
   TextConcept,
   CommentConcept,
-  FragmentConcept
+  FragmentConcept,
 } from '@js-template-engine/core';
 
 import {
@@ -33,16 +33,17 @@ import {
   ComponentPropertyProcessor,
   ScriptMergeProcessor,
   ImportProcessor,
-  DEFAULT_MERGE_STRATEGIES
+  DEFAULT_MERGE_STRATEGIES,
 } from '@js-template-engine/core';
 
 import type {
   ImportDefinition,
   ScriptMergeStrategy,
   PropMergeStrategy,
-  ImportMergeStrategy
+  ImportMergeStrategy,
 } from '@js-template-engine/core';
 
+import type { TemplateNode } from '@js-template-engine/types';
 import type {
   SvelteEventOutput,
   SvelteConditionalOutput,
@@ -54,7 +55,6 @@ import type {
   SvelteReactiveVariable,
   SvelteActionInfo,
   SvelteFeatureAnalysis,
-  TemplateNode
 } from './types';
 
 /**
@@ -65,7 +65,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'svelte',
     name: 'Svelte Framework Extension',
-    version: '1.0.0'
+    version: '1.0.0',
   };
 
   public framework = 'svelte' as const;
@@ -77,19 +77,20 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   private importProcessor = new ImportProcessor();
 
   // Merge strategies
-  private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
+  private scriptMergeStrategy: ScriptMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.script;
   private propMergeStrategy: PropMergeStrategy = DEFAULT_MERGE_STRATEGIES.props;
-  private importMergeStrategy: ImportMergeStrategy = DEFAULT_MERGE_STRATEGIES.imports;
-  
+  private importMergeStrategy: ImportMergeStrategy =
+    DEFAULT_MERGE_STRATEGIES.imports;
+
   /** Current concepts being rendered (for per-element class access) */
   private concepts?: ComponentConcept;
-
 
   constructor() {
     this.propertyProcessor = new ComponentPropertyProcessor({
       script: this.scriptMergeStrategy,
       props: this.propMergeStrategy,
-      imports: this.importMergeStrategy
+      imports: this.importMergeStrategy,
     });
     this.scriptMerger = new ScriptMergeProcessor();
   }
@@ -98,14 +99,18 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Process event concepts to Svelte event handlers
    */
   processEvents(events: EventConcept[]): FrameworkEventOutput {
-    const processedEvents = events.map(event => {
+    const processedEvents = events.map((event) => {
       // Normalize event to Svelte format: 'click' → 'on:click'
       const normalizedEvent = this.eventNormalizer.normalizeEvent(event, {
         framework: 'svelte',
-        preserveModifiers: true
+        preserveModifiers: true,
       });
 
-      const syntax = this.generateEventSyntax(event.name, event.handler, event.modifiers || []);
+      const syntax = this.generateEventSyntax(
+        event.name,
+        event.handler,
+        event.modifiers || []
+      );
 
       return {
         directive: normalizedEvent.frameworkAttribute,
@@ -113,7 +118,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         modifiers: event.modifiers || [],
         parameters: event.parameters || [],
         nodeId: event.nodeId,
-        syntax
+        syntax,
       } as SvelteEventOutput;
     });
 
@@ -127,42 +132,55 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes,
-      imports
+      imports,
     };
   }
 
   /**
    * Generate Svelte event syntax with modifiers
    */
-  private generateEventSyntax(eventName: string, handler: string, modifiers: string[] = []): string {
-    const modifierString = modifiers.length > 0 ? `|${modifiers.join('|')}` : '';
+  private generateEventSyntax(
+    eventName: string,
+    handler: string,
+    modifiers: string[] = []
+  ): string {
+    const modifierString =
+      modifiers.length > 0 ? `|${modifiers.join('|')}` : '';
     return `on:${eventName}${modifierString}={${handler}}`;
   }
 
   /**
    * Process conditional concepts for Svelte logic blocks
    */
-  processConditionals(conditionals: ConditionalConcept[], globalAttributes: Record<string, string> = {}): FrameworkConditionalOutput {
-    const processedConditionals = conditionals.map(conditional => {
+  processConditionals(
+    conditionals: ConditionalConcept[],
+    globalAttributes: Record<string, string> = {}
+  ): FrameworkConditionalOutput {
+    const processedConditionals = conditionals.map((conditional) => {
       // Convert raw template nodes to rendered content while preserving per-element styling
       const thenContent = this.renderNodes(conditional.thenNodes);
-      const elseContent = conditional.elseNodes ?
-        this.renderNodes(conditional.elseNodes) : null;
+      const elseContent = conditional.elseNodes
+        ? this.renderNodes(conditional.elseNodes)
+        : null;
 
       return {
         condition: conditional.condition,
         thenContent,
         elseContent,
         nodeId: conditional.nodeId,
-        syntax: this.generateConditionalSyntax(conditional.condition, thenContent, elseContent)
+        syntax: this.generateConditionalSyntax(
+          conditional.condition,
+          thenContent,
+          elseContent
+        ),
       } as SvelteConditionalOutput;
     });
 
-    const syntax = processedConditionals.map(c => c.syntax).join('\n');
+    const syntax = processedConditionals.map((c) => c.syntax).join('\n');
 
     return {
       syntax,
-      imports: []
+      imports: [],
     };
   }
 
@@ -192,19 +210,23 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Indent content for Svelte blocks
    */
   private indentContent(content: string): string {
-    return content.split('\n').map(line => 
-      line.trim() ? `  ${line}` : line
-    ).join('\n');
+    return content
+      .split('\n')
+      .map((line) => (line.trim() ? `  ${line}` : line))
+      .join('\n');
   }
 
   /**
    * Process iteration concepts for Svelte each blocks
    */
-  processIterations(iterations: IterationConcept[], globalAttributes: Record<string, string> = {}): FrameworkIterationOutput {
-    const processedIterations = iterations.map(iteration => {
+  processIterations(
+    iterations: IterationConcept[],
+    globalAttributes: Record<string, string> = {}
+  ): FrameworkIterationOutput {
+    const processedIterations = iterations.map((iteration) => {
       const vEachExpression = this.generateEachExpression(iteration);
-      const keyExpression = iteration.keyExpression ||
-        (iteration.indexVariable || 'index');
+      const keyExpression =
+        iteration.keyExpression || iteration.indexVariable || 'index';
       // Convert raw template nodes to rendered content while preserving per-element styling
       const childContent = this.renderNodes(iteration.childNodes);
 
@@ -216,15 +238,20 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         indexVariable: iteration.indexVariable,
         childContent,
         nodeId: iteration.nodeId,
-        syntax: this.generateIterationSyntax(iteration, vEachExpression, keyExpression, childContent)
+        syntax: this.generateIterationSyntax(
+          iteration,
+          vEachExpression,
+          keyExpression,
+          childContent
+        ),
       } as SvelteIterationOutput;
     });
 
-    const syntax = processedIterations.map(i => i.syntax).join('\n');
+    const syntax = processedIterations.map((i) => i.syntax).join('\n');
 
     return {
       syntax,
-      imports: []
+      imports: [],
     };
   }
 
@@ -262,25 +289,26 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Process slot concepts for Svelte slot elements
    */
   processSlots(slots: SlotConcept[]): FrameworkSlotOutput {
-    const processedSlots = slots.map(slot => {
-      const fallbackContent = slot.fallback ?
-        this.renderNodes(slot.fallback) : null;
+    const processedSlots = slots.map((slot) => {
+      const fallbackContent = slot.fallback
+        ? this.renderNodes(slot.fallback)
+        : null;
 
       return {
         name: slot.name,
         fallback: fallbackContent,
         nodeId: slot.nodeId,
-        syntax: this.generateSlotSyntax(slot.name, fallbackContent)
+        syntax: this.generateSlotSyntax(slot.name, fallbackContent),
       } as SvelteSlotOutput;
     });
 
-    const syntax = processedSlots.map(s => s.syntax).join('\n');
+    const syntax = processedSlots.map((s) => s.syntax).join('\n');
     const props: Record<string, string> = {};
 
     return {
       syntax,
       props,
-      imports: []
+      imports: [],
     };
   }
 
@@ -302,7 +330,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Process attribute concepts for Svelte attribute and directive handling
    */
   processAttributes(attributes: AttributeConcept[]): FrameworkAttributeOutput {
-    const processedAttributes = attributes.map(attribute => {
+    const processedAttributes = attributes.map((attribute) => {
       const svelteAttribute = this.processSvelteAttribute(attribute);
 
       return {
@@ -313,7 +341,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         isDirective: svelteAttribute.isDirective,
         isBinding: svelteAttribute.isBinding,
         nodeId: attribute.nodeId,
-        syntax: svelteAttribute.syntax
+        syntax: svelteAttribute.syntax,
       } as SvelteAttributeOutput;
     });
 
@@ -328,23 +356,29 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
 
     return {
       attributes: attributeMap,
-      imports: []
+      imports: [],
     };
   }
 
   /**
    * Process Svelte attribute
    */
-  private processSvelteAttribute(attribute: AttributeConcept): SvelteAttributeInfo {
+  private processSvelteAttribute(
+    attribute: AttributeConcept
+  ): SvelteAttributeInfo {
     const { name, value, isExpression } = attribute;
 
     // Handle Svelte directives
-    if (name.startsWith('use:') || name.startsWith('on:') || name.startsWith('bind:')) {
+    if (
+      name.startsWith('use:') ||
+      name.startsWith('on:') ||
+      name.startsWith('bind:')
+    ) {
       return {
         name,
         isDirective: true,
         isBinding: name.startsWith('bind:'),
-        syntax: `${name}={${value}}`
+        syntax: `${name}={${value}}`,
       };
     }
 
@@ -354,7 +388,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         name,
         isDirective: true,
         isBinding: false,
-        syntax: `class={${value}}`
+        syntax: `class={${value}}`,
       };
     }
 
@@ -364,7 +398,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         name,
         isDirective: false,
         isBinding: false,
-        syntax: `${name}={${value}}`
+        syntax: `${name}={${value}}`,
       };
     }
 
@@ -373,7 +407,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
       name,
       isDirective: false,
       isBinding: false,
-      syntax: `${name}="${value}"`
+      syntax: `${name}="${value}"`,
     };
   }
 
@@ -383,7 +417,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
     // Store concepts for per-element class access
     this.concepts = concepts;
-    
+
     // Resolve component name
     const componentName = this.propertyProcessor.resolveComponentName(
       { framework: 'svelte', component: context.component },
@@ -392,17 +426,29 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     );
 
     // Generate component sections
-    const scriptSection = this.generateScriptSection(concepts, context, componentName);
+    const scriptSection = this.generateScriptSection(
+      concepts,
+      context,
+      componentName
+    );
     const templateSection = this.generateTemplateSection(concepts);
     const styleSection = this.generateStyleSection(context);
 
-    return this.assembleSvelteComponent(scriptSection, templateSection, styleSection);
+    return this.assembleSvelteComponent(
+      scriptSection,
+      templateSection,
+      styleSection
+    );
   }
 
   /**
    * Assemble Svelte component sections
    */
-  private assembleSvelteComponent(script: string, template: string, style: string): string {
+  private assembleSvelteComponent(
+    script: string,
+    template: string,
+    style: string
+  ): string {
     const sections = [script, template, style].filter(Boolean);
     return sections.join('\n\n');
   }
@@ -415,7 +461,8 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     context: RenderContext,
     componentName: string
   ): string {
-    const useTypeScript = (context.options?.language || 'javascript') === 'typescript';
+    const useTypeScript =
+      (context.options?.language || 'javascript') === 'typescript';
 
     // Merge imports and scripts
     const imports = this.importProcessor.mergeImports(
@@ -442,8 +489,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
       importStatements.join('\n'),
       propsSection,
       script,
-      reactiveSection
-    ].filter(Boolean).join('\n\n');
+      reactiveSection,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     return `<script${lang}>\n${this.indentScript(scriptContent)}\n</script>`;
   }
@@ -451,7 +500,11 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Generate props section
    */
-  private generateProps(concepts: ComponentConcept, context: RenderContext, useTypeScript: boolean): string {
+  private generateProps(
+    concepts: ComponentConcept,
+    context: RenderContext,
+    useTypeScript: boolean
+  ): string {
     const props = this.mergeAllProps(concepts, context);
 
     if (Object.keys(props).length === 0) {
@@ -460,16 +513,16 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
 
     if (useTypeScript) {
       // TypeScript prop declarations
-      const propDeclarations = Object.entries(props).map(([key, type]) =>
-        `export let ${key}: ${type};`
-      ).join('\n');
+      const propDeclarations = Object.entries(props)
+        .map(([key, type]) => `export let ${key}: ${type};`)
+        .join('\n');
 
       return propDeclarations;
     } else {
       // JavaScript prop declarations
-      const propDeclarations = Object.keys(props).map(key =>
-        `export let ${key};`
-      ).join('\n');
+      const propDeclarations = Object.keys(props)
+        .map((key) => `export let ${key};`)
+        .join('\n');
 
       return propDeclarations;
     }
@@ -478,13 +531,16 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Generate reactive statements
    */
-  private generateReactiveStatements(concepts: ComponentConcept, context: RenderContext): string {
+  private generateReactiveStatements(
+    concepts: ComponentConcept,
+    context: RenderContext
+  ): string {
     const reactiveStatements: string[] = [];
 
     // Analyze concepts for reactive dependencies
     const reactiveVars = this.analyzeReactiveVariables(concepts, context);
 
-    reactiveVars.forEach(reactiveVar => {
+    reactiveVars.forEach((reactiveVar) => {
       reactiveStatements.push(`$: ${reactiveVar.statement}`);
     });
 
@@ -494,7 +550,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Analyze reactive variables
    */
-  private analyzeReactiveVariables(concepts: ComponentConcept, context: RenderContext): SvelteReactiveVariable[] {
+  private analyzeReactiveVariables(
+    concepts: ComponentConcept,
+    context: RenderContext
+  ): SvelteReactiveVariable[] {
     const reactiveVars: SvelteReactiveVariable[] = [];
     const script = context.component?.script || '';
 
@@ -506,7 +565,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
         const statement = match.replace(/\$:\s*/, '');
         reactiveVars.push({
           statement,
-          dependencies: this.extractDependencies(statement)
+          dependencies: this.extractDependencies(statement),
         });
       });
     }
@@ -535,15 +594,19 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Generate style section
    */
   private generateStyleSection(context: RenderContext): string {
-    const styleOutput = context.styleOutput ||
-      context.component?.extensions?.svelte?.styleOutput || '';
+    const styleOutput =
+      context.styleOutput ||
+      context.component?.extensions?.svelte?.styleOutput ||
+      '';
 
     if (!styleOutput.trim()) {
       return '';
     }
 
-    const styleLanguage = context.component?.extensions?.svelte?.styleLanguage ?? 'css';
-    const isGlobal = context.component?.extensions?.svelte?.globalStyles ?? false;
+    const styleLanguage =
+      context.component?.extensions?.svelte?.styleLanguage ?? 'css';
+    const isGlobal =
+      context.component?.extensions?.svelte?.globalStyles ?? false;
 
     const attributes = [];
     if (styleLanguage !== 'css') {
@@ -561,7 +624,9 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Get default Svelte imports
    */
-  private getDefaultSvelteImports(concepts: ComponentConcept): ImportDefinition[] {
+  private getDefaultSvelteImports(
+    concepts: ComponentConcept
+  ): ImportDefinition[] {
     const imports: ImportDefinition[] = [];
 
     // Analyze concepts for required Svelte features
@@ -570,21 +635,21 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     if (features.stores.length > 0) {
       imports.push({
         from: 'svelte/store',
-        named: features.stores
+        named: features.stores,
       });
     }
 
     if (features.lifecycle.length > 0) {
       imports.push({
         from: 'svelte',
-        named: features.lifecycle
+        named: features.lifecycle,
       });
     }
 
     if (features.transitions.length > 0) {
       imports.push({
         from: 'svelte/transition',
-        named: features.transitions
+        named: features.transitions,
       });
     }
 
@@ -594,12 +659,14 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Analyze Svelte features
    */
-  private analyzeSvelteFeatures(concepts: ComponentConcept): SvelteFeatureAnalysis {
+  private analyzeSvelteFeatures(
+    concepts: ComponentConcept
+  ): SvelteFeatureAnalysis {
     return {
       stores: this.analyzeStoreUsage(concepts),
       lifecycle: this.analyzeLifecycleHooks(concepts),
       transitions: this.analyzeTransitions(concepts),
-      actions: this.analyzeActions(concepts)
+      actions: this.analyzeActions(concepts),
     };
   }
 
@@ -635,9 +702,9 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    */
   private analyzeActions(concepts: ComponentConcept): string[] {
     const actions = new Set<string>();
-    
+
     // Process use: directives from concepts
-    concepts.attributes.forEach(attr => {
+    concepts.attributes.forEach((attr) => {
       if (attr.name.startsWith('use:')) {
         const actionName = attr.name.slice(4);
         actions.add(actionName);
@@ -650,7 +717,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Merge all props
    */
-  private mergeAllProps(concepts: ComponentConcept, context: RenderContext): Record<string, string> {
+  private mergeAllProps(
+    concepts: ComponentConcept,
+    context: RenderContext
+  ): Record<string, string> {
     const props: Record<string, string> = {};
 
     // Add slot props
@@ -671,7 +741,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Format imports to string array
    */
   private formatImports(imports: ImportDefinition[]): string[] {
-    return imports.map(imp => {
+    return imports.map((imp) => {
       const parts: string[] = [];
 
       if (imp.default && imp.named) {
@@ -693,9 +763,10 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Indent script content
    */
   private indentScript(script: string): string {
-    return script.split('\n').map(line =>
-      line.trim() ? `  ${line}` : line
-    ).join('\n');
+    return script
+      .split('\n')
+      .map((line) => (line.trim() ? `  ${line}` : line))
+      .join('\n');
   }
 
   /**
@@ -733,18 +804,27 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     }
 
     // Render structural concepts
-    const structuralOutput = this.renderStructuralConcepts(concepts.structure || [], allAttributes);
+    const structuralOutput = this.renderStructuralConcepts(
+      concepts.structure || [],
+      allAttributes
+    );
 
     // Process behavioral concepts that generate their own syntax
     const parts: string[] = [structuralOutput];
 
     if (concepts.conditionals.length > 0) {
-      const conditionalOutput = this.processConditionals(concepts.conditionals, allAttributes);
+      const conditionalOutput = this.processConditionals(
+        concepts.conditionals,
+        allAttributes
+      );
       parts.push(conditionalOutput.syntax);
     }
 
     if (concepts.iterations.length > 0) {
-      const iterationOutput = this.processIterations(concepts.iterations, allAttributes);
+      const iterationOutput = this.processIterations(
+        concepts.iterations,
+        allAttributes
+      );
       parts.push(iterationOutput.syntax);
     }
 
@@ -760,35 +840,48 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
    * Render structural concepts to HTML
    */
   private renderStructuralConcepts(
-    structuralConcepts: (StructuralConcept | TextConcept | CommentConcept | FragmentConcept)[],
+    structuralConcepts: (
+      | StructuralConcept
+      | TextConcept
+      | CommentConcept
+      | FragmentConcept
+    )[],
     attributes: Record<string, string>
   ): string {
     if (!structuralConcepts || structuralConcepts.length === 0) {
       return '';
     }
-    return structuralConcepts.map((concept, index) => {
-      switch (concept.type) {
-        case 'text':
-          const textConcept = concept as TextConcept;
-          return textConcept.content;
+    return structuralConcepts
+      .map((concept, index) => {
+        switch (concept.type) {
+          case 'text':
+            const textConcept = concept as TextConcept;
+            return textConcept.content;
 
-        case 'comment':
-          const commentConcept = concept as CommentConcept;
-          return `<!-- ${commentConcept.content} -->`;
+          case 'comment':
+            const commentConcept = concept as CommentConcept;
+            return `<!-- ${commentConcept.content} -->`;
 
-        case 'fragment':
-          const fragmentConcept = concept as FragmentConcept;
-          return this.renderStructuralConcepts(fragmentConcept.children || [], {});
+          case 'fragment':
+            const fragmentConcept = concept as FragmentConcept;
+            return this.renderStructuralConcepts(
+              fragmentConcept.children || [],
+              {}
+            );
 
-        case 'element':
-        default:
-          // StructuralConcept (element)
-          const structuralConcept = concept as StructuralConcept;
-          // Only apply global attributes to the first element
-          const attributesToApply = index === 0 ? attributes : {};
-          return this.renderStructuralElement(structuralConcept, attributesToApply);
-      }
-    }).join('');
+          case 'element':
+          default:
+            // StructuralConcept (element)
+            const structuralConcept = concept as StructuralConcept;
+            // Only apply global attributes to the first element
+            const attributesToApply = index === 0 ? attributes : {};
+            return this.renderStructuralElement(
+              structuralConcept,
+              attributesToApply
+            );
+        }
+      })
+      .join('');
   }
 
   /**
@@ -799,21 +892,30 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     globalAttributes: Record<string, string>
   ): string {
     const tag = concept.tag;
-    
+
     // Render children
-    const childrenOutput = this.renderStructuralConcepts(concept.children || [], {});
-    
+    const childrenOutput = this.renderStructuralConcepts(
+      concept.children || [],
+      {}
+    );
+
     let attributeString = '';
-    
+
     // First, render the element's own attributes
     if (concept.attributes) {
       for (const [name, value] of Object.entries(concept.attributes)) {
         // Handle Svelte event directives and expressions correctly
-        if (name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('use:')) {
+        if (
+          name.startsWith('on:') ||
+          name.startsWith('bind:') ||
+          name.startsWith('use:')
+        ) {
           attributeString += ` ${name}={${value}}`;
         } else if (this.isExpressionValue(String(value))) {
           // Handle expression attributes like disabled="{isDisabled}" -> disabled={isDisabled}
-          const expressionContent = this.extractExpressionContent(String(value));
+          const expressionContent = this.extractExpressionContent(
+            String(value)
+          );
           attributeString += ` ${name}={${expressionContent}}`;
         } else {
           attributeString += ` ${name}="${value}"`;
@@ -823,28 +925,46 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
 
     // Apply per-element classes if available (e.g., from BEM extension)
     if (this.concepts?.styling?.perElementClasses && concept.nodeId) {
-      const elementClasses = this.concepts.styling.perElementClasses[concept.nodeId];
+      const elementClasses =
+        this.concepts.styling.perElementClasses[concept.nodeId];
       if (elementClasses && elementClasses.length > 0) {
         const classNames = elementClasses.join(' ');
         // Merge with existing class attribute if present
         const existingClass = concept.attributes?.class || '';
-        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        const combinedClasses = existingClass
+          ? `${existingClass} ${classNames}`
+          : classNames;
         attributeString += ` class="${combinedClasses}"`;
       }
     }
-    
+
     // Then apply global attributes (behavioral concepts)
     if (Object.keys(globalAttributes).length > 0) {
       for (const [name, value] of Object.entries(globalAttributes)) {
         // Skip attributes that look like event names without proper prefixes
         // This prevents issues where 'mouseenter' appears instead of 'on:mouseenter'
-        const commonEvents = ['click', 'mouseenter', 'mouseleave', 'keydown', 'keyup', 'change', 'input', 'submit', 'focus', 'blur'];
+        const commonEvents = [
+          'click',
+          'mouseenter',
+          'mouseleave',
+          'keydown',
+          'keyup',
+          'change',
+          'input',
+          'submit',
+          'focus',
+          'blur',
+        ];
         if (commonEvents.includes(name.toLowerCase())) {
           continue; // Skip potential event attributes without proper prefixes
         }
-        
+
         // Handle Svelte event directives and expressions correctly
-        if (name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('use:')) {
+        if (
+          name.startsWith('on:') ||
+          name.startsWith('bind:') ||
+          name.startsWith('use:')
+        ) {
           attributeString += ` ${name}={${value}}`;
         } else if (this.isExpressionValue(value)) {
           // Handle expression attributes like disabled="{isDisabled}" -> disabled={isDisabled}
@@ -888,7 +1008,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   private renderNodes(nodes: any[]): string {
     if (!nodes || nodes.length === 0) return '';
 
-    return nodes.map(node => this.renderSingleNode(node)).join('');
+    return nodes.map((node) => this.renderSingleNode(node)).join('');
   }
 
   /**
@@ -912,7 +1032,11 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
       case 'if':
         const thenContent = this.renderNodes(node.then || []);
         const elseContent = node.else ? this.renderNodes(node.else) : null;
-        return this.generateConditionalSyntax(node.condition, thenContent, elseContent);
+        return this.generateConditionalSyntax(
+          node.condition,
+          thenContent,
+          elseContent
+        );
 
       case 'for':
         const iterationContent = this.renderNodes(node.children || []);
@@ -921,10 +1045,15 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
           itemVariable: node.item,
           indexVariable: node.index,
           keyExpression: node.key,
-          childNodes: node.children
+          childNodes: node.children,
         } as IterationConcept;
         const vEachExpression = this.generateEachExpression(iteration);
-        return this.generateIterationSyntax(iteration, vEachExpression, node.key || 'index', iterationContent);
+        return this.generateIterationSyntax(
+          iteration,
+          vEachExpression,
+          node.key || 'index',
+          iterationContent
+        );
 
       case 'slot':
         const fallback = node.fallback ? this.renderNodes(node.fallback) : null;
@@ -961,7 +1090,11 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
           attributes += ` ${name}`;
         } else if (typeof value === 'string' || typeof value === 'number') {
           // Handle Svelte event directives and expressions correctly
-          if (name.startsWith('on:') || name.startsWith('bind:') || name.startsWith('use:')) {
+          if (
+            name.startsWith('on:') ||
+            name.startsWith('bind:') ||
+            name.startsWith('use:')
+          ) {
             attributes += ` ${name}={${value}}`;
           } else {
             attributes += ` ${name}="${value}"`;
@@ -972,7 +1105,9 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
 
     // Process expression attributes
     if (node.expressionAttributes) {
-      for (const [name, expression] of Object.entries(node.expressionAttributes)) {
+      for (const [name, expression] of Object.entries(
+        node.expressionAttributes
+      )) {
         attributes += ` ${name}={${expression}}`;
       }
     }
@@ -982,13 +1117,16 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     if (this.concepts?.styling?.perElementClasses && node.extensions) {
       // Find the nodeId that matches this node's extension data
       let matchedClasses: string[] = [];
-      
+
       if (this.concepts.styling.extensionData?.bem) {
         for (const bemNode of this.concepts.styling.extensionData.bem) {
           // Check if this BEM node data matches the current node's extension data
-          if (node.extensions.bem && 
-              JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)) {
-            const elementClasses = this.concepts.styling.perElementClasses[bemNode.nodeId];
+          if (
+            node.extensions.bem &&
+            JSON.stringify(bemNode.data) === JSON.stringify(node.extensions.bem)
+          ) {
+            const elementClasses =
+              this.concepts.styling.perElementClasses[bemNode.nodeId];
             if (elementClasses && elementClasses.length > 0) {
               matchedClasses = elementClasses;
               break;
@@ -996,19 +1134,35 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
           }
         }
       }
-      
+
       if (matchedClasses.length > 0) {
         const classNames = matchedClasses.join(' ');
         // Merge with existing class attribute if present
         const existingClass = node.attributes?.class || '';
-        const combinedClasses = existingClass ? `${existingClass} ${classNames}` : classNames;
+        const combinedClasses = existingClass
+          ? `${existingClass} ${classNames}`
+          : classNames;
         attributes += ` class="${combinedClasses}"`;
       }
     }
 
     // Self-closing tags
-    const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-                            'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    const selfClosingTags = [
+      'area',
+      'base',
+      'br',
+      'col',
+      'embed',
+      'hr',
+      'img',
+      'input',
+      'link',
+      'meta',
+      'param',
+      'source',
+      'track',
+      'wbr',
+    ];
 
     if (selfClosingTags.includes(tag.toLowerCase()) && !children) {
       return `<${tag}${attributes} />`;
@@ -1020,14 +1174,18 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
   /**
    * Get file extension for Svelte components
    */
-  public getFileExtension(_options: { language?: 'typescript' | 'javascript' }): string {
+  public getFileExtension(_options: {
+    language?: 'typescript' | 'javascript';
+  }): string {
     return '.svelte';
   }
 
   /**
    * Get Prettier parser for Svelte components
    */
-  public getPrettierParser(_options: { language?: 'typescript' | 'javascript' }): string {
+  public getPrettierParser(_options: {
+    language?: 'typescript' | 'javascript';
+  }): string {
     return 'svelte';
   }
 }

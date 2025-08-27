@@ -1,12 +1,15 @@
 /**
  * Advanced Event Concept Extractor
- * 
+ *
  * Advanced event extraction with cross-framework normalization and validation.
  * Provides comprehensive event analysis and framework-specific processing.
  */
 
 import { ErrorCollector } from '../metadata';
-import { EventNormalizer, type EventNormalizationOptions } from '../normalization';
+import {
+  EventNormalizer,
+  type EventNormalizationOptions,
+} from '../normalization';
 import type { EventConcept } from '../concepts';
 import type { ValidationWarning } from '../validation/ConceptValidator';
 import { ValidationSeverity } from '../validation/ConceptValidator';
@@ -76,7 +79,10 @@ export class EventExtractor {
   private eventNormalizer: EventNormalizer;
   private defaultEventPrefixes = ['on', '@', 'v-on:', 'on:', 'bind:'];
 
-  constructor(errorCollector?: ErrorCollector, eventNormalizer?: EventNormalizer) {
+  constructor(
+    errorCollector?: ErrorCollector,
+    eventNormalizer?: EventNormalizer
+  ) {
     this.errorCollector = errorCollector || new ErrorCollector();
     this.eventNormalizer = eventNormalizer || new EventNormalizer();
   }
@@ -96,19 +102,19 @@ export class EventExtractor {
       validateEvents = true,
       extractModifiers = true,
       extractParameters = true,
-      customPatterns = []
+      customPatterns = [],
     } = options;
 
     const events: EventConcept[] = [];
     const frameworkPatterns: Record<string, number> = {};
-    
+
     // Process all nodes recursively
     this.processNodes(nodes, events, {
       eventPrefixes,
       extractModifiers,
       extractParameters,
       customPatterns,
-      frameworkPatterns
+      frameworkPatterns,
     });
 
     // Validate events and collect warnings
@@ -123,11 +129,16 @@ export class EventExtractor {
       const normalizationOptions: EventNormalizationOptions = {
         framework,
         validateEvents,
-        preserveModifiers: extractModifiers
+        preserveModifiers: extractModifiers,
       };
 
-      const normalizedEvents = this.eventNormalizer.normalizeEvents(events, normalizationOptions);
-      normalizedCount = normalizedEvents.filter(ne => ne.wasNormalized).length;
+      const normalizedEvents = this.eventNormalizer.normalizeEvents(
+        events,
+        normalizationOptions
+      );
+      normalizedCount = normalizedEvents.filter(
+        (ne) => ne.wasNormalized
+      ).length;
 
       // Update events with normalized names and framework attributes
       for (let i = 0; i < events.length; i++) {
@@ -137,7 +148,10 @@ export class EventExtractor {
             ...events[i],
             name: normalized.commonName,
             modifiers: normalized.modifiers,
-            frameworkAttribute: this.getFrameworkAttribute(normalized.commonName, framework)
+            frameworkAttribute: this.getFrameworkAttribute(
+              normalized.commonName,
+              framework
+            ),
           };
         }
       }
@@ -146,12 +160,14 @@ export class EventExtractor {
     // Add normalizer warnings
     const normalizerErrors = this.eventNormalizer.getErrors();
     const normalizerWarnings = normalizerErrors.getErrorsBySeverity('warning');
-    warnings.push(...normalizerWarnings.map(w => ({
-      message: w.message,
-      severity: ValidationSeverity.WARNING,
-      source: typeof w.context === 'string' ? w.context : 'normalizer',
-      suggestion: 'Check event normalization for framework compatibility'
-    })));
+    warnings.push(
+      ...normalizerWarnings.map((w) => ({
+        message: w.message,
+        severity: ValidationSeverity.WARNING,
+        source: typeof w.context === 'string' ? w.context : 'normalizer',
+        suggestion: 'Check event normalization for framework compatibility',
+      }))
+    );
 
     const processingTime = Math.max(1, Date.now() - startTime);
     const nodesProcessed = this.getNodeCount(nodes);
@@ -165,8 +181,8 @@ export class EventExtractor {
         eventsFound: events.length,
         processingTime,
         frameworkPatterns,
-        warnings
-      }
+        warnings,
+      },
     };
   }
 
@@ -239,16 +255,17 @@ export class EventExtractor {
     // Combine regular and expression attributes
     const allAttributes = {
       ...node.attributes,
-      ...node.expressionAttributes
+      ...node.expressionAttributes,
     };
 
     for (const [attrName, attrValue] of Object.entries(allAttributes)) {
       const eventInfo = this.parseEventAttribute(attrName, context);
-      
+
       if (eventInfo) {
         // Count framework patterns - map prefix to framework name
         const frameworkName = this.getFrameworkFromPattern(eventInfo.pattern);
-        context.frameworkPatterns[frameworkName] = (context.frameworkPatterns[frameworkName] || 0) + 1;
+        context.frameworkPatterns[frameworkName] =
+          (context.frameworkPatterns[frameworkName] || 0) + 1;
 
         const event: EventConcept = {
           nodeId,
@@ -256,7 +273,9 @@ export class EventExtractor {
           handler: String(attrValue),
           frameworkAttribute: attrName, // Store the original attribute name
           modifiers: context.extractModifiers ? eventInfo.modifiers : undefined,
-          parameters: context.extractParameters ? this.extractEventParameters(String(attrValue)) : undefined
+          parameters: context.extractParameters
+            ? this.extractEventParameters(String(attrValue))
+            : undefined,
         };
 
         events.push(event);
@@ -266,7 +285,7 @@ export class EventExtractor {
           nodeId,
           name: 'invalid',
           handler: String(attrValue),
-          frameworkAttribute: 'invalid-event-name' // Special marker for validation
+          frameworkAttribute: 'invalid-event-name', // Special marker for validation
         };
         events.push(event);
       }
@@ -291,23 +310,25 @@ export class EventExtractor {
         return {
           eventName: attrName,
           modifiers: [],
-          pattern: 'custom'
+          pattern: 'custom',
         };
       }
     }
 
     // Check standard event prefixes
-    const sortedPrefixes = [...context.eventPrefixes].sort((a, b) => b.length - a.length);
-    
+    const sortedPrefixes = [...context.eventPrefixes].sort(
+      (a, b) => b.length - a.length
+    );
+
     for (const prefix of sortedPrefixes) {
       if (attrName.startsWith(prefix)) {
         const eventPart = attrName.substring(prefix.length);
         const { eventName, modifiers } = this.parseEventPart(eventPart);
-        
+
         return {
           eventName,
           modifiers,
-          pattern: prefix
+          pattern: prefix,
         };
       }
     }
@@ -318,7 +339,10 @@ export class EventExtractor {
   /**
    * Parse the event part after the prefix to extract name and modifiers.
    */
-  private parseEventPart(eventPart: string): { eventName: string; modifiers: string[] } {
+  private parseEventPart(eventPart: string): {
+    eventName: string;
+    modifiers: string[];
+  } {
     let eventName = eventPart;
     let modifiers: string[] = [];
 
@@ -349,14 +373,24 @@ export class EventExtractor {
     const functionCallMatch = handler.match(/\w+\s*\(([^)]*)\)/);
     if (functionCallMatch && functionCallMatch[1]) {
       const paramStr = functionCallMatch[1];
-      parameters.push(...paramStr.split(',').map(p => p.trim()).filter(Boolean));
+      parameters.push(
+        ...paramStr
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean)
+      );
     }
 
     // Match arrow functions with parameters
     const arrowFunctionMatch = handler.match(/\(([^)]*)\)\s*=>/);
     if (arrowFunctionMatch && arrowFunctionMatch[1]) {
       const paramStr = arrowFunctionMatch[1];
-      parameters.push(...paramStr.split(',').map(p => p.trim()).filter(Boolean));
+      parameters.push(
+        ...paramStr
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean)
+      );
     }
 
     return parameters;
@@ -406,15 +440,18 @@ export class EventExtractor {
     }
   }
 
-
   /**
    * Check if an attribute name could be an event attribute (for error detection).
    */
   private couldBeEventAttribute(attrName: string): boolean {
     // Check for common event-like patterns that might be invalid
-    return attrName.includes('event') || attrName.includes('click') || attrName.includes('handler') || 
-           (attrName.match(/^(on|@|v-on:|bind:).*/) !== null) ||
-           attrName === 'invalid-event-name'; // Special test case
+    return (
+      attrName.includes('event') ||
+      attrName.includes('click') ||
+      attrName.includes('handler') ||
+      attrName.match(/^(on|@|v-on:|bind:).*/) !== null ||
+      attrName === 'invalid-event-name'
+    ); // Special test case
   }
 
   /**
@@ -422,21 +459,24 @@ export class EventExtractor {
    */
   private getNodeCount(nodes: TemplateNode[]): number {
     let count = 0;
-    
+
     for (const node of nodes) {
       count++;
       if (node.children) {
         count += this.getNodeCount(node.children);
       }
     }
-    
+
     return count;
   }
 
   /**
    * Validate events and collect warnings.
    */
-  private validateEvents(events: EventConcept[], framework: string): ValidationWarning[] {
+  private validateEvents(
+    events: EventConcept[],
+    framework: string
+  ): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
 
     for (const event of events) {
@@ -446,18 +486,24 @@ export class EventExtractor {
           message: `Event ${event.name} has empty handler`,
           severity: ValidationSeverity.WARNING,
           source: event.nodeId,
-          suggestion: 'Provide a valid handler function'
+          suggestion: 'Provide a valid handler function',
         };
         warnings.push(warning);
         this.errorCollector.addWarning(warning.message, warning.source);
       }
-      
+
       // Check for framework mismatches
       if (event.frameworkAttribute) {
-        const mismatchWarning = this.validateFrameworkAttribute(event, framework);
+        const mismatchWarning = this.validateFrameworkAttribute(
+          event,
+          framework
+        );
         if (mismatchWarning) {
           warnings.push(mismatchWarning);
-          this.errorCollector.addWarning(mismatchWarning.message, mismatchWarning.source);
+          this.errorCollector.addWarning(
+            mismatchWarning.message,
+            mismatchWarning.source
+          );
         }
       }
 
@@ -467,7 +513,7 @@ export class EventExtractor {
           message: `Invalid event attribute: ${event.frameworkAttribute}`,
           severity: ValidationSeverity.WARNING,
           source: event.nodeId,
-          suggestion: 'Use valid event attribute names'
+          suggestion: 'Use valid event attribute names',
         };
         warnings.push(warning);
         this.errorCollector.addWarning(warning.message, warning.source);
@@ -480,14 +526,17 @@ export class EventExtractor {
   /**
    * Validate framework-specific attribute syntax.
    */
-  private validateFrameworkAttribute(event: EventConcept, framework: string): ValidationWarning | null {
+  private validateFrameworkAttribute(
+    event: EventConcept,
+    framework: string
+  ): ValidationWarning | null {
     if (!event.frameworkAttribute) return null;
 
     const attr = event.frameworkAttribute;
     const isReactStyle = attr.startsWith('on') && !attr.startsWith('on:');
     const isVueStyle = attr.startsWith('@');
     const isSvelteStyle = attr.startsWith('on:');
-    
+
     // Skip validation for special test cases
     if (attr.match(/^invalid-event-name$/)) return null;
 
@@ -516,7 +565,7 @@ export class EventExtractor {
         message: `Event ${attr} is not ${expectedStyle} syntax - framework mismatch`,
         severity: ValidationSeverity.WARNING,
         source: event.nodeId,
-        suggestion: `Use ${expectedStyle} syntax for this framework`
+        suggestion: `Use ${expectedStyle} syntax for this framework`,
       };
     }
 
@@ -536,7 +585,7 @@ export class EventExtractor {
       extractModifiers: options.extractModifiers ?? true,
       extractParameters: options.extractParameters ?? true,
       customPatterns: options.customPatterns || [],
-      frameworkPatterns: {}
+      frameworkPatterns: {},
     };
 
     return this.extractEventsFromNode(node, nodeId, context);
@@ -555,24 +604,43 @@ export class EventExtractor {
     switch (framework) {
       case 'react':
         if (event.modifiers && event.modifiers.length > 0) {
-          warnings.push(`React doesn't support event modifiers: ${event.modifiers.join(', ')}`);
+          warnings.push(
+            `React doesn't support event modifiers: ${event.modifiers.join(', ')}`
+          );
         }
         break;
-      
+
       case 'vue':
         if (event.modifiers) {
-          const validModifiers = ['stop', 'prevent', 'capture', 'self', 'once', 'passive'];
-          const invalid = event.modifiers.filter(m => !validModifiers.includes(m));
+          const validModifiers = [
+            'stop',
+            'prevent',
+            'capture',
+            'self',
+            'once',
+            'passive',
+          ];
+          const invalid = event.modifiers.filter(
+            (m) => !validModifiers.includes(m)
+          );
           if (invalid.length > 0) {
             warnings.push(`Invalid Vue modifiers: ${invalid.join(', ')}`);
           }
         }
         break;
-      
+
       case 'svelte':
         if (event.modifiers) {
-          const validModifiers = ['preventDefault', 'stopPropagation', 'passive', 'capture', 'once'];
-          const invalid = event.modifiers.filter(m => !validModifiers.includes(m));
+          const validModifiers = [
+            'preventDefault',
+            'stopPropagation',
+            'passive',
+            'capture',
+            'once',
+          ];
+          const invalid = event.modifiers.filter(
+            (m) => !validModifiers.includes(m)
+          );
           if (invalid.length > 0) {
             warnings.push(`Invalid Svelte modifiers: ${invalid.join(', ')}`);
           }

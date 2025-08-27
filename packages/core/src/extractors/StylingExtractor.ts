@@ -1,6 +1,6 @@
 /**
  * Advanced Styling Concept Extractor
- * 
+ *
  * Advanced styling extraction with cross-framework normalization and validation.
  * Supports static classes, dynamic classes, inline styles, and style bindings.
  */
@@ -85,7 +85,7 @@ const CSS_FRAMEWORK_PATTERNS = {
   bootstrap: /^(btn|card|container|row|col|alert|badge|navbar)/,
   bulma: /^(button|box|content|title|subtitle|section|hero)/,
   foundation: /^(button|callout|grid-|cell|top-bar|menu)/,
-  bem: /^[a-z]+(-[a-z]+)*(__[a-z]+(-[a-z]+)*)?(--[a-z]+(-[a-z]+)*)?$/
+  bem: /^[a-z]+(-[a-z]+)*(__[a-z]+(-[a-z]+)*)?(--[a-z]+(-[a-z]+)*)?$/,
 };
 
 /**
@@ -108,11 +108,9 @@ export class StylingExtractor {
     const {
       framework = 'react',
       normalizeClassNames = true,
-      validateCSS = true,
       extractCSSVariables = true,
       mergeDuplicateClasses = true,
-      customClassPatterns = [],
-      cssFrameworkDetection = true
+      cssFrameworkDetection = true,
     } = options;
 
     const styling: StylingConcept = {
@@ -120,7 +118,7 @@ export class StylingExtractor {
       staticClasses: [],
       dynamicClasses: [],
       inlineStyles: {},
-      styleBindings: {}
+      styleBindings: {},
     };
 
     const metadata = {
@@ -128,7 +126,7 @@ export class StylingExtractor {
       stylingAttributesFound: 0,
       detectedFrameworks: [] as string[],
       cssVariables: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     // Process all nodes recursively
@@ -140,15 +138,22 @@ export class StylingExtractor {
     }
 
     if (normalizeClassNames) {
-      styling.staticClasses = this.normalizeClassNames(styling.staticClasses, framework);
+      styling.staticClasses = this.normalizeClassNames(
+        styling.staticClasses,
+        framework
+      );
     }
 
     if (cssFrameworkDetection) {
-      metadata.detectedFrameworks = this.detectCSSFrameworks(styling.staticClasses);
+      metadata.detectedFrameworks = this.detectCSSFrameworks(
+        styling.staticClasses
+      );
     }
 
     if (extractCSSVariables) {
-      metadata.cssVariables = this.extractCSSVariablesFromStyles(styling.inlineStyles);
+      metadata.cssVariables = this.extractCSSVariablesFromStyles(
+        styling.inlineStyles
+      );
     }
 
     return { styling, metadata };
@@ -212,14 +217,20 @@ export class StylingExtractor {
 
     // Extract dynamic classes based on framework
     if (node.expressionAttributes) {
-      const classAttrs = this.getClassAttributes(node.expressionAttributes, framework);
+      const classAttrs = this.getClassAttributes(
+        node.expressionAttributes,
+        framework
+      );
       for (const attr of classAttrs) {
         metadata.stylingAttributesFound++;
         styling.dynamicClasses.push(String(node.expressionAttributes[attr]));
       }
 
       // Extract style bindings
-      const styleAttrs = this.getStyleAttributes(node.expressionAttributes, framework);
+      const styleAttrs = this.getStyleAttributes(
+        node.expressionAttributes,
+        framework
+      );
       for (const attr of styleAttrs) {
         metadata.stylingAttributesFound++;
         if (!styling.styleBindings) styling.styleBindings = {};
@@ -232,11 +243,11 @@ export class StylingExtractor {
       metadata.stylingAttributesFound++;
       const styleValue = String(node.attributes.style);
       const parsedStyles = this.parseInlineStyles(styleValue);
-      
+
       if (validateCSS) {
         this.validateInlineStyles(parsedStyles, metadata);
       }
-      
+
       Object.assign(styling.inlineStyles, parsedStyles);
     }
   }
@@ -247,14 +258,17 @@ export class StylingExtractor {
   private parseClassString(classStr: string): string[] {
     return classStr
       .split(/\s+/)
-      .map(cls => cls.trim())
+      .map((cls) => cls.trim())
       .filter(Boolean);
   }
 
   /**
    * Get class attributes based on framework.
    */
-  private getClassAttributes(expressionAttributes: Record<string, any>, framework: string): string[] {
+  private getClassAttributes(
+    expressionAttributes: Record<string, any>,
+    framework: string
+  ): string[] {
     const attrs: string[] = [];
 
     switch (framework) {
@@ -269,8 +283,8 @@ export class StylingExtractor {
         if ('class:' in expressionAttributes) {
           // Svelte class: directives
           Object.keys(expressionAttributes)
-            .filter(key => key.startsWith('class:'))
-            .forEach(key => attrs.push(key));
+            .filter((key) => key.startsWith('class:'))
+            .forEach((key) => attrs.push(key));
         }
         break;
     }
@@ -281,7 +295,10 @@ export class StylingExtractor {
   /**
    * Get style attributes based on framework.
    */
-  private getStyleAttributes(expressionAttributes: Record<string, any>, framework: string): string[] {
+  private getStyleAttributes(
+    expressionAttributes: Record<string, any>,
+    framework: string
+  ): string[] {
     const attrs: string[] = [];
 
     switch (framework) {
@@ -296,8 +313,8 @@ export class StylingExtractor {
         if ('style:' in expressionAttributes) {
           // Svelte style: directives
           Object.keys(expressionAttributes)
-            .filter(key => key.startsWith('style:'))
-            .forEach(key => attrs.push(key));
+            .filter((key) => key.startsWith('style:'))
+            .forEach((key) => attrs.push(key));
         }
         break;
     }
@@ -310,7 +327,7 @@ export class StylingExtractor {
    */
   private parseInlineStyles(styleStr: string): Record<string, string> {
     const styles: Record<string, string> = {};
-    
+
     const declarations = styleStr.split(';').filter(Boolean);
     for (const declaration of declarations) {
       const colonIndex = declaration.indexOf(':');
@@ -322,7 +339,7 @@ export class StylingExtractor {
         }
       }
     }
-    
+
     return styles;
   }
 
@@ -352,13 +369,13 @@ export class StylingExtractor {
 
     // Check for common CSS property typos
     const commonTypos: Record<string, string> = {
-      'colour': 'color',
-      'boarder': 'border',
-      'postion': 'position',
-      'heigth': 'height',
-      'widht': 'width',
-      'margain': 'margin',
-      'paddng': 'padding'
+      colour: 'color',
+      boarder: 'border',
+      postion: 'position',
+      heigth: 'height',
+      widht: 'width',
+      margain: 'margin',
+      paddng: 'padding',
     };
 
     if (commonTypos[property]) {
@@ -368,13 +385,23 @@ export class StylingExtractor {
     }
 
     // Check for vendor prefixes without standard property
-    if (property.startsWith('-webkit-') || property.startsWith('-moz-') || property.startsWith('-ms-')) {
+    if (
+      property.startsWith('-webkit-') ||
+      property.startsWith('-moz-') ||
+      property.startsWith('-ms-')
+    ) {
       const standardProperty = property.replace(/^-\w+-/, '');
-      suggestions.push(`Consider adding standard property: ${standardProperty}`);
+      suggestions.push(
+        `Consider adding standard property: ${standardProperty}`
+      );
     }
 
     // Check for deprecated properties
-    const deprecatedProperties = ['text-decoration-line', 'text-decoration-style', 'text-decoration-color'];
+    const deprecatedProperties = [
+      'text-decoration-line',
+      'text-decoration-style',
+      'text-decoration-color',
+    ];
     if (deprecatedProperties.includes(property)) {
       warnings.push(`Property '${property}' is deprecated`);
       suggestions.push('text-decoration');
@@ -391,7 +418,7 @@ export class StylingExtractor {
       property,
       value,
       warnings,
-      suggestions
+      suggestions,
     };
   }
 
@@ -399,10 +426,13 @@ export class StylingExtractor {
    * Normalize class names for framework consistency.
    */
   private normalizeClassNames(classes: string[], framework: string): string[] {
-    return classes.map(className => {
+    return classes.map((className) => {
       // Convert camelCase to kebab-case for Vue/Svelte
       if (framework !== 'react' && /[A-Z]/.test(className)) {
-        return className.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+        return className.replace(
+          /[A-Z]/g,
+          (letter) => `-${letter.toLowerCase()}`
+        );
       }
       return className;
     });
@@ -415,7 +445,7 @@ export class StylingExtractor {
     const frameworks: string[] = [];
 
     for (const [framework, pattern] of Object.entries(CSS_FRAMEWORK_PATTERNS)) {
-      const hasFrameworkClasses = classes.some(cls => pattern.test(cls));
+      const hasFrameworkClasses = classes.some((cls) => pattern.test(cls));
       if (hasFrameworkClasses) {
         frameworks.push(framework);
       }
@@ -427,7 +457,9 @@ export class StylingExtractor {
   /**
    * Extract CSS variables from inline styles.
    */
-  private extractCSSVariablesFromStyles(styles: Record<string, string>): string[] {
+  private extractCSSVariablesFromStyles(
+    styles: Record<string, string>
+  ): string[] {
     const cssVariables: string[] = [];
 
     for (const [property, value] of Object.entries(styles)) {
@@ -464,7 +496,7 @@ export class StylingExtractor {
       staticClasses: [],
       dynamicClasses: [],
       inlineStyles: {},
-      styleBindings: {}
+      styleBindings: {},
     };
 
     const metadata = {
@@ -472,7 +504,7 @@ export class StylingExtractor {
       stylingAttributesFound: 0,
       detectedFrameworks: [],
       cssVariables: [],
-      warnings: []
+      warnings: [],
     };
 
     this.extractStylingFromNode(node, styling, metadata, options);
@@ -483,13 +515,16 @@ export class StylingExtractor {
   /**
    * Merge styling concepts.
    */
-  mergeStyling(base: StylingConcept, additional: StylingConcept): StylingConcept {
+  mergeStyling(
+    base: StylingConcept,
+    additional: StylingConcept
+  ): StylingConcept {
     return {
       nodeId: base.nodeId,
       staticClasses: [...base.staticClasses, ...additional.staticClasses],
       dynamicClasses: [...base.dynamicClasses, ...additional.dynamicClasses],
       inlineStyles: { ...base.inlineStyles, ...additional.inlineStyles },
-      styleBindings: { ...base.styleBindings, ...additional.styleBindings }
+      styleBindings: { ...base.styleBindings, ...additional.styleBindings },
     };
   }
 

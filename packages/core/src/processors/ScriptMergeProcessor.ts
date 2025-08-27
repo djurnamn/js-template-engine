@@ -1,6 +1,6 @@
 /**
  * Script Merge Processor for advanced processing: Template Properties Abstraction
- * 
+ *
  * Advanced script merging with intelligent detection and conflict resolution.
  * Supports the date/dayjs + framework-specific example from the advanced processing plan.
  */
@@ -13,7 +13,13 @@ import type { ScriptMergeStrategy } from './ComponentPropertyProcessor';
  */
 export interface ScriptElement {
   /** Element type */
-  type: 'import' | 'variable' | 'function' | 'export' | 'expression' | 'comment';
+  type:
+    | 'import'
+    | 'variable'
+    | 'function'
+    | 'export'
+    | 'expression'
+    | 'comment';
   /** Element name/identifier */
   name?: string;
   /** Full content */
@@ -101,7 +107,7 @@ export class ScriptMergeProcessor {
     let content: string;
     let metadata = {
       elementsCount: 0,
-      intelligentMerge: false
+      intelligentMerge: false,
     };
 
     switch (strategy.mode) {
@@ -115,7 +121,11 @@ export class ScriptMergeProcessor {
         content = frameworkScript;
         break;
       case 'merge':
-        const mergeResult = this.intelligentMerge(commonScript, frameworkScript, strategy);
+        const mergeResult = this.intelligentMerge(
+          commonScript,
+          frameworkScript,
+          strategy
+        );
         content = mergeResult.content;
         conflicts.push(...mergeResult.conflicts);
         metadata = mergeResult.metadata;
@@ -133,7 +143,7 @@ export class ScriptMergeProcessor {
       content,
       conflicts,
       strategy,
-      metadata
+      metadata,
     };
   }
 
@@ -146,7 +156,9 @@ export class ScriptMergeProcessor {
     strategy: ScriptMergeStrategy
   ): string {
     const separator = strategy.separator ?? '\n\n';
-    const comment = strategy.includeComments ? `\n// Merged: ${strategy.mode}\n` : '';
+    const comment = strategy.includeComments
+      ? `\n// Merged: ${strategy.mode}\n`
+      : '';
 
     if (!frameworkScript.trim()) return commonScript;
     if (!commonScript.trim()) return frameworkScript;
@@ -163,7 +175,9 @@ export class ScriptMergeProcessor {
     strategy: ScriptMergeStrategy
   ): string {
     const separator = strategy.separator ?? '\n\n';
-    const comment = strategy.includeComments ? `\n// Merged: ${strategy.mode}\n` : '';
+    const comment = strategy.includeComments
+      ? `\n// Merged: ${strategy.mode}\n`
+      : '';
 
     if (!commonScript.trim()) return frameworkScript;
     if (!frameworkScript.trim()) return commonScript;
@@ -180,22 +194,22 @@ export class ScriptMergeProcessor {
     strategy: ScriptMergeStrategy
   ): ScriptMergeResult {
     const conflicts: ScriptConflict[] = [];
-    
+
     if (!commonScript.trim()) {
       return {
         content: frameworkScript,
         conflicts: [],
         strategy,
-        metadata: { elementsCount: 0, intelligentMerge: true }
+        metadata: { elementsCount: 0, intelligentMerge: true },
       };
     }
-    
+
     if (!frameworkScript.trim()) {
       return {
         content: commonScript,
         conflicts: [],
         strategy,
-        metadata: { elementsCount: 0, intelligentMerge: true }
+        metadata: { elementsCount: 0, intelligentMerge: true },
       };
     }
 
@@ -204,7 +218,10 @@ export class ScriptMergeProcessor {
     const frameworkAnalysis = this.analyzeScript(frameworkScript);
 
     // Detect conflicts
-    const detectedConflicts = this.detectConflicts(commonAnalysis, frameworkAnalysis);
+    const detectedConflicts = this.detectConflicts(
+      commonAnalysis,
+      frameworkAnalysis
+    );
     conflicts.push(...detectedConflicts);
 
     // Merge with conflict resolution
@@ -215,7 +232,8 @@ export class ScriptMergeProcessor {
       strategy
     );
 
-    const totalElements = commonAnalysis.elements.length + frameworkAnalysis.elements.length;
+    const totalElements =
+      commonAnalysis.elements.length + frameworkAnalysis.elements.length;
 
     return {
       content: mergedContent,
@@ -223,8 +241,8 @@ export class ScriptMergeProcessor {
       strategy,
       metadata: {
         elementsCount: totalElements,
-        intelligentMerge: true
-      }
+        intelligentMerge: true,
+      },
     };
   }
 
@@ -267,14 +285,14 @@ export class ScriptMergeProcessor {
           type: 'comment',
           content: line,
           start,
-          end
+          end,
         });
       } else if (line.trim()) {
         elements.push({
           type: 'expression',
           content: line,
           start,
-          end
+          end,
         });
       }
 
@@ -287,14 +305,18 @@ export class ScriptMergeProcessor {
       imports,
       exports,
       variables,
-      functions
+      functions,
     };
   }
 
   /**
    * Parse import line.
    */
-  private parseImportLine(line: string, start: number, end: number): ScriptElement {
+  private parseImportLine(
+    line: string,
+    start: number,
+    end: number
+  ): ScriptElement {
     // Extract module name from import
     const match = line.match(/from\s+['"`]([^'"`]+)['"`]/);
     const name = match ? match[1] : undefined;
@@ -304,14 +326,18 @@ export class ScriptMergeProcessor {
       name,
       content: line,
       start,
-      end
+      end,
     };
   }
 
   /**
    * Parse export line.
    */
-  private parseExportLine(line: string, start: number, end: number): ScriptElement {
+  private parseExportLine(
+    line: string,
+    start: number,
+    end: number
+  ): ScriptElement {
     // Extract export name
     const match = line.match(/export\s+(?:default\s+)?(?:function\s+)?(\w+)/);
     const name = match ? match[1] : undefined;
@@ -321,14 +347,18 @@ export class ScriptMergeProcessor {
       name,
       content: line,
       start,
-      end
+      end,
     };
   }
 
   /**
    * Parse variable declaration line.
    */
-  private parseVariableLine(line: string, start: number, end: number): ScriptElement {
+  private parseVariableLine(
+    line: string,
+    start: number,
+    end: number
+  ): ScriptElement {
     // Extract variable name
     const match = line.match(/(?:const|let|var)\s+(\w+)/);
     const name = match ? match[1] : undefined;
@@ -338,14 +368,18 @@ export class ScriptMergeProcessor {
       name,
       content: line,
       start,
-      end
+      end,
     };
   }
 
   /**
    * Parse function declaration line.
    */
-  private parseFunctionLine(line: string, start: number, end: number): ScriptElement {
+  private parseFunctionLine(
+    line: string,
+    start: number,
+    end: number
+  ): ScriptElement {
     // Extract function name
     const match = line.match(/function\s+(\w+)/);
     const name = match ? match[1] : undefined;
@@ -355,7 +389,7 @@ export class ScriptMergeProcessor {
       name,
       content: line,
       start,
-      end
+      end,
     };
   }
 
@@ -390,7 +424,7 @@ export class ScriptMergeProcessor {
           element: commonImport,
           commonValue: 'present',
           frameworkValue: 'present',
-          suggestion: 'Remove duplicate import'
+          suggestion: 'Remove duplicate import',
         });
       }
     }
@@ -403,7 +437,7 @@ export class ScriptMergeProcessor {
           element: commonVar,
           commonValue: 'defined',
           frameworkValue: 'defined',
-          suggestion: `Rename variable ${commonVar} to avoid conflict`
+          suggestion: `Rename variable ${commonVar} to avoid conflict`,
         });
       }
     }
@@ -416,7 +450,7 @@ export class ScriptMergeProcessor {
           element: commonFunc,
           commonValue: 'defined',
           frameworkValue: 'defined',
-          suggestion: `Rename function ${commonFunc} to avoid conflict`
+          suggestion: `Rename function ${commonFunc} to avoid conflict`,
         });
       }
     }
@@ -437,7 +471,10 @@ export class ScriptMergeProcessor {
     const separator = strategy.separator ?? '\n\n';
 
     // Handle imports first (deduplicate)
-    const allImports = this.mergeImports(commonAnalysis.elements, frameworkAnalysis.elements);
+    const allImports = this.mergeImports(
+      commonAnalysis.elements,
+      frameworkAnalysis.elements
+    );
     if (allImports.length > 0) {
       sections.push(allImports.join('\n'));
     }
@@ -448,15 +485,19 @@ export class ScriptMergeProcessor {
     }
 
     // Handle variables and functions
-    const commonNonImports = commonAnalysis.elements.filter(el => el.type !== 'import');
-    const frameworkNonImports = frameworkAnalysis.elements.filter(el => el.type !== 'import');
+    const commonNonImports = commonAnalysis.elements.filter(
+      (el) => el.type !== 'import'
+    );
+    const frameworkNonImports = frameworkAnalysis.elements.filter(
+      (el) => el.type !== 'import'
+    );
 
     if (commonNonImports.length > 0) {
-      sections.push(commonNonImports.map(el => el.content).join('\n'));
+      sections.push(commonNonImports.map((el) => el.content).join('\n'));
     }
 
     if (frameworkNonImports.length > 0) {
-      sections.push(frameworkNonImports.map(el => el.content).join('\n'));
+      sections.push(frameworkNonImports.map((el) => el.content).join('\n'));
     }
 
     return sections.join(separator);
@@ -470,16 +511,16 @@ export class ScriptMergeProcessor {
     frameworkElements: ScriptElement[]
   ): string[] {
     const imports = new Set<string>();
-    
+
     // Add common imports
     commonElements
-      .filter(el => el.type === 'import')
-      .forEach(el => imports.add(el.content));
+      .filter((el) => el.type === 'import')
+      .forEach((el) => imports.add(el.content));
 
     // Add framework imports (will deduplicate automatically)
     frameworkElements
-      .filter(el => el.type === 'import')
-      .forEach(el => imports.add(el.content));
+      .filter((el) => el.type === 'import')
+      .forEach((el) => imports.add(el.content));
 
     return Array.from(imports);
   }
@@ -523,7 +564,7 @@ const onDateChange = (newDate) => {
     const strategy: ScriptMergeStrategy = {
       mode: 'merge',
       separator: '\n\n',
-      includeComments: true
+      includeComments: true,
     };
 
     const merged = this.mergeScripts(common, react, strategy);

@@ -1,6 +1,9 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
+import {
+  ProcessingPipeline,
+  ExtensionRegistry,
+} from '@js-template-engine/core';
 import { ReactExtension } from '@js-template-engine/extension-react';
 import { VueExtension } from '@js-template-engine/extension-vue';
 import { SvelteExtension } from '@js-template-engine/extension-svelte';
@@ -30,11 +33,14 @@ export class DocumentationGenerator {
     this.config = configModule.default || configModule;
   }
 
-  async generateDocumentation(componentsDir: string, configPath: string): Promise<void> {
+  async generateDocumentation(
+    componentsDir: string,
+    configPath: string
+  ): Promise<void> {
     await this.loadConfig(configPath);
-    
+
     console.log('📚 Generating documentation...');
-    
+
     // Ensure docs directory exists
     await fs.ensureDir(this.outputDir);
     await fs.ensureDir(path.join(this.outputDir, 'components'));
@@ -48,12 +54,15 @@ export class DocumentationGenerator {
       if (file.endsWith('.json') || file.endsWith('.js')) {
         const componentName = path.basename(file, path.extname(file));
         const componentPath = path.join(componentsDir, file);
-        
+
         console.log(`📄 Processing ${componentName}...`);
-        
-        const doc = await this.generateComponentDoc(componentPath, componentName);
+
+        const doc = await this.generateComponentDoc(
+          componentPath,
+          componentName
+        );
         componentDocs.push(doc);
-        
+
         // Generate individual component documentation
         await this.writeComponentDoc(doc);
       }
@@ -61,13 +70,16 @@ export class DocumentationGenerator {
 
     // Generate overview documentation
     await this.generateOverview(componentDocs);
-    
+
     console.log(`✅ Documentation generated in ${this.outputDir}/`);
   }
 
-  private async generateComponentDoc(componentPath: string, componentName: string): Promise<ComponentDoc> {
+  private async generateComponentDoc(
+    componentPath: string,
+    componentName: string
+  ): Promise<ComponentDoc> {
     let template: any;
-    
+
     if (componentPath.endsWith('.json')) {
       template = await fs.readJson(componentPath);
     } else {
@@ -76,19 +88,25 @@ export class DocumentationGenerator {
     }
 
     const componentConfig = this.config.components?.[componentName] || {};
-    
+
     // Determine supported frameworks and styling
-    const supportedFrameworks = componentConfig.frameworks || this.config.capabilities.frameworks;
-    const supportedStyling = componentConfig.styling || this.config.capabilities.styling;
+    const supportedFrameworks =
+      componentConfig.frameworks || this.config.capabilities.frameworks;
+    const supportedStyling =
+      componentConfig.styling || this.config.capabilities.styling;
 
     // Extract props from component definition
     const props = template.component?.props || {};
 
     // Generate code examples for each supported framework
     const examples: Record<string, string> = {};
-    
+
     for (const framework of supportedFrameworks) {
-      const example = await this.generateCodeExample(template, componentName, framework);
+      const example = await this.generateCodeExample(
+        template,
+        componentName,
+        framework
+      );
       examples[framework] = example;
     }
 
@@ -98,15 +116,19 @@ export class DocumentationGenerator {
       props,
       supportedFrameworks,
       supportedStyling,
-      examples
+      examples,
     };
   }
 
-  private async generateCodeExample(template: any, componentName: string, framework: string): Promise<string> {
+  private async generateCodeExample(
+    template: any,
+    componentName: string,
+    framework: string
+  ): Promise<string> {
     try {
       // Set up ProcessingPipeline with appropriate extension
       const registry = new ExtensionRegistry();
-      
+
       if (framework === 'react') {
         registry.registerFramework(new ReactExtension());
       } else if (framework === 'vue') {
@@ -114,7 +136,7 @@ export class DocumentationGenerator {
       } else if (framework === 'svelte') {
         registry.registerFramework(new SvelteExtension());
       }
-      
+
       // Add styling extensions
       registry.registerStyling(new BemExtension());
       registry.registerStyling(new TailwindExtension());
@@ -125,8 +147,8 @@ export class DocumentationGenerator {
       const result = await pipeline.process(template, {
         framework: framework,
         component: {
-          name: componentName
-        }
+          name: componentName,
+        },
       });
 
       return result.output || `// Failed to generate ${framework} example`;
@@ -137,14 +159,18 @@ export class DocumentationGenerator {
 
   private async writeComponentDoc(doc: ComponentDoc): Promise<void> {
     const componentName = doc.name;
-    const capitalizedName = componentName.charAt(0).toUpperCase() + componentName.slice(1);
+    const capitalizedName =
+      componentName.charAt(0).toUpperCase() + componentName.slice(1);
 
     // Generate prop interface
-    const propsInterface = this.generatePropsInterface(doc.props, capitalizedName);
-    
+    const propsInterface = this.generatePropsInterface(
+      doc.props,
+      capitalizedName
+    );
+
     // Generate framework examples
     const frameworkExamples = this.generateFrameworkExamples(doc);
-    
+
     // Generate installation section
     const installationSection = this.generateInstallationSection(componentName);
 
@@ -158,11 +184,11 @@ ${propsInterface}
 
 ## Supported Frameworks
 
-${doc.supportedFrameworks.map(fw => `- ${fw.charAt(0).toUpperCase() + fw.slice(1)}`).join('\n')}
+${doc.supportedFrameworks.map((fw) => `- ${fw.charAt(0).toUpperCase() + fw.slice(1)}`).join('\n')}
 
 ## Supported Styling
 
-${doc.supportedStyling.map(style => `- ${style.toUpperCase()}`).join('\n')}
+${doc.supportedStyling.map((style) => `- ${style.toUpperCase()}`).join('\n')}
 
 ## Installation
 
@@ -183,7 +209,10 @@ ${frameworkExamples}
     );
   }
 
-  private generatePropsInterface(props: Record<string, string>, componentName: string): string {
+  private generatePropsInterface(
+    props: Record<string, string>,
+    componentName: string
+  ): string {
     if (Object.keys(props).length === 0) {
       return '_No props defined._';
     }
@@ -202,9 +231,13 @@ ${interfaceLines}
   private generateFrameworkExamples(doc: ComponentDoc): string {
     return Object.entries(doc.examples)
       .map(([framework, code]) => {
-        const language = framework === 'vue' ? 'vue' : 
-                        this.config.capabilities.typescript ? 'tsx' : 'jsx';
-        
+        const language =
+          framework === 'vue'
+            ? 'vue'
+            : this.config.capabilities.typescript
+              ? 'tsx'
+              : 'jsx';
+
         return `### ${framework.charAt(0).toUpperCase() + framework.slice(1)}
 
 \`\`\`${language}
@@ -216,7 +249,7 @@ ${code}
 
   private generateInstallationSection(componentName: string): string {
     const packageName = this.config.name;
-    
+
     return `### Using the CLI
 
 \`\`\`bash
@@ -233,13 +266,16 @@ import { ${componentName.charAt(0).toUpperCase() + componentName.slice(1)} } fro
   private async generateOverview(componentDocs: ComponentDoc[]): Promise<void> {
     const packageName = this.config.name;
     const totalComponents = componentDocs.length;
-    
+
     // Generate capability matrix
     const capabilityMatrix = this.generateCapabilityMatrix(componentDocs);
-    
+
     // Generate component list
     const componentList = componentDocs
-      .map(doc => `- [${doc.name.charAt(0).toUpperCase() + doc.name.slice(1)}](components/${doc.name}.md)`)
+      .map(
+        (doc) =>
+          `- [${doc.name.charAt(0).toUpperCase() + doc.name.slice(1)}](components/${doc.name}.md)`
+      )
       .join('\n');
 
     const markdown = `# ${packageName}
@@ -309,16 +345,23 @@ ${this.config.capabilities.styling.map((style: string) => `- ${style.toUpperCase
     const frameworks = this.config.capabilities.frameworks;
 
     // Create header
-    let matrix = '| Component | ' + frameworks.map((fw: string) => fw.charAt(0).toUpperCase() + fw.slice(1)).join(' | ') + ' |\n';
+    let matrix =
+      '| Component | ' +
+      frameworks
+        .map((fw: string) => fw.charAt(0).toUpperCase() + fw.slice(1))
+        .join(' | ') +
+      ' |\n';
     matrix += '|-----------|' + frameworks.map(() => '-----').join('|') + '|\n';
 
     // Add rows for each component
     for (const doc of componentDocs) {
       const name = doc.name.charAt(0).toUpperCase() + doc.name.slice(1);
-      const support = frameworks.map((fw: string) => 
-        doc.supportedFrameworks.includes(fw) ? '✅' : '❌'
-      ).join(' | ');
-      
+      const support = frameworks
+        .map((fw: string) =>
+          doc.supportedFrameworks.includes(fw) ? '✅' : '❌'
+        )
+        .join(' | ');
+
       matrix += `| ${name} | ${support} |\n`;
     }
 

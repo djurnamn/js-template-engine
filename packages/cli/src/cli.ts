@@ -1,9 +1,21 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
-import { loadExtensions, loadConfig, loadTemplate, writeOutput } from './loadExtensions';
-import type { ProcessingOptions, FrameworkExtension, StylingExtension } from '@js-template-engine/core';
+import {
+  ProcessingPipeline,
+  ExtensionRegistry,
+} from '@js-template-engine/core';
+import {
+  loadExtensions,
+  loadConfig,
+  loadTemplate,
+  writeOutput,
+} from './loadExtensions';
+import type {
+  ProcessingOptions,
+  FrameworkExtension,
+  StylingExtension,
+} from '@js-template-engine/core';
 
 const program = new Command();
 
@@ -25,41 +37,44 @@ program
     try {
       // Load configuration
       const config = await loadConfig(options.config);
-      
+
       // Create extension registry
       const registry = new ExtensionRegistry();
-      
+
       // Load and register extensions
       const extensions = await loadExtensions(config);
-      extensions.forEach(extension => {
+      extensions.forEach((extension) => {
         if (extension.metadata.type === 'framework') {
           registry.registerFramework(extension as FrameworkExtension);
         } else if (extension.metadata.type === 'styling') {
           registry.registerStyling(extension as StylingExtension);
         }
       });
-      
+
       // Create pipeline
       const pipeline = new ProcessingPipeline(registry);
-      
+
       // Process template
       const template = await loadTemplate(sourcePath);
       const processingOptions: ProcessingOptions = {
         framework: config.framework,
         extensions: config.extensions,
         component: {
-          name: options.name || 'Component'
-        }
+          name: options.name || 'Component',
+        },
       };
-      
+
       const result = await pipeline.process(template, processingOptions);
-      
+
       // Handle output
       await writeOutput(result, options);
-      
+
       console.log(`✅ Template rendering complete!`);
     } catch (error) {
-      console.error('❌ Template rendering failed:', error instanceof Error ? error.message : error);
+      console.error(
+        '❌ Template rendering failed:',
+        error instanceof Error ? error.message : error
+      );
       if (options.verbose && error instanceof Error && error.stack) {
         console.error('Full error:', error.stack);
       }
@@ -67,4 +82,4 @@ program
     }
   });
 
-program.parse(); 
+program.parse();

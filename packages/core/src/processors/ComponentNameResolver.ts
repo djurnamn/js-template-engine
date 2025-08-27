@@ -1,6 +1,6 @@
 /**
  * Component Name Resolver for advanced processing: Template Properties Abstraction
- * 
+ *
  * Implements component name resolution with proper priority as defined in advanced processing plan:
  * 1. renderOptions.component.name
  * 2. frameworkSpecificOverride (component.extensions.react.name)
@@ -46,7 +46,7 @@ export enum NameResolutionPriority {
   /** Common component name */
   COMMON_NAME = 3,
   /** Default fallback */
-  DEFAULT_FALLBACK = 4
+  DEFAULT_FALLBACK = 4,
 }
 
 /**
@@ -84,7 +84,12 @@ export class ComponentNameResolver {
    * Resolve component name with full priority and metadata.
    */
   resolveComponentName(context: ComponentNameContext): NameResolutionResult {
-    const { component, renderOptions, framework, defaultName = 'Component' } = context;
+    const {
+      component,
+      renderOptions,
+      framework,
+      defaultName = 'Component',
+    } = context;
     const alternatives: string[] = [];
     const warnings: string[] = [];
 
@@ -113,8 +118,17 @@ export class ComponentNameResolver {
 
     // Priority 2: Framework-specific override
     const frameworkSpecificName = component?.extensions?.[framework]?.name;
-    if (frameworkSpecificName && this.isValidComponentName(frameworkSpecificName)) {
-      this.collectAlternatives(alternatives, component, framework, defaultName, [frameworkSpecificName]);
+    if (
+      frameworkSpecificName &&
+      this.isValidComponentName(frameworkSpecificName)
+    ) {
+      this.collectAlternatives(
+        alternatives,
+        component,
+        framework,
+        defaultName,
+        [frameworkSpecificName]
+      );
       return this.createResult(
         frameworkSpecificName,
         NameResolutionPriority.FRAMEWORK_SPECIFIC,
@@ -125,8 +139,13 @@ export class ComponentNameResolver {
       );
     }
 
-    if (frameworkSpecificName && !this.isValidComponentName(frameworkSpecificName)) {
-      warnings.push(`Invalid framework-specific component name: "${frameworkSpecificName}"`);
+    if (
+      frameworkSpecificName &&
+      !this.isValidComponentName(frameworkSpecificName)
+    ) {
+      warnings.push(
+        `Invalid framework-specific component name: "${frameworkSpecificName}"`
+      );
       this.errorCollector.addWarning(
         `Invalid framework-specific component name: "${frameworkSpecificName}"`,
         'component-name-resolver',
@@ -137,7 +156,13 @@ export class ComponentNameResolver {
     // Priority 3: Common component name
     const commonName = component?.name;
     if (commonName && this.isValidComponentName(commonName)) {
-      this.collectAlternatives(alternatives, component, framework, defaultName, [commonName]);
+      this.collectAlternatives(
+        alternatives,
+        component,
+        framework,
+        defaultName,
+        [commonName]
+      );
       return this.createResult(
         commonName,
         NameResolutionPriority.COMMON_NAME,
@@ -158,8 +183,10 @@ export class ComponentNameResolver {
     }
 
     // Priority 4: Default fallback
-    this.collectAlternatives(alternatives, component, framework, defaultName, [defaultName]);
-    
+    this.collectAlternatives(alternatives, component, framework, defaultName, [
+      defaultName,
+    ]);
+
     if (defaultName !== 'Component') {
       warnings.push(`Using fallback component name: "${defaultName}"`);
     }
@@ -169,7 +196,7 @@ export class ComponentNameResolver {
       NameResolutionPriority.DEFAULT_FALLBACK,
       'defaultName',
       true,
-      alternatives.filter(alt => alt !== defaultName),
+      alternatives.filter((alt) => alt !== defaultName),
       warnings
     );
   }
@@ -187,7 +214,7 @@ export class ComponentNameResolver {
       component,
       renderOptions,
       framework,
-      defaultName
+      defaultName,
     };
 
     return this.resolveComponentName(context).name;
@@ -213,12 +240,51 @@ export class ComponentNameResolver {
 
     // Cannot be reserved words
     const reservedWords = [
-      'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
-      'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally',
-      'for', 'function', 'if', 'import', 'in', 'instanceof', 'new', 'null',
-      'return', 'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof',
-      'var', 'void', 'while', 'with', 'yield', 'let', 'static', 'implements',
-      'interface', 'package', 'private', 'protected', 'public'
+      'break',
+      'case',
+      'catch',
+      'class',
+      'const',
+      'continue',
+      'debugger',
+      'default',
+      'delete',
+      'do',
+      'else',
+      'enum',
+      'export',
+      'extends',
+      'false',
+      'finally',
+      'for',
+      'function',
+      'if',
+      'import',
+      'in',
+      'instanceof',
+      'new',
+      'null',
+      'return',
+      'super',
+      'switch',
+      'this',
+      'throw',
+      'true',
+      'try',
+      'typeof',
+      'var',
+      'void',
+      'while',
+      'with',
+      'yield',
+      'let',
+      'static',
+      'implements',
+      'interface',
+      'package',
+      'private',
+      'protected',
+      'public',
     ];
 
     return !reservedWords.includes(name.toLowerCase());
@@ -240,14 +306,18 @@ export class ComponentNameResolver {
     const frameworkSuggestions = {
       react: ['ReactComponent', 'Component'],
       vue: ['VueComponent', 'Component'],
-      svelte: ['SvelteComponent', 'Component']
+      svelte: ['SvelteComponent', 'Component'],
     };
 
-    const fwSuggestions = frameworkSuggestions[framework as keyof typeof frameworkSuggestions] || ['Component'];
+    const fwSuggestions = frameworkSuggestions[
+      framework as keyof typeof frameworkSuggestions
+    ] || ['Component'];
     suggestions.push(...fwSuggestions);
 
     // Remove duplicates and filter valid names
-    return [...new Set(suggestions)].filter(name => this.isValidComponentName(name));
+    return [...new Set(suggestions)].filter((name) =>
+      this.isValidComponentName(name)
+    );
   }
 
   /**
@@ -255,8 +325,8 @@ export class ComponentNameResolver {
    */
   toPascalCase(str: string): string {
     return str
-      .replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '')
-      .replace(/^[a-z]/, char => char.toUpperCase());
+      .replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''))
+      .replace(/^[a-z]/, (char) => char.toUpperCase());
   }
 
   /**
@@ -277,8 +347,8 @@ export class ComponentNameResolver {
       usedFallback,
       metadata: {
         alternatives: [...new Set(alternatives)],
-        warnings
-      }
+        warnings,
+      },
     };
   }
 
@@ -295,14 +365,16 @@ export class ComponentNameResolver {
     const candidates = [
       component?.name,
       component?.extensions?.[framework]?.name,
-      defaultName
+      defaultName,
     ];
 
     for (const candidate of candidates) {
-      if (candidate && 
-          this.isValidComponentName(candidate) && 
-          !exclude.includes(candidate) &&
-          !alternatives.includes(candidate)) {
+      if (
+        candidate &&
+        this.isValidComponentName(candidate) &&
+        !exclude.includes(candidate) &&
+        !alternatives.includes(candidate)
+      ) {
         alternatives.push(candidate);
       }
     }

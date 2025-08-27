@@ -2,7 +2,15 @@
  * Extension interfaces for the new concept-driven architecture.
  */
 
-import type { ComponentConcept, EventConcept, StylingConcept, ConditionalConcept, IterationConcept, SlotConcept, AttributeConcept } from '../concepts';
+import type {
+  ComponentConcept,
+  EventConcept,
+  StylingConcept,
+  ConditionalConcept,
+  IterationConcept,
+  SlotConcept,
+  AttributeConcept,
+} from '../concepts';
 
 /**
  * Extension metadata.
@@ -86,18 +94,20 @@ export interface FrameworkExtension extends Extension {
   metadata: ExtensionMetadata & { type: 'framework' };
   /** Target framework */
   framework: 'react' | 'vue' | 'svelte';
-  
+
   /** Process event concepts */
   processEvents(events: EventConcept[]): FrameworkEventOutput;
   /** Process conditional concepts */
-  processConditionals(conditionals: ConditionalConcept[]): FrameworkConditionalOutput;
+  processConditionals(
+    conditionals: ConditionalConcept[]
+  ): FrameworkConditionalOutput;
   /** Process iteration concepts */
   processIterations(iterations: IterationConcept[]): FrameworkIterationOutput;
   /** Process slot concepts */
   processSlots(slots: SlotConcept[]): FrameworkSlotOutput;
   /** Process attribute concepts */
   processAttributes(attributes: AttributeConcept[]): FrameworkAttributeOutput;
-  
+
   /** Render final component */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string;
 }
@@ -122,7 +132,7 @@ export interface StylingExtension extends Extension {
   metadata: ExtensionMetadata & { type: 'styling' };
   /** Styling approach */
   styling: 'bem' | 'tailwind' | 'css-modules' | 'styled-components';
-  
+
   /** Process styling concepts */
   processStyles(concept: StylingConcept): StyleOutput;
   /** Convert between style formats */
@@ -137,7 +147,7 @@ export interface UtilityExtension extends Extension {
   metadata: ExtensionMetadata & { type: 'utility' };
   /** Utility type */
   utility: string;
-  
+
   /** Process utility functions */
   process(concepts: ComponentConcept): ComponentConcept;
 }
@@ -145,4 +155,7 @@ export interface UtilityExtension extends Extension {
 /**
  * Union type for all extension types.
  */
-export type AnyExtension = FrameworkExtension | StylingExtension | UtilityExtension;
+export type AnyExtension =
+  | FrameworkExtension
+  | StylingExtension
+  | UtilityExtension;
