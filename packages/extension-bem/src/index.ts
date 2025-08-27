@@ -94,7 +94,7 @@ export class BemStylingExtension
     type: 'styling',
     key: 'bem',
     name: 'BEM Extension',
-    version: '1.0.0',
+    version: '2.0.0',
   };
 
   /** Styling approach */

@@ -28,7 +28,7 @@ describe('VueExtension', () => {
       expect(extension.metadata.type).toBe('framework');
       expect(extension.metadata.key).toBe('vue');
       expect(extension.metadata.name).toBe('Vue Framework Extension');
-      expect(extension.metadata.version).toBe('1.0.0');
+      expect(extension.metadata.version).toBe('2.0.0');
       expect(extension.framework).toBe('vue');
     });
   });

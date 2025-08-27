@@ -181,7 +181,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'react',
     name: 'React Framework Extension',
-    version: '1.0.0',
+    version: '2.0.0',
   };
 
   public framework = 'react' as const;

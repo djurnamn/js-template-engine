@@ -14,7 +14,7 @@ describe('BemExtension', () => {
       expect(bemExtension.metadata.type).toBe('styling');
       expect(bemExtension.metadata.key).toBe('bem');
       expect(bemExtension.metadata.name).toBe('BEM Extension');
-      expect(bemExtension.metadata.version).toBe('1.0.0');
+      expect(bemExtension.metadata.version).toBe('2.0.0');
       expect(bemExtension.styling).toBe('bem');
     });
 

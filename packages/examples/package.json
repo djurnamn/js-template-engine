@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/examples",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Example usage of js-template-engine",
   "private": true,
   "main": "dist/index.js",

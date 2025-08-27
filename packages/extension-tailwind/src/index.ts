@@ -73,7 +73,7 @@ export class TailwindStylingExtension
     type: 'styling',
     key: 'tailwind',
     name: 'Tailwind Extension',
-    version: '1.0.0',
+    version: '2.0.0',
   };
 
   /** Styling approach */

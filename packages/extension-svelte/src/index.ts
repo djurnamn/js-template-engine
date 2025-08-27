@@ -65,7 +65,7 @@ export class SvelteFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'svelte',
     name: 'Svelte Framework Extension',
-    version: '1.0.0',
+    version: '2.0.0',
   };
 
   public framework = 'svelte' as const;

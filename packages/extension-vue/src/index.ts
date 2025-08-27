@@ -172,7 +172,7 @@ export class VueFrameworkExtension implements FrameworkExtension {
     type: 'framework',
     key: 'vue',
     name: 'Vue Framework Extension',
-    version: '1.0.0',
+    version: '2.0.0',
   };
 
   public framework = 'vue' as const;

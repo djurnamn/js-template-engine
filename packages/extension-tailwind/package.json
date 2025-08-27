@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/extension-tailwind",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Tailwind Extension for JS Template Engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

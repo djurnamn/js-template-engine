@@ -22,7 +22,7 @@ describe('TailwindExtension', () => {
       expect(extension.metadata.type).toBe('styling');
       expect(extension.metadata.key).toBe('tailwind');
       expect(extension.metadata.name).toBe('Tailwind Extension');
-      expect(extension.metadata.version).toBe('1.0.0');
+      expect(extension.metadata.version).toBe('2.0.0');
     });
 
     it('should have correct styling property', () => {
