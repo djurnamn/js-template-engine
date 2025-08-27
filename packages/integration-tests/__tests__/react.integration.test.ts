@@ -11,12 +11,11 @@ const simpleTemplate = {
 describe('React extension integration', () => {
   it('renders a simple component with React extension', async () => {
     const registry = new ExtensionRegistry();
-    registry.registerFramework(new ReactExtension(false));
+    registry.registerFramework(new ReactExtension());
     const pipeline = new ProcessingPipeline(registry);
     
     const result = await pipeline.process([simpleTemplate], {
-      framework: 'react',
-      language: 'javascript'
+      framework: 'react'
     });
     
     expect(result.errors.getErrors().length).toBe(0);

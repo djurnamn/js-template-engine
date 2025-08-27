@@ -15,7 +15,7 @@ describe('Tailwind Extension Integration', () => {
     });
 
     it('should register Tailwind extension correctly', () => {
-      const tailwindExtension = new TailwindExtension(false);
+      const tailwindExtension = new TailwindExtension();
       const result = registry.registerStyling(tailwindExtension);
       
       expect(result.isValid).toBe(true);
@@ -30,7 +30,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -109,7 +109,7 @@ describe('Tailwind Extension Integration', () => {
     beforeEach(() => {
       registry = new ExtensionRegistry();
       registry.registerFramework(new ReactExtension(false));
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -163,7 +163,7 @@ describe('Tailwind Extension Integration', () => {
     beforeEach(() => {
       registry = new ExtensionRegistry();
       registry.registerFramework(new VueExtension(false));
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -216,7 +216,7 @@ describe('Tailwind Extension Integration', () => {
     beforeEach(() => {
       registry = new ExtensionRegistry();
       registry.registerFramework(new SvelteExtension(false));
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -268,7 +268,7 @@ describe('Tailwind Extension Integration', () => {
     beforeEach(() => {
       registry = new ExtensionRegistry();
       registry.registerFramework(new ReactExtension(false));
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -376,7 +376,7 @@ describe('Tailwind Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerStyling(new TailwindExtension(false));
+      registry.registerStyling(new TailwindExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 

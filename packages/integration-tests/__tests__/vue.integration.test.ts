@@ -21,12 +21,11 @@ const simpleTemplate = [
 describe('Vue extension integration', () => {
   it('renders a component with slots and props', async () => {
     const registry = new ExtensionRegistry();
-    registry.registerFramework(new VueExtension(false));
+    registry.registerFramework(new VueExtension());
     const pipeline = new ProcessingPipeline(registry);
     
     const result = await pipeline.process(simpleTemplate, {
-      framework: 'vue',
-      language: 'javascript'
+      framework: 'vue'
     });
     
     expect(result.errors.getErrors().length).toBe(0);

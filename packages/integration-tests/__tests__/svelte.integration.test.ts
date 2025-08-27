@@ -14,7 +14,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteExtension(false));
+      registry.registerFramework(new SvelteExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -284,7 +284,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteExtension(false));
+      registry.registerFramework(new SvelteExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -377,7 +377,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteExtension(false));
+      registry.registerFramework(new SvelteExtension());
       registry.registerStyling(new BemExtension(false));
       pipeline = new ProcessingPipeline(registry);
     });
@@ -489,7 +489,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteExtension(false));
+      registry.registerFramework(new SvelteExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
@@ -571,7 +571,7 @@ describe('Svelte Framework Extension Integration', () => {
 
     beforeEach(() => {
       registry = new ExtensionRegistry();
-      registry.registerFramework(new SvelteExtension(false));
+      registry.registerFramework(new SvelteExtension());
       pipeline = new ProcessingPipeline(registry);
     });
 
