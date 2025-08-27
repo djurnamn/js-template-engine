@@ -28,11 +28,11 @@ import { TailwindProcessor } from './services/TailwindProcessor';
 import type { TailwindExtensionOptions, TailwindNodeExtensions, ParsedUtility } from './types';
 
 /**
- * Tailwind Extension
+ * Tailwind Styling Extension
  * 
  * Provides bi-directional conversion between Tailwind utility classes and CSS styles.
  */
-export class TailwindExtension
+export class TailwindStylingExtension
   implements Extension<TailwindExtensionOptions, TailwindNodeExtensions>, StylingExtension
 {
   /** Extension metadata */
@@ -92,7 +92,7 @@ export class TailwindExtension
    * @param verbose - If true, enables verbose logging.
    */
   constructor(verbose = false, tailwindConfig?: any) {
-    this.logger = createLogger(verbose, 'TailwindExtension');
+    this.logger = createLogger(verbose, 'TailwindStylingExtension');
     
     this.tailwindProcessor = new TailwindProcessor(tailwindConfig);
     this.utilityParser = new UtilityParser(this.tailwindProcessor);
@@ -462,4 +462,8 @@ export class TailwindExtension
 
 // Export types
 export type { TailwindExtensionOptions, TailwindNodeExtensions, ParsedUtility };
+
+// Export with alias for backward compatibility
+export default TailwindStylingExtension;
+export { TailwindStylingExtension as TailwindExtension };
 export { UtilityParser, CssGenerator };

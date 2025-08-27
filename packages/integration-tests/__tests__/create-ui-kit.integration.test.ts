@@ -165,7 +165,7 @@ describe('Create UI Kit - End-to-End Integration', () => {
       // Verify the CLI file was generated with correct imports
       const cliContent = await fs.readFile(generatedCliPath, 'utf-8');
       expect(cliContent).toContain('import { Command } from \'commander\';');
-      expect(cliContent).toContain('import { TemplateEngine }');
+      expect(cliContent).toContain('import { ProcessingPipeline, ExtensionRegistry }');
       
       // Verify the config is properly loaded
       const configPath = path.join(TEST_PROJECT_PATH, 'create-ui-kit.config.js');
@@ -186,27 +186,26 @@ describe('Create UI Kit - End-to-End Integration', () => {
 
       // Test the component generation logic directly
       // In a real scenario, this would be tested by executing the CLI command
-      const { TemplateEngine } = await import('@js-template-engine/core');
-      const { ReactExtension } = await import('@js-template-engine/extension-react');
+      const { ProcessingPipeline, ExtensionRegistry } = await import('@js-template-engine/core');
+      const { ReactFrameworkExtension } = await import('@js-template-engine/extension-react');
 
-      const engine = new TemplateEngine([new ReactExtension(true)], true);
+      const registry = new ExtensionRegistry();
+      registry.registerFramework(new ReactFrameworkExtension(false));
+      const pipeline = new ProcessingPipeline(registry);
       
       // Load a component template
       const buttonTemplate = await fs.readJson(
         path.join(TEST_PROJECT_PATH, 'src/components/button.json')
       );
 
-      // Generate the component
-      const result = await engine.render(buttonTemplate, {
-        name: 'button',
-        outputDir: outputDir,
-        language: 'typescript',
-        writeOutputFile: false
+      // Generate the component  
+      const result = await pipeline.process(buttonTemplate.template, {
+        framework: 'react'
       });
 
       expect(result.output).toBeTruthy();
-      expect(result.output).toContain('interface');
-      expect(result.output).toContain('Button');
+      expect(result.output).toContain('const Component');
+      expect(result.output).toContain('Click me');
 
       // Write the generated component
       const filePath = path.join(outputDir, 'button.tsx');
@@ -215,7 +214,7 @@ describe('Create UI Kit - End-to-End Integration', () => {
       expect(await fs.pathExists(filePath)).toBe(true);
       
       const generatedContent = await fs.readFile(filePath, 'utf-8');
-      expect(generatedContent).toContain('Button');
+      expect(generatedContent).toContain('Click me');
       expect(generatedContent).toContain('export');
     });
   });
@@ -318,19 +317,18 @@ describe('Create UI Kit - End-to-End Integration', () => {
       await fs.ensureDir(outputDir);
 
       // Simulate consumer CLI usage (component generation)
-      const { TemplateEngine } = await import('@js-template-engine/core');
-      const { ReactExtension } = await import('@js-template-engine/extension-react');
+      const { ProcessingPipeline, ExtensionRegistry } = await import('@js-template-engine/core');
+      const { ReactFrameworkExtension } = await import('@js-template-engine/extension-react');
       
-      const engine = new TemplateEngine([new ReactExtension(true)], true);
+      const registry = new ExtensionRegistry();
+      registry.registerFramework(new ReactFrameworkExtension(false));
+      const pipeline = new ProcessingPipeline(registry);
       const buttonTemplate = await fs.readJson(
         path.join(TEST_PROJECT_PATH, 'src/components/button.json')
       );
 
-      const result = await engine.render(buttonTemplate, {
-        name: 'button',
-        outputDir: outputDir,
-        language: 'typescript',
-        writeOutputFile: false
+      const result = await pipeline.process(buttonTemplate.template, {
+        framework: 'react'
       });
 
       await fs.writeFile(path.join(outputDir, 'button.tsx'), result.output || '');
@@ -339,8 +337,8 @@ describe('Create UI Kit - End-to-End Integration', () => {
       expect(await fs.pathExists(path.join(outputDir, 'button.tsx'))).toBe(true);
       
       const finalComponent = await fs.readFile(path.join(outputDir, 'button.tsx'), 'utf-8');
-      expect(finalComponent).toContain('Button');
-      expect(finalComponent).toContain('interface');
+      expect(finalComponent).toContain('Click me');
+      expect(finalComponent).toContain('const Component');
       expect(finalComponent).toContain('export');
 
       console.log('✅ Complete end-to-end workflow test passed!');

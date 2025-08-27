@@ -82,11 +82,11 @@ function isElementNode(
 }
 
 /**
- * BEM Extension
+ * BEM Styling Extension
  * 
  * Generates BEM classes and SCSS output for component styling.
  */
-export class BemExtension
+export class BemStylingExtension
   implements Extension<BemExtensionOptions, BemNodeExtensions>, StylingExtension
 {
   /** Extension metadata */
@@ -119,7 +119,7 @@ export class BemExtension
    * @param verbose - If true, enables verbose logging.
    */
   constructor(verbose = false) {
-    this.logger = createLogger(verbose, 'BemExtension');
+    this.logger = createLogger(verbose, 'BemStylingExtension');
   }
 
   /**
@@ -528,3 +528,6 @@ export class BemExtension
     return '.html';
   }
 }
+
+export default BemStylingExtension;
+export { BemStylingExtension as BemExtension };
