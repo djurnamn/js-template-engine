@@ -1,102 +1,196 @@
-# @js-template-engine/extension-vue
+# Vue Extension
 
-A Vue extension for JS Template Engine that transforms templates into Vue Single File Components (SFCs) with proper TypeScript support and Vue 3 Composition API integration.
+[![npm version](https://img.shields.io/npm/v/@js-template-engine/extension-vue.svg)](https://www.npmjs.com/package/@js-template-engine/extension-vue)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 📦 Installation
+A Vue.js framework extension for the JS Template Engine that transforms templates into Vue Single File Components (SFCs) with proper TypeScript support and Vue 3 Composition API integration.
+
+## Installation
 
 ```bash
-pnpm add @js-template-engine/extension-vue
+npm install @js-template-engine/extension-vue
 ```
 
-## 🚀 Usage
+## Quick Start
 
 ```typescript
-import { TemplateEngine } from '@js-template-engine/core';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { VueExtension } from '@js-template-engine/extension-vue';
-import type { ExtendedTemplate } from '@js-template-engine/types';
+import { TemplateNode } from '@js-template-engine/types';
 
-// Initialize the engine with Vue extension
-const engine = new TemplateEngine([new VueExtension()]);
+// Initialize the processing pipeline with Vue extension
+const registry = new ExtensionRegistry();
+registry.registerFramework(new VueExtension());
+const pipeline = new ProcessingPipeline(registry);
 
 // Define your template
-const template: ExtendedTemplate = {
-  template: [
-    {
-      type: 'element',
-      tag: 'div',
-      attributes: {
-        class: 'container'
-      },
-      children: [
-        {
-          type: 'element',
-          tag: 'h1',
-          children: [
-            {
-              type: 'text',
-              content: 'Hello, Vue!'
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  component: {
-    name: 'HelloWorld',
-    props: {
-      title: 'string',
-      count: 'number'
+const template: TemplateNode[] = [
+  {
+    type: 'element',
+    tag: 'div',
+    attributes: {
+      class: 'container'
     },
-    typescript: true
+    children: [
+      {
+        type: 'element',
+        tag: 'h1',
+        children: [
+          {
+            type: 'text',
+            content: 'Hello, Vue!'
+          }
+        ]
+      }
+    ]
   }
-};
+];
 
-// Render the component
-await engine.render(template, {
-  language: 'javascript',
-  outputDir: 'dist/vue'
+// Process the template as a Vue component
+const result = await pipeline.process(template, {
+  framework: 'vue',
+  component: { name: 'HelloWorld' }
+});
+
+console.log(result.output); // Vue SFC code
+```
+
+## Features
+
+- **Vue SFC Generation**: Creates modern Vue Single File Components
+- **TypeScript Support**: Full TypeScript mode with interface generation
+- **Composition API**: Modern Vue 3 Composition API with setup script support
+- **Props Handling**: Automatic props interface and runtime validation
+- **Template Logic Support**: Complete support for all node types:
+  - Element nodes → Vue template elements
+  - Comment nodes → HTML comments `<!-- -->`
+  - Fragment nodes → Multiple root elements
+  - Conditional nodes → `v-if`/`v-else` directives
+  - Loop nodes → `v-for` directives with keys
+  - Slot nodes → Vue slot system
+- **Vue Directives**: Automatic conversion of template logic to Vue directives
+- **Style Integration**: Works seamlessly with BEM and Tailwind extensions
+
+## Usage Examples
+
+### Basic Component
+
+```typescript
+const template: TemplateNode[] = [
+  {
+    type: 'element',
+    tag: 'button',
+    attributes: {
+      class: 'btn btn-primary'
+    },
+    children: [
+      { type: 'text', content: 'Click me!' }
+    ]
+  }
+];
+
+const result = await pipeline.process(template, {
+  framework: 'vue',
+  component: { name: 'Button' }
 });
 ```
 
-## 🎯 Features
-
-### TypeScript Support
-The Vue extension supports both JavaScript and TypeScript modes:
-
-**TypeScript Component:**
+**Generated Output:**
 ```vue
 <template>
-  <div class="container">
-    <h1>{{ title }}</h1>
-    <p>Count: {{ count }}</p>
+  <button class="btn btn-primary">Click me!</button>
+</template>
+
+<script lang="ts">
+import { defineComponent } from "vue";
+
+export default defineComponent({
+  name: "Button"
+});
+</script>
+```
+
+### Component with Props (Options API)
+
+```typescript
+const template: TemplateNode[] = [
+  {
+    type: 'element',
+    tag: 'div',
+    attributes: {
+      class: 'card'
+    },
+    children: [
+      {
+        type: 'element',
+        tag: 'h2',
+        children: [{ type: 'text', content: '{{ title }}' }]
+      }
+    ]
+  }
+];
+
+const result = await pipeline.process(template, {
+  framework: 'vue',
+  component: {
+    name: 'Card',
+    props: {
+      title: 'string',
+      isActive: 'boolean'
+    },
+    typescript: true
+  }
+});
+```
+
+**Generated Output:**
+```vue
+<template>
+  <div class="card">
+    <h2>{{ title }}</h2>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 
-interface HelloWorldProps {
+interface CardProps {
   title: string;
-  count: number;
+  isActive: boolean;
 }
 
 export default defineComponent({
-  name: "HelloWorld",
+  name: "Card",
   props: {
     title: { type: String, required: true },
-    count: { type: Number, required: true }
+    isActive: { type: Boolean, required: true }
   }
 });
 </script>
 ```
 
-**Setup Script Support:**
-When `useSetupScript: true` is specified, generates modern Composition API syntax:
+### Component with Setup Script (Composition API)
 
+```typescript
+const result = await pipeline.process(template, {
+  framework: 'vue',
+  component: {
+    name: 'Card',
+    props: {
+      title: 'string'
+    },
+    typescript: true,
+    useSetupScript: true
+  }
+});
+```
+
+**Generated Output:**
 ```vue
 <template>
-  <div class="container">
-    <h1>{{ title }}</h1>
+  <div class="card">
+    <h2>{{ title }}</h2>
   </div>
 </template>
 
@@ -109,9 +203,7 @@ defineProps<Props>();
 </script>
 ```
 
-### Template Logic Node Types
-
-The Vue extension handles all modern template node types:
+### Template Logic Examples
 
 #### Comment Nodes
 ```typescript
@@ -141,10 +233,17 @@ The Vue extension handles all modern template node types:
   condition: 'isVisible',
   then: [
     { type: 'element', tag: 'div', children: [{ type: 'text', content: 'Visible!' }] }
+  ],
+  else: [
+    { type: 'element', tag: 'div', children: [{ type: 'text', content: 'Hidden!' }] }
   ]
 }
 ```
-**Output:** `<div v-if="isVisible">Visible!</div>`
+**Output:** 
+```vue
+<div v-if="isVisible">Visible!</div>
+<div v-else>Hidden!</div>
+```
 
 #### Loop Nodes
 ```typescript
@@ -154,136 +253,146 @@ The Vue extension handles all modern template node types:
   item: 'item',
   index: 'index',
   children: [
-    { type: 'element', tag: 'li', children: [{ type: 'text', content: 'Item' }] }
+    { type: 'element', tag: 'li', children: [{ type: 'text', content: '{{ item.name }}' }] }
   ]
 }
 ```
-**Output:** `<li v-for="(item, index) in items" :key="index">Item</li>`
+**Output:** `<li v-for="(item, index) in items" :key="index">{{ item.name }}</li>`
 
-### Vue Directives
+## API Reference
 
-The extension automatically converts template conditions and loops to appropriate Vue directives:
-
-- `if` nodes → `v-if` / `v-else` directives
-- `for` nodes → `v-for` directives with proper key binding
-- Conditional expressions → Vue template syntax
-
-### Props Interface Generation
-
-The Vue extension generates proper TypeScript interfaces and runtime prop definitions:
+### VueExtension
 
 ```typescript
-// Template definition
-component: {
-  name: 'MyComponent',
-  props: {
-    title: 'string',
-    isActive: 'boolean',
-    items: 'Array<string>'
-  },
-  typescript: true
+class VueExtension {
+  constructor(verbose?: boolean);
+  
+  readonly key = 'vue';
+  
+  nodeHandler(node: TemplateNode): TemplateNode;
 }
 ```
 
-**Generated Interface:**
+**Parameters:**
+- `verbose` (optional): Enable detailed logging for debugging
+
+### Vue Node Extension
+
 ```typescript
-interface MyComponentProps {
-  title: string;
-  isActive: boolean;
-  items: Array<string>;
+interface VueNodeExtension {
+  directive?: string;
+  condition?: string;
+  iteration?: {
+    items: string;
+    item: string;
+    index?: string;
+    key?: string;
+  };
 }
 ```
 
-**Generated Runtime Props:**
-```typescript
-props: {
-  title: { type: String, required: true },
-  isActive: { type: Boolean, required: true },
-  items: { type: Array, required: true }
-}
-```
+## Configuration
 
-## 🔧 Configuration Options
+### Component Options
 
 ```typescript
-const template = {
+{
   component: {
-    name: 'ComponentName',
+    name: 'MyComponent',        // Component name (required)
+    props: {                    // Props definition
+      title: 'string',
+      count: 'number',
+      items: 'Array<string>'
+    },
     typescript: true,           // Enable TypeScript mode
     useSetupScript: false,      // Use setup script syntax (default: false)
-    props: {                    // Component props definition
-      title: 'string'
-    },
     imports: [                  // Custom imports
       'import { ref } from "vue"'
     ]
   }
-};
+}
 ```
 
-## 🎨 Integration with Other Extensions
+### Extension Configuration
 
-The Vue extension works seamlessly with other extensions:
+```typescript
+const extension = new VueExtension(true); // Enable verbose logging
+```
+
+## Integration
 
 ### With BEM Extension
+
 ```typescript
-const engine = new TemplateEngine([
-  new BemExtension(),
-  new VueExtension()
-]);
+import { BemExtension } from '@js-template-engine/extension-bem';
+
+const registry = new ExtensionRegistry();
+registry.registerStyling(new BemExtension());
+registry.registerFramework(new VueExtension());
 
 // BEM classes are automatically applied to Vue templates
-const template = {
-  template: [{
+const template: TemplateNode[] = [
+  {
     type: 'element',
     tag: 'div',
     extensions: {
       bem: { block: 'card', modifiers: ['primary'] }
     }
-  }]
-};
+  }
+];
 // Output: <div class="card card--primary">
 ```
 
-## 📚 API Reference
-
-### VueExtension Constructor
+### With Tailwind Extension
 
 ```typescript
-new VueExtension(verbose?: boolean)
+import { TailwindExtension } from '@js-template-engine/extension-tailwind';
+
+const registry = new ExtensionRegistry();
+registry.registerStyling(new TailwindExtension());
+registry.registerFramework(new VueExtension());
+
+// Tailwind classes are processed and applied to Vue components
 ```
 
-- `verbose` (optional): Enable detailed logging for debugging
+## TypeScript Support
 
-### Supported Template Properties
+The Vue extension provides comprehensive TypeScript support:
 
-- `component.name`: Component name (required)
-- `component.typescript`: Enable TypeScript mode
-- `component.useSetupScript`: Use setup script syntax
-- `component.props`: Props definition object
-- `component.imports`: Array of import statements
+- **Automatic Interface Generation**: Props are converted to TypeScript interfaces
+- **Options API Types**: Full type safety with Options API components
+- **Composition API Types**: Modern setup script with `defineProps<T>()`
+- **Runtime Validation**: Props validation with Vue runtime checks
 
-## 🧪 Testing
+```typescript
+// Generated interface for Options API
+interface MyComponentProps {
+  title: string;
+  count: number;
+  items?: Array<string>;
+}
 
-The Vue extension includes comprehensive tests covering:
-
-- Basic component generation
-- TypeScript interface generation
-- Props handling (both Options API and setup script)
-- New node types (comment, fragment, if, for)
-- Integration with other extensions
-- Error handling
-
-Run tests:
-```bash
-cd packages/extension-vue
-pnpm test
+// Generated props validation
+props: {
+  title: { type: String, required: true },
+  count: { type: Number, required: true },
+  items: { type: Array, required: false }
+}
 ```
 
-## 🤝 Contributing
+## Vue Directives
 
-Issues and pull requests are welcome! Please see the main repository's contributing guidelines.
+The extension automatically converts template conditions and loops to appropriate Vue directives:
 
-## 📄 License
+- `if` nodes → `v-if` / `v-else` / `v-else-if` directives
+- `for` nodes → `v-for` directives with proper key binding
+- Conditional expressions → Vue template syntax `{{ }}`
+- Event handling → `@click`, `@input`, etc.
 
-This project is licensed under the MIT License.
+## Contributing
+
+Please see the main [Contributing Guide](../../CONTRIBUTING.md) for development setup and guidelines.
+
+## License
+
+MIT - See [LICENSE](../../LICENSE) for details.

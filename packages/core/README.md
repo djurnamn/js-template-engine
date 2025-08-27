@@ -11,11 +11,12 @@ pnpm add @js-template-engine/core
 ## 🚀 Usage
 
 ```typescript
-import { TemplateEngine } from '@js-template-engine/core';
+import { ProcessingPipeline, ExtensionRegistry } from '@js-template-engine/core';
 import { TemplateNode } from '@js-template-engine/types';
 
-// Initialize the engine
-const engine = new TemplateEngine();
+// Initialize the processing pipeline
+const registry = new ExtensionRegistry();
+const pipeline = new ProcessingPipeline(registry);
 
 // Define your template
 const template: TemplateNode[] = [
@@ -34,11 +35,13 @@ const template: TemplateNode[] = [
   }
 ];
 
-// Render the template
-await engine.render(template, {
-  name: 'my-template',
-  outputDir: './dist'
+// Process the template
+const result = await pipeline.process(template, {
+  component: { name: 'my-template' },
+  framework: 'react'
 });
+
+console.log(result.output);
 ```
 
 ## 🔌 Extensions
@@ -54,28 +57,32 @@ See the [extension documentation](../../README.md#-using-extensions) for more de
 
 ## 📚 API
 
-### `TemplateEngine`
+### `ProcessingPipeline`
 
-The main class for rendering templates.
+The main class for processing templates with the concept-driven system.
 
 ```typescript
-class TemplateEngine {
-  constructor(extensions?: Extension[], verbose?: boolean);
+class ProcessingPipeline {
+  constructor(registry: ExtensionRegistry, options?: ProcessingOptions);
   
-  async render(template: TemplateNode[], options: RenderOptions): Promise<void>;
+  async process(template: TemplateNode[], options: ProcessingOptions): Promise<ProcessingResult>;
 }
 ```
 
-### `RenderOptions`
+### `ProcessingOptions`
 
-Options for template rendering:
+Options for template processing:
 
 ```typescript
-interface RenderOptions {
-  name?: string;
-  outputDir?: string;
-  language?: 'typescript' | 'javascript';
-  verbose?: boolean;
+interface ProcessingOptions {
+  framework?: string;
+  styling?: string;
+  utilities?: string[];
+  component?: {
+    name?: string;
+    props?: Record<string, string>;
+  };
+  verboseErrors?: boolean;
 }
 ```
 
@@ -111,14 +118,17 @@ The core engine is now composed of the following modules:
 ## Extension System
 - Extensions can add or override rendering logic, attributes, styles, and output.
 - **Only one renderer extension (framework) can be used at a time** (e.g., React, Vue). The engine will throw an error if multiple renderer extensions are provided.
-- Extensions are registered by passing them to the `TemplateEngine` constructor.
+- Extensions are registered using the `ExtensionRegistry` with specific methods for each type:
+  - `registerFramework()` for framework extensions
+  - `registerStyling()` for styling extensions  
+  - `registerUtility()` for utility extensions
 
 ## Integration Tests
 - Integration tests now live in a dedicated `integration-tests` package.
 - These tests verify that the core engine and all official extensions work together as intended, covering end-to-end scenarios and multi-extension contracts.
 
 ## Backward Compatibility
-- The public API of `TemplateEngine` remains stable, but internal responsibilities are now delegated to the new modules above.
+- The system has migrated to a concept-driven architecture with `ProcessingPipeline` as the main processing class, replacing the legacy `TemplateEngine`.
 
 ## For Extension Authors
 - See the [docs/extending.md](../../docs/extending.md) for details on writing extensions and available hooks. 
