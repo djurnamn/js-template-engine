@@ -1,11 +1,25 @@
 /**
- * Advanced Processing Pipeline
- *
- * Integrates advanced processors with the ProcessingPipeline:
- * - ComponentPropertyProcessor for template property merging
- * - Advanced extractors for comprehensive concept extraction
- * - ConceptValidator for comprehensive validation
- * - EventNormalizer for cross-framework consistency
+ * Core template processing pipeline that orchestrates concept extraction, validation, and rendering.
+ * 
+ * The ProcessingPipeline coordinates all aspects of template transformation including:
+ * - Template analysis and concept extraction
+ * - Framework-specific processing and rendering
+ * - Styling extension integration
+ * - Cross-framework event normalization
+ * - Comprehensive validation and error handling
+ * 
+ * @example
+ * ```typescript
+ * const registry = new ExtensionRegistry();
+ * const pipeline = new ProcessingPipeline(registry);
+ * 
+ * const result = await pipeline.process(templateNodes, {
+ *   framework: 'react',
+ *   styling: 'tailwind'
+ * });
+ * ```
+ * 
+ * @since 2.0.0
  */
 
 import { ExtensionRegistry } from '../registry/ExtensionRegistry';
@@ -40,7 +54,9 @@ import {
 import type { ComponentConcept } from '../concepts';
 
 /**
- * Processing options for template processing pipeline.
+ * Configuration options for template processing operations.
+ * 
+ * @public
  */
 export interface ProcessingOptions {
   /** Target framework */
@@ -71,7 +87,9 @@ export interface ProcessingOptions {
 }
 
 /**
- * Result from template processing pipeline.
+ * Comprehensive result object from template processing operations.
+ * 
+ * @public
  */
 export interface ProcessingResult {
   /** Generated output */
@@ -125,7 +143,29 @@ export interface ProcessingResult {
 }
 
 /**
- * Processing pipeline with comprehensive features.
+ * Core template processing pipeline that orchestrates the transformation process.
+ * 
+ * The ProcessingPipeline serves as the central coordinator for all template processing
+ * operations, managing extension registry interactions, concept extraction, validation,
+ * and rendering across different frameworks and styling systems.
+ * 
+ * @example
+ * ```typescript
+ * const registry = new ExtensionRegistry();
+ * registry.registerFramework('react', new ReactFrameworkExtension());
+ * registry.registerStyling('tailwind', new TailwindStylingExtension());
+ * 
+ * const pipeline = new ProcessingPipeline(registry);
+ * const result = await pipeline.process(templateNodes, {
+ *   framework: 'react',
+ *   styling: 'tailwind'
+ * });
+ * 
+ * console.log(result.output); // Generated component code
+ * console.log(result.metadata.processingTime); // Performance metrics
+ * ```
+ * 
+ * @since 2.0.0
  */
 export class ProcessingPipeline {
   private registry: ExtensionRegistry;
@@ -143,6 +183,22 @@ export class ProcessingPipeline {
   private advancedErrorCollector: ErrorCollector;
   private performanceTracker: PerformanceTracker;
 
+  /**
+   * Creates a new ProcessingPipeline instance.
+   * 
+   * @param registry - Extension registry containing framework, styling, and utility extensions
+   * @param analyzer - Optional template analyzer instance (creates new one if not provided)
+   * @param errorCollector - Optional error collector instance (creates new one if not provided)
+   * 
+   * @example
+   * ```typescript
+   * const registry = new ExtensionRegistry();
+   * const analyzer = new TemplateAnalyzer();
+   * const errorCollector = new ErrorCollector();
+   * 
+   * const pipeline = new ProcessingPipeline(registry, analyzer, errorCollector);
+   * ```
+   */
   constructor(
     registry: ExtensionRegistry,
     analyzer?: TemplateAnalyzer,
@@ -179,7 +235,32 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Main processing method that matches test expectations.
+   * Processes template nodes through the complete transformation pipeline.
+   * 
+   * This is the primary entry point for template processing, handling concept extraction,
+   * extension processing, and output generation with comprehensive error handling and
+   * performance tracking.
+   * 
+   * @param template - Array of template nodes to process
+   * @param options - Configuration options for processing
+   * @returns Promise resolving to processing result with output, errors, and metadata
+   * 
+   * @example
+   * ```typescript
+   * const templateNodes = [
+   *   { type: 'element', tag: 'div', attributes: { class: 'container' } }
+   * ];
+   * 
+   * const result = await pipeline.process(templateNodes, {
+   *   framework: 'react',
+   *   styling: 'tailwind'
+   * });
+   * 
+   * console.log(result.output); // Generated React component
+   * console.log(result.metadata.extensionsUsed); // ['react', 'tailwind']
+   * ```
+   * 
+   * @throws {Error} When template processing encounters unrecoverable errors
    */
   async process(
     template: any[], // TemplateNode[]
@@ -388,7 +469,10 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Helper method to time extension execution.
+   * Measures execution time for extension operations.
+   * 
+   * @param fn - Function to execute and time
+   * @returns Execution time in milliseconds (minimum 1ms)
    */
   private timeExtension(fn: () => void): number {
     const start = process.hrtime.bigint();
@@ -399,7 +483,11 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Check if template has styling concepts.
+   * Determines if the template contains styling-related concepts.
+   * 
+   * @param concepts - Extracted concepts from template analysis
+   * @param template - Template nodes to analyze
+   * @returns True if styling concepts are present
    */
   private hasStyling(concepts: any, template: any[]): boolean {
     if (template.length === 0) return false;
@@ -417,7 +505,11 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Check if template has attribute concepts (non-class attributes).
+   * Counts non-styling attribute concepts in the template.
+   * 
+   * @param concepts - Extracted concepts from template analysis
+   * @param template - Template nodes to analyze
+   * @returns Number of nodes with non-class/className attributes
    */
   private hasAttributes(concepts: any, template: any[]): number {
     if (template.length === 0) return 0;
@@ -484,7 +576,36 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Advanced processing method with comprehensive features.
+   * Processes templates with advanced features including enhanced extraction and validation.
+   * 
+   * This method provides comprehensive template processing with additional capabilities:
+   * - Enhanced concept extraction with specialized extractors
+   * - Component property merging and resolution
+   * - Cross-framework event normalization
+   * - Comprehensive concept validation
+   * - Framework consistency checking
+   * 
+   * @param template - Array of template nodes to process
+   * @param options - Processing options with advanced feature configuration
+   * @returns Promise resolving to enhanced processing result
+   * 
+   * @example
+   * ```typescript
+   * const result = await pipeline.processAdvanced(templateNodes, {
+   *   framework: 'react',
+   *   componentDefinition: {
+   *     common: { name: 'MyComponent', props: { title: 'string' } },
+   *     framework: { script: 'const [state, setState] = useState();' }
+   *   },
+   *   extraction: {
+   *     useEventExtractor: true,
+   *     useStylingExtractor: true,
+   *     validateConcepts: true
+   *   }
+   * });
+   * ```
+   * 
+   * @throws {Error} When advanced processing encounters unrecoverable errors
    */
   async processAdvanced(
     template: any[], // TemplateNode[]
@@ -700,7 +821,26 @@ export class ProcessingPipeline {
   }
 
   /**
-   * Process with automatic advanced processing feature detection.
+   * Processes templates with intelligent feature detection and automatic enhancement.
+   * 
+   * This method analyzes the template content and automatically enables advanced
+   * processing features based on detected patterns and complexity. It provides
+   * a convenient way to get optimal processing without manual configuration.
+   * 
+   * @param template - Array of template nodes to process
+   * @param options - Base processing options (enhanced features auto-detected)
+   * @returns Promise resolving to enhanced processing result
+   * 
+   * @example
+   * ```typescript
+   * // Automatically detects and enables appropriate features
+   * const result = await pipeline.processWithAutoEnhancement(complexTemplate, {
+   *   framework: 'vue'
+   * });
+   * 
+   * // Features like event extraction, styling extraction, and validation
+   * // are enabled automatically based on template content
+   * ```
    */
   async processWithAutoEnhancement(
     template: any[], // TemplateNode[]
@@ -831,53 +971,99 @@ const onDateChange = (newDate) => setDate(newDate);`,
   }
 
   /**
-   * Get access to advanced processing processors for external use.
+   * Retrieves the component property processor for external component processing.
+   * 
+   * @returns ComponentPropertyProcessor instance used by the pipeline
    */
   getComponentPropertyProcessor(): ComponentPropertyProcessor {
     return this.componentPropertyProcessor;
   }
 
+  /**
+   * Retrieves the import processor for handling import merging and deduplication.
+   * 
+   * @returns ImportProcessor instance used by the pipeline
+   */
   getImportProcessor(): ImportProcessor {
     return this.importProcessor;
   }
 
+  /**
+   * Retrieves the script merge processor for combining script sections.
+   * 
+   * @returns ScriptMergeProcessor instance used by the pipeline
+   */
   getScriptMergeProcessor(): ScriptMergeProcessor {
     return this.scriptMergeProcessor;
   }
 
+  /**
+   * Retrieves the component name resolver for component naming operations.
+   * 
+   * @returns ComponentNameResolver instance used by the pipeline
+   */
   getComponentNameResolver(): ComponentNameResolver {
     return this.componentNameResolver;
   }
 
+  /**
+   * Retrieves the event extractor for advanced event processing.
+   * 
+   * @returns EventExtractor instance used by the pipeline
+   */
   getEventExtractor(): EventExtractor {
     return this.eventExtractor;
   }
 
+  /**
+   * Retrieves the styling extractor for advanced styling processing.
+   * 
+   * @returns StylingExtractor instance used by the pipeline
+   */
   getStylingExtractor(): StylingExtractor {
     return this.stylingExtractor;
   }
 
+  /**
+   * Retrieves the concept validator for template validation operations.
+   * 
+   * @returns ConceptValidator instance used by the pipeline
+   */
   getConceptValidator(): ConceptValidator {
     return this.conceptValidator;
   }
 
+  /**
+   * Retrieves the framework consistency checker for cross-framework validation.
+   * 
+   * @returns FrameworkConsistencyChecker instance used by the pipeline
+   */
   getFrameworkConsistencyChecker(): FrameworkConsistencyChecker {
     return this.frameworkConsistencyChecker;
   }
 
+  /**
+   * Retrieves the event normalizer for cross-framework event standardization.
+   * 
+   * @returns EventNormalizer instance used by the pipeline
+   */
   getEventNormalizer(): EventNormalizer {
     return this.eventNormalizer;
   }
 
   /**
-   * Get advanced processing error collector.
+   * Retrieves the advanced error collector for detailed error tracking.
+   * 
+   * @returns ErrorCollector instance used for advanced processing errors
    */
   getAdvancedErrorCollector(): ErrorCollector {
     return this.advancedErrorCollector;
   }
 
   /**
-   * Get analyzer for external access.
+   * Retrieves the template analyzer for external template analysis operations.
+   * 
+   * @returns TemplateAnalyzer instance used by the pipeline
    */
   getAnalyzer(): TemplateAnalyzer {
     return this.analyzer;

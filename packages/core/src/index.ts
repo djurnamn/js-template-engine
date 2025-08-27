@@ -17,7 +17,7 @@ export * from './validation';
 export * from './normalization';
 
 // Export helpers
-export { createLogger } from './utils/logger';
+export { createLogger } from './utilities/logger';
 
-// Export utils
-export * from './utils/extension-helpers';
+// Export utilities
+export * from './utilities/extension-helpers';

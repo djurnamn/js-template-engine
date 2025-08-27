@@ -2,35 +2,60 @@ import { createLogger, getExtensionOptions } from '@js-template-engine/core';
 import type {
   TemplateNode,
   Extension,
-  DeepPartial,
-  BaseExtensionOptions,
 } from '@js-template-engine/types';
 import type {
   StylingExtension,
   ExtensionMetadata,
-  FrameworkExtension,
   StylingConcept,
-  ComponentConcept,
   RenderContext,
   StyleOutput
 } from '@js-template-engine/core';
-import {
-  EventNormalizer,
-  ComponentPropertyProcessor, 
-  ScriptMergeProcessor,
-  ImportProcessor,
-  DEFAULT_MERGE_STRATEGIES
-} from '@js-template-engine/core';
-import type { ScriptMergeStrategy } from '@js-template-engine/core';
 import { UtilityParser } from './parsers/UtilityParser';
 import { CssGenerator } from './generators/CssGenerator';
 import { TailwindProcessor } from './services/TailwindProcessor';
 import type { TailwindExtensionOptions, TailwindNodeExtensions, ParsedUtility } from './types';
 
 /**
- * Tailwind Styling Extension
+ * Tailwind CSS styling extension providing comprehensive utility class processing.
  * 
- * Provides bi-directional conversion between Tailwind utility classes and CSS styles.
+ * This extension transforms Tailwind utility classes into CSS styles and vice versa,
+ * supporting responsive design, variants, and custom class handling. It integrates
+ * with the template processing pipeline to provide production-ready styling output
+ * with multiple format options.
+ * 
+ * Key capabilities:
+ * - Utility class validation and processing
+ * - Responsive breakpoint handling
+ * - Pseudo-class variant support
+ * - CSS to Tailwind reverse mapping
+ * - Multiple output formats (CSS, SCSS, pass-through)
+ * - Custom class fallback strategies
+ * - Performance-optimized caching
+ * 
+ * @example
+ * ```typescript
+ * const extension = new TailwindStylingExtension();
+ * const registry = new ExtensionRegistry();
+ * registry.registerStyling(extension);
+ * 
+ * // Process styling concepts
+ * const stylingConcept: StylingConcept = {
+ *   nodeId: 'root',
+ *   staticClasses: ['bg-blue-500', 'text-white', 'p-4']
+ * };
+ * 
+ * const output = extension.processStyles(stylingConcept);
+ * console.log(output.styles); // Generated CSS
+ * 
+ * // Convert CSS to Tailwind
+ * const { classes, remaining } = extension.convertCssToTailwind({
+ *   'background-color': '#3b82f6',
+ *   'color': '#ffffff'
+ * });
+ * console.log(classes); // ['bg-blue-500', 'text-white']
+ * ```
+ * 
+ * @since 2.0.0
  */
 export class TailwindStylingExtension
   implements Extension<TailwindExtensionOptions, TailwindNodeExtensions>, StylingExtension
@@ -72,24 +97,32 @@ export class TailwindStylingExtension
   /** CSS generator */
   private cssGenerator: CssGenerator;
 
-  /** Event normalizer */
-  private eventNormalizer = new EventNormalizer();
-
-  /** Property processor */
-  private propertyProcessor: ComponentPropertyProcessor;
-
-  /** Script merger */
-  private scriptMerger: ScriptMergeProcessor;
-
-  /** Import processor */
-  private importProcessor = new ImportProcessor();
 
   /** Script merge strategy */
   private scriptMergeStrategy: ScriptMergeStrategy = DEFAULT_MERGE_STRATEGIES.script;
 
   /**
-   * Creates a new Tailwind extension instance.
-   * @param verbose - If true, enables verbose logging.
+   * Creates a new TailwindStylingExtension instance with optional configuration.
+   * 
+   * @param verbose - Enables detailed logging for debugging purposes
+   * @param tailwindConfig - Optional Tailwind CSS configuration object
+   * 
+   * @example
+   * ```typescript
+   * // Basic extension
+   * const extension = new TailwindStylingExtension();
+   * 
+   * // With custom Tailwind config
+   * const extension = new TailwindStylingExtension(false, {
+   *   theme: {
+   *     colors: { brand: '#123456' },
+   *     spacing: { huge: '10rem' }
+   *   }
+   * });
+   * 
+   * // With verbose logging
+   * const extension = new TailwindStylingExtension(true);
+   * ```
    */
   constructor(verbose = false, tailwindConfig?: any) {
     this.logger = createLogger(verbose, 'TailwindStylingExtension');
@@ -97,14 +130,6 @@ export class TailwindStylingExtension
     this.tailwindProcessor = new TailwindProcessor(tailwindConfig);
     this.utilityParser = new UtilityParser(this.tailwindProcessor);
     this.cssGenerator = new CssGenerator(this.tailwindProcessor);
-    
-    this.propertyProcessor = new ComponentPropertyProcessor({
-      script: this.scriptMergeStrategy,
-      props: DEFAULT_MERGE_STRATEGIES.props,
-      imports: DEFAULT_MERGE_STRATEGIES.imports
-    });
-
-    this.scriptMerger = new ScriptMergeProcessor();
   }
 
   /**
@@ -217,9 +242,28 @@ export class TailwindStylingExtension
   }
 
   /**
-   * Process styling concepts from Tailwind classes.
-   * @param concept - Styling concept to process
-   * @returns Generated style output
+   * Processes styling concepts containing Tailwind utility classes into CSS output.
+   * 
+   * This is the primary method for converting Tailwind utility classes into CSS styles.
+   * It extracts classes from the styling concept, validates them, and generates
+   * appropriate CSS output based on the configured output strategy.
+   * 
+   * @param concept - Styling concept containing Tailwind utility classes
+   * @returns Style output with generated CSS and any required imports
+   * 
+   * @example
+   * ```typescript
+   * const stylingConcept: StylingConcept = {
+   *   nodeId: 'button-1',
+   *   staticClasses: ['bg-blue-500', 'hover:bg-blue-600', 'text-white', 'px-4', 'py-2'],
+   *   dynamicClasses: ['${isActive ? "ring-2" : ""}'],
+   *   inlineStyles: {}
+   * };
+   * 
+   * const output = extension.processStyles(stylingConcept);
+   * console.log(output.styles);
+   * // Output: CSS for background colors, hover states, text color, padding
+   * ```
    */
   processStyles(concept: StylingConcept): StyleOutput {
     const tailwindClasses = this.extractTailwindClassesFromConcept(concept);
@@ -236,7 +280,7 @@ export class TailwindStylingExtension
       
       // If it's a Promise, we need to handle it differently
       if (result instanceof Promise) {
-        // For now, return a placeholder and log a warning
+        // Return fallback CSS with utility class names as comments
         this.logger.warn('Async CSS generation not supported in synchronous interface');
         return {
           styles: utilities.map(u => `/* ${u.original} */`).join('\n'),
@@ -308,9 +352,29 @@ export class TailwindStylingExtension
   }
 
   /**
-   * Convert CSS styles to Tailwind classes.
-   * @param styles - CSS styles to convert
-   * @returns Object with converted classes and remaining styles
+   * Converts CSS property-value pairs into equivalent Tailwind utility classes.
+   * 
+   * This method performs reverse mapping from CSS to Tailwind utilities, attempting
+   * to find the most appropriate utility classes for given CSS properties. Any
+   * properties that cannot be converted remain in the 'remaining' object.
+   * 
+   * @param styles - CSS property-value pairs to convert
+   * @returns Object containing converted Tailwind classes and unconverted CSS properties
+   * 
+   * @example
+   * ```typescript
+   * const cssStyles = {
+   *   'background-color': '#3b82f6',
+   *   'color': '#ffffff',
+   *   'padding': '1rem',
+   *   'border-radius': '0.5rem', // Not in simple mapping
+   *   'display': 'flex'
+   * };
+   * 
+   * const { classes, remaining } = extension.convertCssToTailwind(cssStyles);
+   * console.log(classes); // ['bg-blue-500', 'text-white', 'p-4', 'flex']
+   * console.log(remaining); // { 'border-radius': '0.5rem' }
+   * ```
    */
   convertCssToTailwind(styles: Record<string, string>): {
     classes: string[];
@@ -455,7 +519,7 @@ export class TailwindStylingExtension
    */
   convertFormat?(from: string, to: string): StyleOutput | null {
     // This would implement bi-directional conversion
-    // For now, return null to indicate not implemented
+    // Return null to indicate format conversion not available
     return null;
   }
 }

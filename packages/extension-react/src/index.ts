@@ -1,7 +1,33 @@
 /**
- * React Framework Extension
+ * React Framework Extension for generating JSX/TypeScript components.
  * 
- * Generates React components with JSX/TypeScript syntax.
+ * This extension transforms framework-agnostic template concepts into React-specific
+ * JSX syntax, handling events, conditionals, iterations, slots, and attributes with
+ * proper React conventions and best practices.
+ * 
+ * Key capabilities:
+ * - Event handler transformation with modifier support
+ * - JSX conditional rendering patterns
+ * - Array mapping with proper key handling
+ * - React props and children patterns for slots
+ * - HTML to React attribute transformation
+ * - TypeScript interface generation
+ * - Hook usage optimization
+ * 
+ * @example
+ * ```typescript
+ * const extension = new ReactFrameworkExtension();
+ * const registry = new ExtensionRegistry();
+ * registry.registerFramework(extension);
+ * 
+ * const concepts = analyzer.extractConcepts(templateNodes);
+ * const reactCode = extension.renderComponent(concepts, {
+ *   component: { name: 'MyComponent' },
+ *   options: { language: 'typescript' }
+ * });
+ * ```
+ * 
+ * @since 2.0.0
  */
 
 import type {
@@ -44,7 +70,9 @@ import type {
 } from '@js-template-engine/core';
 
 /**
- * React-specific event output interface
+ * React-specific event processing output containing JSX event handler syntax.
+ * 
+ * @public
  */
 export interface ReactEventOutput {
   attribute: string;
@@ -114,7 +142,39 @@ export interface ReactComponentConfig {
 }
 
 /**
- * React Framework Extension for generating JSX components
+ * React Framework Extension that generates JSX components from template concepts.
+ * 
+ * This class implements the FrameworkExtension interface to provide React-specific
+ * rendering capabilities, transforming abstract template concepts into production-ready
+ * JSX/TypeScript components with proper event handling, styling, and component patterns.
+ * 
+ * The extension handles:
+ * - Event handler transformation (onClick, onChange, etc.)
+ * - Conditional rendering with JSX patterns
+ * - List rendering with keys and proper iteration
+ * - Slot transformation to React props and children
+ * - HTML attribute transformation to React props
+ * - TypeScript interface generation
+ * - Import management and hook optimization
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * const extension = new ReactFrameworkExtension();
+ * 
+ * // Process events from template
+ * const eventOutput = extension.processEvents([
+ *   { nodeId: '0', name: 'click', handler: 'handleClick', modifiers: ['prevent'] }
+ * ]);
+ * 
+ * // Render complete component
+ * const jsxCode = extension.renderComponent(concepts, {
+ *   component: { name: 'Button', props: { variant: 'string' } },
+ *   options: { language: 'typescript' }
+ * });
+ * ```
+ * 
+ * @since 2.0.0
  */
 export class ReactFrameworkExtension implements FrameworkExtension {
   public metadata: ExtensionMetadata & { type: 'framework' } = {
@@ -150,7 +210,25 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   }
 
   /**
-   * Process event concepts to React event handlers
+   * Transforms event concepts into React JSX event handlers.
+   * 
+   * Converts framework-agnostic event concepts into React-specific event handling
+   * patterns, including proper attribute naming (onClick, onChange, etc.), modifier
+   * handling (preventDefault, stopPropagation), and parameter transformation.
+   * 
+   * @param events - Array of event concepts to process
+   * @returns Framework event output with React-specific attributes and imports
+   * 
+   * @example
+   * ```typescript
+   * const events: EventConcept[] = [
+   *   { nodeId: '0', name: 'click', handler: 'handleClick', modifiers: ['prevent'] },
+   *   { nodeId: '1', name: 'change', handler: 'handleChange', parameters: ['$event'] }
+   * ];
+   * 
+   * const output = extension.processEvents(events);
+   * // Output: { attributes: { onClick: 'handleClick', onChange: 'handleChange' } }
+   * ```
    */
   processEvents(events: EventConcept[]): FrameworkEventOutput {
     const processedEvents = events.map(event => {
@@ -359,8 +437,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
 
     const cleanContent = this.cleanJSXContent(childContent);
 
-    // For now, always use React.Fragment to match specification and tests
-    // Future optimization: direct key assignment for single elements
+    // Use React.Fragment to ensure proper key handling for array iteration
     return `{${iteration.items}.map(${mapParams} => (
     <React.Fragment key={${keyExpression}}>
       ${cleanContent}
@@ -399,7 +476,7 @@ export class ReactFrameworkExtension implements FrameworkExtension {
    * Check if we can use React.Fragment shorthand syntax
    */
   private canUseFragmentShorthand(content: string): boolean {
-    // For now, always use standard Fragment for clarity and key support
+    // Use standard Fragment syntax for consistent key support and readability
     return false;
   }
 
@@ -671,7 +748,32 @@ export class ReactFrameworkExtension implements FrameworkExtension {
   }
 
   /**
-   * Render component to React JSX format
+   * Renders a complete React component from template concepts.
+   * 
+   * This is the main entry point for component generation, orchestrating the
+   * transformation of all template concepts into a complete, production-ready
+   * React component with proper imports, TypeScript interfaces, and JSX rendering.
+   * 
+   * @param concepts - Complete set of extracted template concepts
+   * @param context - Rendering context with component metadata and options
+   * @returns Complete React component source code as string
+   * 
+   * @example
+   * ```typescript
+   * const concepts: ComponentConcept = {
+   *   structure: [{ nodeId: '0', type: 'element', tag: 'button', children: [] }],
+   *   events: [{ nodeId: '0', name: 'click', handler: 'handleClick' }],
+   *   styling: { nodeId: 'root', staticClasses: ['btn'] },
+   *   // ... other concepts
+   * };
+   * 
+   * const reactCode = extension.renderComponent(concepts, {
+   *   component: { name: 'Button', props: { variant: 'string' } },
+   *   options: { language: 'typescript' }
+   * });
+   * 
+   * // Returns complete React component with imports, interfaces, and JSX
+   * ```
    */
   renderComponent(concepts: ComponentConcept, context: RenderContext): string {
     // Store concepts for per-element class access

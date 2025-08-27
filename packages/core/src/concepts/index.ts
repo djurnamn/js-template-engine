@@ -1,47 +1,165 @@
 /**
- * Core concept interfaces for the new extension system.
- * These interfaces represent common patterns abstracted from framework-specific implementations.
+ * Core concept interfaces defining the conceptual model for template processing.
+ * 
+ * This module provides comprehensive type definitions for all template concepts
+ * that can be extracted and processed by the template engine. These interfaces
+ * represent framework-agnostic abstractions that enable consistent processing
+ * across React, Vue, Svelte, and other supported frameworks.
+ * 
+ * The concept system provides a unified model for:
+ * - Structural elements (DOM hierarchy, text, comments)
+ * - Behavioral patterns (events, conditionals, iterations)
+ * - Styling abstractions (classes, inline styles, framework bindings)
+ * - Component composition (slots, attributes, metadata)
+ * 
+ * @example
+ * ```typescript
+ * // Example of extracted concepts from a template
+ * const componentConcept: ComponentConcept = {
+ *   structure: [
+ *     { nodeId: '0', type: 'element', tag: 'div', children: [...] }
+ *   ],
+ *   events: [
+ *     { nodeId: '0-1', name: 'click', handler: 'handleClick', modifiers: ['prevent'] }
+ *   ],
+ *   styling: {
+ *     nodeId: 'root',
+ *     staticClasses: ['container', 'active'],
+ *     dynamicClasses: ['isVisible && "show"']
+ *   },
+ *   // ... other concepts
+ * };
+ * ```
+ * 
+ * @since 2.0.0
  */
 
 /**
- * Base interface for all concepts with node reference.
+ * Base interface for all template concepts providing node traceability.
+ * 
+ * All concepts extend this interface to maintain references back to their
+ * originating template nodes, enabling debugging, error reporting, and
+ * source mapping capabilities.
+ * 
+ * @public
  */
 export interface BaseConcept {
-  /** Reference to the original template node for debugging */
+  /** 
+   * Unique identifier referencing the original template node.
+   * Used for debugging, error reporting, and source mapping.
+   */
   nodeId: string;
 }
 
 /**
- * Event concept representing user interactions.
+ * Event concept representing user interaction handlers in templates.
+ * 
+ * EventConcept abstracts framework-specific event handling patterns into
+ * a common interface, supporting various event binding syntaxes and modifiers
+ * across React, Vue, Svelte, and other frameworks.
+ * 
+ * @example
+ * ```typescript
+ * // React: <button onClick={handleClick}>
+ * // Vue: <button @click="handleClick">
+ * // Svelte: <button on:click={handleClick}>
+ * 
+ * const eventConcept: EventConcept = {
+ *   nodeId: '0-1',
+ *   name: 'click',
+ *   handler: 'handleClick',
+ *   modifiers: ['prevent', 'stop'],
+ *   parameters: ['$event', 'index']
+ * };
+ * ```
+ * 
+ * @public
  */
 export interface EventConcept extends BaseConcept {
-  /** Event name (click, change, submit, etc.) */
+  /** 
+   * Normalized event name (e.g., 'click', 'change', 'submit').
+   * Abstracted from framework-specific naming conventions.
+   */
   name: string;
-  /** Handler function name or expression */
+  /** 
+   * Handler function name or expression to execute.
+   * Can be a simple function name or complex expression.
+   */
   handler: string;
-  /** Framework-specific attribute name (onClick, @click, on:click) */
+  /** 
+   * Original framework-specific attribute name for reference.
+   * Examples: 'onClick', '@click', 'on:click', 'v-on:click'
+   */
   frameworkAttribute?: string;
-  /** Event modifiers (prevent, stop, once, etc.) */
+  /** 
+   * Event modifiers affecting behavior.
+   * Examples: ['prevent', 'stop', 'once', 'passive', 'capture']
+   */
   modifiers?: string[];
-  /** Parameters passed to the handler */
+  /** 
+   * Parameters passed to the event handler.
+   * Examples: ['$event', 'index', 'item.id']
+   */
   parameters?: string[];
 }
 
 /**
- * Styling concept for static and dynamic classes.
+ * Styling concept for CSS classes, inline styles, and framework-specific style bindings.
+ * 
+ * StylingConcept provides a unified model for handling static and dynamic styling
+ * across different frameworks and styling approaches. It supports traditional CSS
+ * classes, inline styles, and framework-specific bindings while providing extension
+ * points for styling systems like BEM, Tailwind, and CSS-in-JS.
+ * 
+ * @example
+ * ```typescript
+ * // React: <div className={`btn ${isActive ? 'active' : ''}`} style={{ color: 'red' }}>
+ * // Vue: <div :class="['btn', { active: isActive }]" :style="{ color: 'red' }">
+ * 
+ * const stylingConcept: StylingConcept = {
+ *   nodeId: 'root',
+ *   staticClasses: ['btn', 'container'],
+ *   dynamicClasses: ['isActive && "active"', '{ disabled: !enabled }'],
+ *   inlineStyles: { color: 'red', fontSize: '16px' },
+ *   styleBindings: { style: '{ color: dynamicColor }' },
+ *   extensionData: {
+ *     tailwind: [{ nodeId: '0', utilities: ['bg-blue-500', 'text-white'] }]
+ *   }
+ * };
+ * ```
+ * 
+ * @public
  */
 export interface StylingConcept extends BaseConcept {
-  /** Static CSS classes */
+  /** 
+   * Static CSS class names applied to elements.
+   * These are literal class names that don't change at runtime.
+   */
   staticClasses: string[];
-  /** Dynamic class expressions */
+  /** 
+   * Dynamic class expressions that are evaluated at runtime.
+   * Examples: 'isActive && "active"', '{ disabled: !enabled }'
+   */
   dynamicClasses: string[];
-  /** Inline style object */
+  /** 
+   * Inline style properties with static values.
+   * Represents style="property: value" declarations.
+   */
   inlineStyles: Record<string, string>;
-  /** Framework-specific style bindings */
+  /** 
+   * Framework-specific dynamic style bindings.
+   * Examples: React's style prop, Vue's :style directive
+   */
   styleBindings?: Record<string, string>;
-  /** Extension-specific data (e.g., BEM configuration, Tailwind utilities) */
+  /** 
+   * Extension-specific styling data for BEM, Tailwind, etc.
+   * Indexed by extension key for efficient lookup.
+   */
   extensionData?: Record<string, any>;
-  /** Per-element classes indexed by node ID */
+  /** 
+   * Per-element class mappings for fine-grained styling control.
+   * Maps node IDs to their specific class arrays.
+   */
   perElementClasses?: Record<string, string[]>;
 }
 

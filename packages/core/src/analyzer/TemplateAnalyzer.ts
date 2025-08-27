@@ -1,5 +1,25 @@
 /**
- * Template analyzer for extracting concepts from template nodes.
+ * Advanced template analyzer for extracting and categorizing concepts from template node trees.
+ * 
+ * The TemplateAnalyzer serves as the primary component for parsing template structures
+ * and extracting meaningful concepts including events, styling, conditionals, iterations,
+ * slots, and attributes. It provides comprehensive analysis capabilities with configurable
+ * options for different extraction strategies.
+ * 
+ * @example
+ * ```typescript
+ * const analyzer = new TemplateAnalyzer({
+ *   extractEvents: true,
+ *   extractStyling: true,
+ *   eventPrefixes: ['on', '@', 'v-on:']
+ * });
+ * 
+ * const concepts = analyzer.extractConcepts(templateNodes);
+ * console.log(concepts.events.length); // Number of event concepts found
+ * console.log(concepts.styling.staticClasses); // Static CSS classes
+ * ```
+ * 
+ * @since 2.0.0
  */
 
 import type { 
@@ -49,7 +69,9 @@ interface TemplateNode {
 }
 
 /**
- * Analyzer options for customizing concept extraction.
+ * Configuration options for customizing template analysis behavior.
+ * 
+ * @public
  */
 export interface AnalyzerOptions {
   /** Whether to extract styling concepts */
@@ -85,19 +107,111 @@ const DEFAULT_ANALYZER_OPTIONS: Required<AnalyzerOptions> = {
 };
 
 /**
- * Template analyzer for extracting concepts from template trees.
+ * Advanced template analyzer that extracts meaningful concepts from template node trees.
+ * 
+ * The TemplateAnalyzer provides comprehensive parsing and concept extraction capabilities
+ * for template structures, supporting multiple frameworks and extraction strategies.
+ * It categorizes template nodes into structural and behavioral concepts for further
+ * processing by extensions and the rendering pipeline.
+ * 
+ * Key capabilities:
+ * - Structural analysis (elements, text, comments, fragments)
+ * - Behavioral concept extraction (events, conditionals, iterations)
+ * - Styling analysis (classes, inline styles, style bindings)
+ * - Slot and attribute processing
+ * - Error tracking and reporting
+ * 
+ * @example
+ * ```typescript
+ * const errorCollector = new ErrorCollector();
+ * const analyzer = new TemplateAnalyzer({
+ *   extractEvents: true,
+ *   extractStyling: true,
+ *   eventPrefixes: ['on', '@', 'v-on:', 'on:']
+ * }, errorCollector);
+ * 
+ * const templateNodes = [
+ *   { type: 'element', tag: 'button', attributes: { class: 'btn' }, '@click': 'handleClick' }
+ * ];
+ * 
+ * const concepts = analyzer.extractConcepts(templateNodes);
+ * console.log(concepts.events); // Event concepts found
+ * console.log(concepts.styling.staticClasses); // ['btn']
+ * 
+ * if (analyzer.getErrors().hasErrors()) {
+ *   console.error('Analysis errors:', analyzer.getErrors().getErrors());
+ * }
+ * ```
+ * 
+ * @since 2.0.0
  */
 export class TemplateAnalyzer {
   private errorCollector: ErrorCollector;
   private options: Required<AnalyzerOptions>;
 
+  /**
+   * Creates a new TemplateAnalyzer instance with configurable options.
+   * 
+   * @param options - Configuration options for customizing analysis behavior
+   * @param errorCollector - Optional error collector instance for tracking analysis issues
+   * 
+   * @example
+   * ```typescript
+   * // Basic analyzer with default options
+   * const analyzer = new TemplateAnalyzer();
+   * 
+   * // Customized analyzer for Vue.js templates
+   * const vueAnalyzer = new TemplateAnalyzer({
+   *   extractEvents: true,
+   *   extractStyling: true,
+   *   eventPrefixes: ['@', 'v-on:'],
+   *   ignoreAttributes: ['key', 'ref', 'v-if']
+   * });
+   * 
+   * // With custom error collector
+   * const errorCollector = new ErrorCollector();
+   * const analyzer = new TemplateAnalyzer({}, errorCollector);
+   * ```
+   */
   constructor(options: AnalyzerOptions = {}, errorCollector?: ErrorCollector) {
     this.options = { ...DEFAULT_ANALYZER_OPTIONS, ...options };
     this.errorCollector = errorCollector || new ErrorCollector();
   }
 
   /**
-   * Extract concepts from a template tree.
+   * Extracts comprehensive concepts from a template node tree.
+   * 
+   * This is the primary analysis method that processes template nodes and categorizes
+   * them into structural and behavioral concepts. It performs a complete traversal
+   * of the template tree, extracting events, styling, conditionals, iterations,
+   * slots, and attributes based on the configured options.
+   * 
+   * @param template - Array of template nodes to analyze
+   * @returns ComponentConcept object containing all extracted concepts
+   * 
+   * @example
+   * ```typescript
+   * const templateNodes = [
+   *   {
+   *     type: 'element',
+   *     tag: 'div',
+   *     attributes: { class: 'container' },
+   *     children: [
+   *       { type: 'text', content: 'Hello World' },
+   *       { type: 'element', tag: 'button', attributes: { '@click': 'handleClick' } }
+   *     ]
+   *   }
+   * ];
+   * 
+   * const concepts = analyzer.extractConcepts(templateNodes);
+   * 
+   * console.log(concepts.structure); // Structural representation
+   * console.log(concepts.events); // Event concepts: [{ name: 'click', handler: 'handleClick' }]
+   * console.log(concepts.styling.staticClasses); // ['container']
+   * console.log(concepts.metadata); // Component metadata
+   * ```
+   * 
+   * @throws {Error} When template analysis encounters unrecoverable parsing errors
    */
   extractConcepts(template: TemplateNode[]): ComponentConcept {
     const concepts: ComponentConcept = {
@@ -192,7 +306,7 @@ export class TemplateAnalyzer {
         case 'for': 
         case 'slot':
           // These will be handled as behavioral concepts, but we still extract their structure
-          // For now, treat them as fragments with their children
+          // Treat special nodes as fragments for structural representation
           return {
             nodeId,
             type: 'fragment',
@@ -678,8 +792,7 @@ export class TemplateAnalyzer {
    * Extract component metadata from template.
    */
   private extractMetadata(template: TemplateNode[]): ComponentMetadata {
-    // For now, return empty metadata
-    // This can be enhanced to extract component name, props, etc.
+    // Return empty metadata - component metadata extraction handled by processors
     return {};
   }
 

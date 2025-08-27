@@ -1,7 +1,7 @@
 import { ExtendedTemplate } from './ExtendedTemplate';
 import { StyleDefinition, StyleOutputFormat } from './styles';
 import { ExtensionKey, Component } from './extensions';
-import { DeepPartial } from './utils';
+import { DeepPartial } from './utilities';
 import { StyleProcessorPlugin } from './extensions';
 
 export type {
@@ -262,7 +262,7 @@ export interface Logger {
 export * from './ExtendedTemplate';
 export * from './styles';
 export * from './extensions';
-export * from './utils';
+export * from './utilities';
 
 /**
  * Type guard for checking if a node has extensions for a specific key.
