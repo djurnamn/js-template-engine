@@ -1,0 +1,699 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Template",
+  "definitions": {
+    "Template": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ComponentNode"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        }
+      ],
+      "description": "A complete template: either a root `ComponentNode` or a bare node array. Templates without a component wrapper are valid; the engine uses a default component name from options."
+    },
+    "ComponentNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "component"
+        },
+        "name": {
+          "type": "string",
+          "description": "The component name: `'Button'` → `Button.tsx` / `Button.vue` / ..."
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/PropDefinition"
+          },
+          "description": "Component props."
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Verbatim import statements."
+        },
+        "script": {
+          "type": "string",
+          "description": "Framework-agnostic JS (handlers, utils)."
+        },
+        "style": {
+          "type": "string",
+          "description": "Component-level CSS, distributed to children."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        },
+        "extensions": {
+          "$ref": "#/definitions/ComponentExtensionOverrides",
+          "description": "Component-level per-extension overrides."
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "The optional root wrapper carrying component metadata. Validation rejects `component` nodes anywhere but the template root."
+    },
+    "PropDefinition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "A TypeScript type expression: `\"'primary' | 'secondary'\"`, `'boolean'`."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the prop is required. Defaults to `false`."
+        },
+        "default": {
+          "$ref": "#/definitions/JsonValue",
+          "description": "A JSON-serializable default value."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A component prop definition.\n\nRendered as a generated props interface with destructured defaults in React, `defineProps` in Vue, `export let` declarations in Svelte, and plain consts in the HTML-mode script block."
+    },
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/JsonValue"
+          }
+        }
+      ],
+      "description": "A JSON-serializable value.\n\nTemplates are plain serializable data: anything expressible in the template types is expressible in JSON, so values that must survive serialization are constrained to this type."
+    },
+    "TemplateNode": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ComponentNode"
+        },
+        {
+          "$ref": "#/definitions/ElementNode"
+        },
+        {
+          "$ref": "#/definitions/TextNode"
+        },
+        {
+          "$ref": "#/definitions/CommentNode"
+        },
+        {
+          "$ref": "#/definitions/FragmentNode"
+        },
+        {
+          "$ref": "#/definitions/SlotNode"
+        },
+        {
+          "$ref": "#/definitions/ConditionalNode"
+        },
+        {
+          "$ref": "#/definitions/IterationNode"
+        }
+      ],
+      "description": "Any template node.\n\nEvery node has a `type` discriminant; unknown `type` values are a validation error. `ComponentNode` is structurally part of the union but only valid at the template root."
+    },
+    "ElementNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "element"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/DynamicTag"
+            }
+          ],
+          "description": "The tag name: `'div'`, `'button'`, `'svg'`, ... A `DynamicTag` resolves the tag from a runtime expression instead (root element only)."
+        },
+        "attributes": {
+          "$ref": "#/definitions/Attributes",
+          "description": "Static and dynamic attributes."
+        },
+        "conditionalAttributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConditionalAttributes"
+          },
+          "description": "Condition-gated attributes."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventDefinition"
+          },
+          "description": "Events bound to this element."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        },
+        "extensions": {
+          "$ref": "#/definitions/ExtensionOverrides",
+          "description": "Per-extension overrides."
+        },
+        "passthrough": {
+          "type": "boolean",
+          "description": "Marks this element as the component's surface root: a consumer's undeclared props/attributes spread onto it, a consumer-supplied `className`/`class` and `style` merge into its class list and styles, and it exposes a DOM handle (React ref-as-prop, Vue `$el`, Svelte a bindable `element`). At most one element per component may set it, and it must be the component's single root rendered element with an intrinsic HTML tag."
+        }
+      },
+      "required": [
+        "type",
+        "tag"
+      ],
+      "additionalProperties": false
+    },
+    "DynamicTag": {
+      "type": "object",
+      "properties": {
+        "$expression": {
+          "type": "string",
+          "description": "The runtime tag expression, e.g. `'as'` — a JavaScript expression."
+        },
+        "default": {
+          "type": "string",
+          "description": "The static fallback tag — preview, validation, and typing basis."
+        }
+      },
+      "required": [
+        "$expression",
+        "default"
+      ],
+      "additionalProperties": false,
+      "description": "A dynamic tag: the element's tag name is resolved from a runtime expression instead of a literal. `$expression` is an opaque JavaScript expression (the engine emits it verbatim, never parses it) yielding the runtime tag — an intrinsic tag string or a component identifier. `default` is a required static tag: the basis for the HTML-mode static preview, the void/children validation check, and — on a passthrough surface root — the typed prop surface. The engine never injects `default` as a runtime fallback; an author wanting one writes it into the expression. Allowed only on a component's single root rendered element."
+    },
+    "Attributes": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ClassEntry"
+              }
+            },
+            {
+              "$ref": "#/definitions/ExpressionBinding"
+            }
+          ],
+          "description": "Classes. The array form is canonical; the string form is accepted, normalized, and literal-only. Array entries — or the sole value — may be `$expression` bindings: expression classes render after every other class source, in authored order among themselves, and a falsy expression value contributes nothing at runtime."
+        },
+        "style": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NestedStyleObject"
+            },
+            {
+              "$ref": "#/definitions/ExpressionBinding"
+            }
+          ],
+          "description": "Nested style object, or an `$expression` binding evaluating to a plain object of camelCase CSS property→value pairs."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/AttributeValue"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ClassEntry"
+            }
+          },
+          {
+            "$ref": "#/definitions/NestedStyleObject"
+          },
+          {
+            "not": {}
+          }
+        ]
+      },
+      "description": "The single attribute map for both static and dynamic values.\n\n`class` and `style` have dedicated shapes. Both accept `$expression` bindings in constrained forms — expression entries in the class list (or as its sole value), expression values on top-level style properties, or an expression as the entire style object. *Condition-gated* classes and styles go through `conditionalAttributes` instead, which carries the condition explicitly and is literal-only."
+    },
+    "ClassEntry": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/ExpressionBinding"
+        }
+      ],
+      "description": "One entry of the `class` array form: a literal class name or an `$expression` binding contributing runtime classes."
+    },
+    "ExpressionBinding": {
+      "type": "object",
+      "properties": {
+        "$expression": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$expression"
+      ],
+      "additionalProperties": false,
+      "description": "A dynamic attribute binding.\n\nThe `$` sigil marks the key as engine-reserved: `$expression` can never be a legitimate CSS property, class name, or HTML attribute, so the wrapper is unambiguous against every other value shape in the format. The expression is a JavaScript expression, treated as an opaque string and emitted verbatim into the target syntax — the engine never parses or evaluates it."
+    },
+    "NestedStyleObject": {
+      "type": "object",
+      "properties": {
+        "$expression": {
+          "not": {},
+          "description": "`$expression` is engine-reserved and never a valid style key. A fully dynamic style is an `ExpressionBinding` in place of the style object, not a key inside it."
+        },
+        "$include": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Sass `@include` statement(s), emitted verbatim under `styling.language: 'scss'`. A compile-time-opaque string, or an array for several includes in authored order; never produces a CSS declaration. A processing error under `styling.language: 'css'` (no sass build to resolve it)."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/definitions/ExpressionBinding"
+          },
+          {
+            "$ref": "#/definitions/NestedSelectorBlock"
+          },
+          {
+            "not": {}
+          }
+        ]
+      },
+      "description": "A nested style object.\n\nAccepts plain CSS properties (camelCase or kebab-case), pseudo-selectors (`':hover'`), media queries (`'@media (max-width: 768px)'`), and parent-modifier selectors (`'.button--large &'`) as keys. Nested selectors always require a stylesheet and therefore force a class-based selector for the node.\n\nTop-level plain properties — CSS custom properties included — may carry `$expression` values; these render through the target framework's dynamic style mechanism and never enter generated CSS. To make the entire style dynamic, use an `$expression` binding as the whole `style` value instead (mixing `$expression` with other keys is invalid).\n\nA `$include` key carries Sass `@include` statement(s) — the inverse of `$expression`: compile-time-opaque source (not runtime), legal in any block including nested selector blocks, emitted verbatim under `styling.language: 'scss'`."
+    },
+    "NestedSelectorBlock": {
+      "type": "object",
+      "properties": {
+        "$expression": {
+          "not": {},
+          "description": "`$expression` is engine-reserved and invalid inside selector blocks."
+        },
+        "$include": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Sass `@include` statement(s), emitted verbatim under `styling.language: 'scss'`. A compile-time-opaque string, or an array for several includes in authored order; never produces a CSS declaration."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/definitions/NestedSelectorBlock"
+          },
+          {
+            "not": {}
+          }
+        ]
+      },
+      "description": "A nested selector block inside a style object: the value of a pseudo-selector, at-rule, or parent-modifier key.\n\nNesting composes recursively — at-rules, pseudo-selectors, and parent-modifier selectors may contain one another, with at-rules wrapping outermost in the emitted CSS. Selector blocks always emit to a stylesheet, so their values are static only: `$expression` bindings are invalid inside them (stylesheets cannot hold runtime values).\n\nA `$include` key carries Sass `@include` statement(s) — compile-time source emitted verbatim under `styling.language: 'scss'`. Unlike `$expression`, it *is* valid inside selector blocks (it resolves at the consumer's sass build, not at runtime)."
+    },
+    "AttributeValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "#/definitions/ExpressionBinding"
+        }
+      ],
+      "description": "A static or dynamic attribute value.\n\nBooleans render as presence/absence: `{ disabled: true }` produces `disabled` and `{ disabled: false }` omits the attribute."
+    },
+    "ConditionalAttributes": {
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "description": "A JavaScript expression."
+        },
+        "attributes": {
+          "$ref": "#/definitions/Attributes",
+          "description": "The attributes applied when the condition holds."
+        }
+      },
+      "required": [
+        "condition",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "description": "Condition-gated attributes.\n\nRenders as a generated class expression in React, `:class` object syntax in Vue, and `class:` directives in Svelte; HTML mode omits them from markup (warning emitted) but still generates CSS for the referenced classes.\n\n`class` and `style` are literal-only here — the condition is their dynamism; `$expression` values inside conditional attributes are a validation error."
+    },
+    "EventDefinition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Generic DOM event name: `'click'`, `'input'`, `'submit'`, ..."
+        },
+        "handler": {
+          "type": "string",
+          "description": "An identifier (`'handleClick'`) or inline JS (`'() => save()'`)."
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventModifier"
+          },
+          "description": "Optional modifiers, applied in order. At most one key modifier per event definition."
+        }
+      },
+      "required": [
+        "name",
+        "handler"
+      ],
+      "additionalProperties": false,
+      "description": "An event bound to an element.\n\nThe name is the generic DOM event name; framework extensions transform it into their own syntax (`onClick={...}`, `@click=\"...\"`, `on:click={...}`)."
+    },
+    "EventModifier": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "prevent"
+        },
+        {
+          "type": "string",
+          "const": "stop"
+        },
+        {
+          "type": "string",
+          "const": "once"
+        },
+        {
+          "type": "string",
+          "const": "self"
+        },
+        {
+          "type": "string",
+          "const": "capture"
+        },
+        {
+          "type": "string",
+          "const": "passive"
+        },
+        {
+          "$ref": "#/definitions/KeyEventModifier"
+        }
+      ],
+      "description": "An event modifier.\n\nModifiers map natively where the target framework supports them (Vue `@click.prevent`, Svelte `on:click|preventDefault`) and are wrapped in generated handler code where it doesn't (React, HTML mode). Key-guard modifiers map natively in Vue (`@keyup.enter`) and wrap the handler in a generated `event.key` guard everywhere else."
+    },
+    "KeyEventModifier": {
+      "type": "string",
+      "enum": [
+        "enter",
+        "escape",
+        "tab",
+        "space",
+        "backspace",
+        "delete",
+        "arrow-up",
+        "arrow-down",
+        "arrow-left",
+        "arrow-right"
+      ],
+      "description": "A key-guard event modifier: the handler only runs when the corresponding `KeyboardEvent.key` value matches (`'Enter'`, `'Escape'`, `'Tab'`, `' '`, `'Backspace'`, `'Delete'`, `'ArrowUp'`, ...).\n\nAt most one key modifier is allowed per event definition — chained key guards filter on a single `event.key` and could never pass together; multiple accepted keys are written as separate event entries."
+    },
+    "ExtensionOverrides": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "Per-extension node overrides.\n\nAny node may carry overrides under `extensions.<key>`, where `key` is the extension's declared name (`'react'`, `'vue'`, `'bem'`, `'tailwind'`, ...). The override shape is defined by each extension and typed via module augmentation of this interface, so `defineTemplate` autocompletes installed extensions' options.\n\nResolution priority: extension-specific override → generic concept → nothing. Overrides for extensions not present in `ProcessingOptions.extensions` are inert, not errors."
+    },
+    "TextNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text"
+        },
+        "content": {
+          "type": "string",
+          "description": "Static text."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Dynamic text, e.g. `'user.name'` — a JavaScript expression."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Static or dynamic text.\n\nExactly one of `content` | `expression` must be present. There is no inline interpolation syntax: `{{ }}` inside `content` is literal text, and mixed static/dynamic text is expressed as sibling text nodes."
+    },
+    "CommentNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "comment"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ],
+      "additionalProperties": false,
+      "description": "A comment. Rendered as a comment in every target; never affects semantics."
+    },
+    "FragmentNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fragment"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Groups children without a wrapper element: React `<>...</>`, plain sibling output elsewhere."
+    },
+    "SlotNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "slot"
+        },
+        "name": {
+          "type": "string",
+          "description": "The slot name; omitted = default slot."
+        },
+        "fallback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          },
+          "description": "Rendered when nothing is projected."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A content projection point.\n\nHTML mode renders `fallback` (slots have no consumer in static HTML); React uses the `{children}` / `{slots.<name>}` prop convention; Vue and Svelte render `<slot>` elements. Fallbacks must not contain slot nodes."
+    },
+    "ConditionalNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "conditional"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConditionalBranch"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "conditions"
+      ],
+      "additionalProperties": false,
+      "description": "A conditional with a unified branch list.\n\nThe statement sequence is validated: `if` first, then any number of `else-if`, optional trailing `else`."
+    },
+    "ConditionalBranch": {
+      "type": "object",
+      "properties": {
+        "statement": {
+          "$ref": "#/definitions/ConditionalStatement"
+        },
+        "condition": {
+          "type": "string",
+          "description": "A JavaScript expression."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        }
+      },
+      "required": [
+        "statement",
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "One branch of a conditional.\n\n`condition` is required except for `'else'`."
+    },
+    "ConditionalStatement": {
+      "type": "string",
+      "enum": [
+        "if",
+        "else-if",
+        "else"
+      ],
+      "description": "A branch statement in a conditional."
+    },
+    "IterationNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "iteration"
+        },
+        "items": {
+          "type": "string",
+          "description": "An expression evaluating to an iterable: `'props.users'`."
+        },
+        "item": {
+          "type": "string",
+          "description": "The loop variable name: `'user'`."
+        },
+        "index": {
+          "type": "string",
+          "description": "Optional index variable name: `'i'`."
+        },
+        "key": {
+          "type": "string",
+          "description": "Optional expression for stable identity: `'user.id'`."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "items",
+        "item",
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "A loop.\n\nRenders as `.map()` in React, `v-for` in Vue, `{#each}` in Svelte; HTML mode renders children once as a static sample wrapped in debug comments."
+    },
+    "ComponentExtensionOverrides": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "Component-level overrides keyed by extension name.\n\nEach value is at least a `ComponentExtensionOverride`; an extension may widen its own key through module augmentation to carry additional component-level settings (the Vue extension's `scoped` flag, for example), exactly as node-level overrides extend `ExtensionOverrides`."
+    }
+  }
+}

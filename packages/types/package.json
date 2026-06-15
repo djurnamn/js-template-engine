@@ -1,0 +1,51 @@
+{
+  "name": "@js-template-engine/types",
+  "version": "2.0.0",
+  "description": "Template format for the JS Template Engine: TypeScript types and JSON Schema for data-defined component templates",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./schema/template.schema.json": "./schema/template.schema.json"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/generate-schema.mjs",
+    "build:watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit -p tsconfig.type-check.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djurnamn/js-template-engine.git",
+    "directory": "packages/types"
+  },
+  "keywords": [
+    "js-template-engine",
+    "types",
+    "typescript"
+  ],
+  "author": "Björn Djurnamn <bjorn@djurnamn.co>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/djurnamn/js-template-engine/issues"
+  },
+  "homepage": "https://github.com/djurnamn/js-template-engine/tree/main/packages/types",
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "rimraf": "^5.0.5",
+    "ts-json-schema-generator": "^2.9.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  }
+}

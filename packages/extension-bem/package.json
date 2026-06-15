@@ -1,0 +1,52 @@
+{
+  "name": "@js-template-engine/extension-bem",
+  "version": "2.0.0",
+  "description": "BEM extension for the JS Template Engine: contributes block__element--modifier classes to data-defined component templates",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit -p tsconfig.type-check.json"
+  },
+  "dependencies": {
+    "@js-template-engine/core": "workspace:^",
+    "@js-template-engine/types": "workspace:^"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djurnamn/js-template-engine.git",
+    "directory": "packages/extension-bem"
+  },
+  "keywords": [
+    "js-template-engine",
+    "bem",
+    "css",
+    "extension"
+  ],
+  "author": "Björn Djurnamn <bjorn@djurnamn.co>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/djurnamn/js-template-engine/issues"
+  },
+  "homepage": "https://github.com/djurnamn/js-template-engine/tree/main/packages/extension-bem",
+  "devDependencies": {
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  }
+}
