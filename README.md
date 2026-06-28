@@ -1,6 +1,6 @@
 # JS Template Engine
 
-Define UI components **once, as typed data** — and render them to vanilla
+Define UI components *once*, as typed data, and render them to vanilla
 HTML/CSS/JS or to React, Vue, and Svelte components, with styling
 methodologies (BEM, Tailwind) applied as pluggable extensions.
 
@@ -77,17 +77,17 @@ dialect. This engine takes the opposite approach:
 | Default output | Framework targets | **Vanilla HTML/CSS/JS, zero extensions required** |
 
 Because templates are plain serializable data, any program can assemble,
-merge, validate, and transform them — a generator, a CMS, a design tool, or
-an LLM — far more naturally than it could synthesize JSX source. That is
-what makes [scaffold-ui-kit](packages/scaffold-ui-kit) possible: maintain one
-source of truth, ship component libraries for every framework.
+merge, validate, and transform them - a generator, a CMS, a design tool, or
+an LLM - far more naturally than it could synthesize JSX source. That is
+what makes [scaffold-ui-kit](https://github.com/djurnamn/scaffold-ui-kit)
+possible: maintain one source of truth, ship component libraries for every
+framework.
 
 ## Packages
 
 | Package | Purpose |
 |---|---|
 | [`js-template-engine`](packages/cli) | The CLI: `render` and `validate` |
-| [`scaffold-ui-kit`](packages/scaffold-ui-kit) | Scaffold and build framework-agnostic UI kits |
 | [`@js-template-engine/core`](packages/core) | The engine: validation, HTML/CSS/JS output, extension contract |
 | [`@js-template-engine/types`](packages/types) | The template format: TypeScript types + JSON Schema |
 | [`@js-template-engine/extension-react`](packages/extension-react) | React function components (`.tsx`) |
@@ -99,7 +99,7 @@ source of truth, ship component libraries for every framework.
 ## How it works
 
 **HTML-first.** `process(template)` produces working HTML, CSS, and
-JavaScript with no extensions involved — a zero-dependency rendering that
+JavaScript with no extensions involved, a zero-dependency rendering that
 doubles as the semantic baseline every framework target follows.
 
 **Extensions are passed directly.** No registry, no string keys, no magic:
@@ -117,13 +117,13 @@ The core has zero framework knowledge; framework support lives entirely in
 extensions, and third-party extensions plug in through the same interface.
 
 **Concepts live on nodes.** Events, conditions, iterations, slots, and
-styling are embedded in the template nodes themselves — eight node types
+styling are embedded in the template nodes themselves. Eight node types
 cover the whole format. Dynamic values are JavaScript expressions carried
 as opaque strings; the engine emits them into the target syntax and never
 evaluates them.
 
-**Unified output strategies.** Styles and scripts share one vocabulary —
-`inline`, `in-file`, `separate-file` — so the same template can produce a
+**Unified output strategies.** Styles and scripts share one vocabulary -
+`inline`, `in-file`, `separate-file` - so the same template can produce a
 single self-contained file or separate `.css`/`.js` artifacts.
 
 ## Quick start
@@ -131,14 +131,22 @@ single self-contained file or separate `.css`/`.js` artifacts.
 ```bash
 # Render a template from the command line:
 npx js-template-engine render button.ts --framework react --styling bem
-
-# Or scaffold an entire multi-framework component library:
-npx scaffold-ui-kit my-ui-kit
 ```
 
 The **[getting-started guide](docs/getting-started.md)** walks through the
-template format — props, expressions, conditionals, iteration, slots,
-events, styles — and every render target.
+template format - props, expressions, conditionals, iteration, slots,
+events, styles - and every render target.
+
+## Building UI kits
+
+[scaffold-ui-kit](https://github.com/djurnamn/scaffold-ui-kit) is a separate
+project built on this engine. It scaffolds a multi-framework component library
+from a single set of data templates, builds each target, and ships a consumer
+CLI that copies components into projects with no engine dependency:
+
+```bash
+npx scaffold-ui-kit my-ui-kit
+```
 
 ## License
 

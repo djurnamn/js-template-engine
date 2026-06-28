@@ -48,7 +48,7 @@ A template renders as one `<Name>.tsx` file containing:
 | Attribute binding | `src={props.avatarUrl}` |
 | Conditional | `{condition && (...)}` / ternary chains for `else` branches |
 | Iteration | `{items.map((item) => ...)}` |
-| Conditional classes | `className={'btn' + (condition ? ' btn--lg' : '')}` — no runtime dependency |
+| Conditional classes | `className={'btn' + (condition ? ' btn--lg' : '')}` - no runtime dependency |
 | Events | `onClick={handleClick}` |
 | Fragment | `<>...</>` |
 | Comment | `{/* ... */}` |
@@ -93,9 +93,9 @@ declarative event props and emit a warning.
 
 | Strategy | Styles | Scripts |
 |---|---|---|
-| `inline` | `style={{ ... }}` objects | — |
+| `inline` | `style={{ ... }}` objects | - |
 | `in-file` (default) | a rendered `<style>` element | script in the component function |
-| `separate-file` | `<Name>.css` + import | — |
+| `separate-file` | `<Name>.css` + import | - |
 
 Styles with nested selectors (pseudo-classes, media queries) always require
 a stylesheet and stay in the `<style>` element under the `inline` strategy.

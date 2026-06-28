@@ -5,8 +5,14 @@ import {
   hasPlainProperties,
   isDynamicTag,
   isExpressionBinding,
+  nodeSpreads,
   normalizeClassList,
+  normalizeExposes,
+  normalizeNamedSlots,
   serializeInlineStyle,
+  slotConditionTarget,
+  wholeStyleExpression,
+  type BemRuntimeCall,
   type TargetPlan,
 } from '@js-template-engine/core';
 import type {
@@ -15,7 +21,6 @@ import type {
   ConditionalAttributes,
   ConditionalNode,
   ElementNode,
-  ExpressionBinding,
   IterationNode,
   NestedStyleObject,
   SlotNode,
@@ -38,6 +43,20 @@ export interface VueContext {
   plan: TargetPlan;
   /** True when the styling output strategy is `inline`. */
   stylingInline: boolean;
+  /** The declared named-slot names, for slot-presence conditions. */
+  namedSlots: ReadonlySet<string>;
+  /**
+   * The branch surface elements of a discriminated surface root. Each renders
+   * with an explicit `v-bind="$attrs"` so the consumer's fallthrough attributes
+   * reach it under `inheritAttrs: false` (two roots disable auto-inheritance).
+   */
+  surfaceElements?: ReadonlySet<ElementNode>;
+  /**
+   * Per-element BEM runtime calls, set when a styling extension is in runtime
+   * mode. A node present here renders its BEM classes as the `bem(...)` call
+   * instead of the literal classes.
+   */
+  bemRuntimeCalls?: ReadonlyMap<ElementNode, BemRuntimeCall>;
   warnings: Warning[];
 }
 
@@ -121,19 +140,17 @@ function renderConditional(
       branch.statement === 'else'
         ? 'v-else'
         : `v-${branch.statement === 'if' ? 'if' : 'else-if'}="${bindingExpression(
-            String(branch.condition)
+            conditionExpression(branch, context)
           )}"`;
     const childPath = `${path}.conditions[${index}].children`;
 
     if (branch.children.length === 1 && branch.children[0].type === 'element') {
+      const element = branch.children[0];
+      const directives = context.surfaceElements?.has(element)
+        ? [directive, 'v-bind="$attrs"']
+        : [directive];
       lines.push(
-        ...renderElement(
-          branch.children[0],
-          `${childPath}[0]`,
-          indent,
-          context,
-          [directive]
-        )
+        ...renderElement(element, `${childPath}[0]`, indent, context, directives)
       );
     } else {
       lines.push(`${padding}<template ${directive}>`);
@@ -143,6 +160,23 @@ function renderConditional(
   });
 
   return lines;
+}
+
+/**
+ * The expression a branch condition emits. A bare identifier naming a declared
+ * named slot becomes that slot's Vue presence check (`$slots.<name>`), since
+ * the bare slot name is not a declared prop; every other condition is emitted
+ * verbatim.
+ */
+function conditionExpression(
+  branch: ConditionalNode['conditions'][number],
+  context: VueContext
+): string {
+  const slotName = slotConditionTarget(branch.condition, context.namedSlots);
+  if (slotName !== undefined) {
+    return `$slots.${slotName}`;
+  }
+  return String(branch.condition);
 }
 
 function renderIteration(
@@ -193,10 +227,15 @@ function renderSlot(
   context: VueContext
 ): string[] {
   const padding = pad(indent);
-  const nameAttr =
-    node.name !== undefined
-      ? ` name="${escapeAttributeValue(node.name)}"`
-      : '';
+  const slotAttributes: string[] = [];
+  if (node.name !== undefined) {
+    slotAttributes.push(`name="${escapeAttributeValue(node.name)}"`);
+  }
+  // A scoped slot binds its exposed values on the `<slot>` element.
+  for (const binding of normalizeExposes(node.exposes)) {
+    slotAttributes.push(`:${binding.name}="${bindingExpression(binding.value)}"`);
+  }
+  const nameAttr = slotAttributes.length > 0 ? ` ${slotAttributes.join(' ')}` : '';
   const fallback = node.fallback ?? [];
 
   if (fallback.length === 0) {
@@ -243,17 +282,41 @@ function renderElement(
   directives: string[] = []
 ): string[] {
   const padding = pad(indent);
-  // A dynamic tag renders as `<component :is="…">`; the `:is` binding leads
-  // the attributes, the expression emitted verbatim.
-  const dynamic = isDynamicTag(node.tag) ? node.tag : undefined;
-  const tag = dynamic ? 'component' : node.tag;
+  // A per-target `tag` override replaces the element wholesale (a capitalized
+  // value renders as a component reference, e.g. the built-in `Teleport`) and
+  // suppresses the dynamic-tag path. Otherwise a dynamic tag renders as
+  // `<component :is="...">`; the `:is` binding leads the attributes, the
+  // expression emitted verbatim.
+  const tagOverride = (node.extensions?.vue as VueNodeOverrides | undefined)
+    ?.tag;
+  const dynamic =
+    tagOverride === undefined && isDynamicTag(node.tag) ? node.tag : undefined;
+  const tag = tagOverride ?? (dynamic ? 'component' : node.tag);
   const isBinding = dynamic ? [`:is="${dynamic.$expression}"`] : [];
+  const children = node.children ?? [];
+  // A component-reference node with `slots` projects content into the composed
+  // component's named slots, each rendered as a `<template #name>` child;
+  // scoped named slots receive their scope through `#name="{ ... }"`.
+  const namedSlots = normalizeNamedSlots(node.slots);
+  const hasNamedSlots = namedSlots.length > 0;
+  const defaultSlotScope =
+    node.slotScope !== undefined && node.slotScope.length > 0
+      ? `{ ${node.slotScope.join(', ')} }`
+      : undefined;
+  // A component-reference node with `slotScope` receives the composed
+  // component's default scoped slot via `v-slot`, scoping its children. Beside
+  // named slots this moves into `<template #default>` (a tag-level `v-slot` is
+  // invalid alongside named templates).
+  const slotScopeBinding =
+    defaultSlotScope !== undefined && !hasNamedSlots
+      ? [`v-slot="${defaultSlotScope}"`]
+      : [];
   const parts = [
     ...directives,
     ...isBinding,
+    ...slotScopeBinding,
     ...buildAttributeParts(node, path, context),
   ];
-  const children = node.children ?? [];
   const joined = parts.length > 0 ? ` ${parts.join(' ')}` : '';
 
   const multilineOpen = (closer: string): string[] => [
@@ -262,13 +325,44 @@ function renderElement(
     `${padding}${closer}`,
   ];
 
-  if (children.length === 0) {
+  if (children.length === 0 && !hasNamedSlots) {
     const single = `${padding}<${tag}${joined} />`;
     return fits(single) ? [single] : multilineOpen('/>');
   }
 
   const open = `<${tag}${joined}>`;
   const close = `</${tag}>`;
+
+  if (hasNamedSlots) {
+    const slotTemplate = (
+      binding: string,
+      content: TemplateNode[],
+      contentPath: string
+    ): string[] => [
+      `${pad(indent + 1)}<template ${binding}>`,
+      ...renderNodes(content, contentPath, indent + 2, context),
+      `${pad(indent + 1)}</template>`,
+    ];
+    const bodyLines: string[] = [];
+    for (const named of namedSlots) {
+      const binding =
+        named.slotScope.length > 0
+          ? `#${named.name}="{ ${named.slotScope.join(', ')} }"`
+          : `#${named.name}`;
+      bodyLines.push(
+        ...slotTemplate(binding, named.content, `${path}.slots.${named.name}.content`)
+      );
+    }
+    if (children.length > 0) {
+      const binding =
+        defaultSlotScope !== undefined ? `#default="${defaultSlotScope}"` : '#default';
+      bodyLines.push(...slotTemplate(binding, children, `${path}.children`));
+    }
+    const openLines = fits(`${padding}${open}`)
+      ? [`${padding}${open}`]
+      : multilineOpen('>');
+    return [...openLines, ...bodyLines, `${padding}${close}`];
+  }
 
   if (children.every((child) => child.type === 'text')) {
     const text = children.map((child) => textPiece(child as TextNode)).join('');
@@ -302,27 +396,56 @@ function buildAttributeParts(
   const events = override?.events ?? node.events ?? [];
   const conditionals = node.conditionalAttributes ?? [];
 
+  // In BEM runtime mode this node renders its BEM classes as the `bem(...)`
+  // call: the contributed literals are suppressed from the static class list
+  // and the folded conditional classes from the conditional rendering.
+  const runtimeCall = context.bemRuntimeCalls?.get(node);
+  const contributedClasses = new Set(runtimeCall?.contributedClasses ?? []);
+  const foldedClasses = new Set(runtimeCall?.foldedConditionalClasses ?? []);
+  const classConditionals =
+    foldedClasses.size === 0
+      ? conditionals
+      : conditionals.map((conditional) => ({
+          ...conditional,
+          attributes: {
+            ...conditional.attributes,
+            class: normalizeClassList(conditional.attributes.class).filter(
+              (className) => !foldedClasses.has(className)
+            ),
+          },
+        }));
+
   const parts: string[] = [];
+  // Object spreads lead the authored attributes (which override per key).
+  parts.push(
+    ...nodeSpreads(attributes).map(
+      (expression) => `v-bind="${bindingExpression(expression)}"`
+    )
+  );
   let classRendered = false;
 
   for (const [name, value] of Object.entries(attributes)) {
-    if (value === undefined) {
+    if (value === undefined || name === '$spread') {
       continue;
     }
     if (name === 'class') {
       const classValue = value as Attributes['class'];
+      const staticClasses = normalizeClassList(classValue).filter(
+        (className) => !contributedClasses.has(className)
+      );
       parts.push(
         ...classParts(
-          normalizeClassList(classValue),
-          conditionals,
-          classExpressions(classValue)
+          staticClasses,
+          classConditionals,
+          classExpressions(classValue),
+          runtimeCall?.expression
         )
       );
       classRendered = true;
     } else if (name === 'style') {
       parts.push(
         ...styleParts(
-          value as NestedStyleObject | ExpressionBinding,
+          value as NestedStyleObject,
           context.stylingInline
         )
       );
@@ -340,7 +463,9 @@ function buildAttributeParts(
   }
 
   if (!classRendered) {
-    parts.push(...classParts([], conditionals, []));
+    parts.push(
+      ...classParts([], classConditionals, [], runtimeCall?.expression)
+    );
   }
 
   for (const conditional of conditionals) {
@@ -370,7 +495,7 @@ function buildAttributeParts(
 /**
  * Builds the class attribute parts: a static `class="..."` from the
  * authored classes, and a `:class` binding from condition-gated and
- * expression classes — the object form (`:class="{ ... }"`) when only
+ * expression classes - the object form (`:class="{ ... }"`) when only
  * condition-gated classes need binding, the array form
  * (`:class="[{ ... }, expression]"`) once expression classes join it, with
  * expression entries last in authored order (Vue drops falsy entries at
@@ -381,7 +506,8 @@ function buildAttributeParts(
 function classParts(
   staticClasses: string[],
   conditionals: ConditionalAttributes[],
-  expressionClasses: string[]
+  expressionClasses: string[],
+  runtimeCall?: string
 ): string[] {
   const parts: string[] = [];
   if (staticClasses.length > 0) {
@@ -407,15 +533,31 @@ function classParts(
     }
   }
 
-  if (expressionClasses.length > 0) {
-    const bindingEntries: string[] = [];
-    if (entries.length > 0) {
-      bindingEntries.push(`{ ${entries.join(', ')} }`);
+  // The runtime call leads the `:class` binding (a non-empty string, no falsy
+  // guard); a lone call binds directly, otherwise it joins the array form.
+  if (runtimeCall === undefined) {
+    if (expressionClasses.length > 0) {
+      const bindingEntries: string[] = [];
+      if (entries.length > 0) {
+        bindingEntries.push(`{ ${entries.join(', ')} }`);
+      }
+      bindingEntries.push(...expressionClasses.map(bindingExpression));
+      parts.push(`:class="[${bindingEntries.join(', ')}]"`);
+    } else if (entries.length > 0) {
+      parts.push(`:class="{ ${entries.join(', ')} }"`);
     }
-    bindingEntries.push(...expressionClasses.map(bindingExpression));
+    return parts;
+  }
+
+  const bindingEntries: string[] = [bindingExpression(runtimeCall)];
+  if (entries.length > 0) {
+    bindingEntries.push(`{ ${entries.join(', ')} }`);
+  }
+  bindingEntries.push(...expressionClasses.map(bindingExpression));
+  if (bindingEntries.length === 1) {
+    parts.push(`:class="${bindingEntries[0]}"`);
+  } else {
     parts.push(`:class="[${bindingEntries.join(', ')}]"`);
-  } else if (entries.length > 0) {
-    parts.push(`:class="{ ${entries.join(', ')} }"`);
   }
   return parts;
 }
@@ -423,19 +565,17 @@ function classParts(
 /**
  * Builds the style attribute parts. A whole-object expression renders as a
  * `:style` binding. Otherwise expression-valued properties always render in
- * a `:style` object — they go through Vue's dynamic style mechanism
- * regardless of the styling strategy — while static plain properties render
+ * a `:style` object - they go through Vue's dynamic style mechanism
+ * regardless of the styling strategy - while static plain properties render
  * as a static `style="..."` attribute only under the `inline` strategy (and
  * only when no nested selectors force the style to a stylesheet); Vue
  * merges the two at runtime.
  */
 function styleParts(
-  style: NestedStyleObject | ExpressionBinding,
+  style: NestedStyleObject,
   stylingInline: boolean
 ): string[] {
-  if (isExpressionBinding(style)) {
-    return [`:style="${bindingExpression(style.$expression)}"`];
-  }
+  const wholeExpression = wholeStyleExpression(style);
   const parts: string[] = [];
   if (
     stylingInline &&
@@ -446,13 +586,25 @@ function styleParts(
   }
   const entries: string[] = [];
   for (const [property, value] of Object.entries(style)) {
+    if (property === '$expression') {
+      continue;
+    }
     if (isExpressionBinding(value)) {
       entries.push(
         `${stylePropertyKey(property)}: ${bindingExpression(value.$expression)}`
       );
     }
   }
-  if (entries.length > 0) {
+  // The `:style` binding layers the whole-object expression (base) under the
+  // per-property expressions (override) as an array - Vue merges array entries
+  // with later winning.
+  if (wholeExpression !== undefined && entries.length > 0) {
+    parts.push(
+      `:style="[${bindingExpression(wholeExpression)}, { ${entries.join(', ')} }]"`
+    );
+  } else if (wholeExpression !== undefined) {
+    parts.push(`:style="${bindingExpression(wholeExpression)}"`);
+  } else if (entries.length > 0) {
     parts.push(`:style="{ ${entries.join(', ')} }"`);
   }
   return parts;

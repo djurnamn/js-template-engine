@@ -45,7 +45,11 @@ export function collectCss(
 
   visitElements(component.children, (element) => {
     const style = element.attributes?.style;
-    if (style !== undefined && !isExpressionBinding(style)) {
+    // A whole-object `$expression` may sit beside static / nested / include
+    // keys; the serializer skips the `$expression` key, so a mixed node still
+    // emits its stylesheet rule and a pure whole-object expression emits
+    // nothing (it has no selector planned, so `target` is undefined below).
+    if (style !== undefined) {
       const stylesheetBound =
         stylingStrategy !== 'inline' ||
         hasNestedSelectors(style) ||
@@ -95,13 +99,20 @@ export function serializeRules(
   const declarations: string[] = [];
 
   for (const [key, value] of Object.entries(style)) {
-    // `$include` is Sass source — it never enters flattened CSS (a node
-    // carrying it is a processing error under language: 'css'). Array
-    // values belong to `$include` alone; skip any other to stay defensive.
-    if (key === '$include' || value === undefined) {
+    // Sass source keys (`$include`, `@include ...`) never enter flattened CSS - 
+    // resolution consumes them ahead of this serializer under language: 'css'.
+    // The whole-object `$expression` is a runtime value (dynamic mechanism),
+    // never a stylesheet declaration. Array and boolean values belong to the
+    // Sass keys; skip any other to stay defensive.
+    if (
+      key === '$expression' ||
+      key === '$include' ||
+      key.startsWith('@include') ||
+      value === undefined
+    ) {
       continue;
     }
-    if (typeof value === 'object') {
+    if (typeof value === 'object' || typeof value === 'boolean') {
       continue;
     }
     declarations.push(`  ${toKebabCaseProperty(key)}: ${value};`);
@@ -114,6 +125,7 @@ export function serializeRules(
   for (const [key, value] of Object.entries(style)) {
     if (
       key === '$include' ||
+      key.startsWith('@include') ||
       typeof value !== 'object' ||
       value === null ||
       Array.isArray(value) ||
@@ -141,7 +153,7 @@ export function serializeRules(
 
 /**
  * Serializes a nested style object into a single nested SCSS rule block for
- * a selector — the `styling.language: 'scss'` counterpart of
+ * a selector - the `styling.language: 'scss'` counterpart of
  * `serializeRules`. Plain declarations come first, then each nested key as a
  * nested block: pseudo-selector keys become `&:hover`, parent-modifier keys
  * (`.ancestor &`) and at-rule keys (`@media ...`) nest verbatim, composing
@@ -182,7 +194,28 @@ function serializeScssBlock(
       }
       continue;
     }
-    if (value === undefined || typeof value === 'object') {
+    if (key.startsWith('@include')) {
+      // The `@include ...` at-rule key is itself the statement (mixin name plus
+      // any arguments). A non-empty object value is a content block - 
+      // `@include name { ... }` - emitted in authored order alongside sibling
+      // declarations so include-then-override cascades as written. `true` or
+      // an empty object is a no-content `@include name;` statement: Dart Sass
+      // rejects `@include name {}` for a content-free mixin, so no braces.
+      if (isIncludeContent(value)) {
+        declarations.push(
+          serializeScssBlock(key, value, depth + 1, ampSelector, collapse)
+        );
+      } else {
+        declarations.push(`${inner}${key};`);
+      }
+      continue;
+    }
+    if (
+      key === '$expression' ||
+      value === undefined ||
+      typeof value === 'object' ||
+      typeof value === 'boolean'
+    ) {
       continue;
     }
     declarations.push(`${inner}${toKebabCaseProperty(key)}: ${value};`);
@@ -191,6 +224,7 @@ function serializeScssBlock(
   for (const [key, value] of Object.entries(style)) {
     if (
       key === '$include' ||
+      key.startsWith('@include') ||
       typeof value !== 'object' ||
       value === null ||
       Array.isArray(value) ||
@@ -270,8 +304,8 @@ function resolveSelector(
 /**
  * Finds the BEM vocabulary a self-compound nested key collapses against:
  * the key compounds a modifier of the node's own base class
- * (`&.{baseClass}{modifierSeparator}…`) and `&` currently denotes that base
- * (`.{baseClass}`). Returns `undefined` when no vocabulary matches —
+ * (`&.{baseClass}{modifierSeparator}...`) and `&` currently denotes that base
+ * (`.{baseClass}`). Returns `undefined` when no vocabulary matches - 
  * out-of-vocabulary compounds (`&.is-open`) and runs without `bem()` emit
  * the compound as written.
  */
@@ -299,6 +333,21 @@ function includeStatements(value: unknown): string[] {
 }
 
 /**
+ * Whether an `@include ...` at-rule key's value is a content block: a non-empty
+ * plain object. `true`, an empty object, an array, and an expression binding
+ * are all no-content (the include emits as a bare `@include name;` statement).
+ */
+function isIncludeContent(value: unknown): value is NestedStyleObject {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !isExpressionBinding(value) &&
+    Object.keys(value).length > 0
+  );
+}
+
+/**
  * Serializes static plain style properties as an inline `style` attribute
  * value. Nested selector blocks belong to a stylesheet and expression
  * values to the target's dynamic style mechanism; both are ignored here.
@@ -306,7 +355,11 @@ function includeStatements(value: unknown): string[] {
 export function serializeInlineStyle(style: NestedStyleObject): string {
   const declarations: string[] = [];
   for (const [key, value] of Object.entries(style)) {
-    if (key === '$include') {
+    if (
+      key === '$expression' ||
+      key === '$include' ||
+      key.startsWith('@include')
+    ) {
       continue;
     }
     if (typeof value === 'string' || typeof value === 'number') {

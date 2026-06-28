@@ -46,10 +46,10 @@ const IDENTIFIER_PATH = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
  * Svelte's native modifier set has no key filters, so a key-guard modifier
  * wraps the handler in a generated arrow function; the `self`, `prevent`,
  * and `stop` modifiers move into the wrapper with it, applied in declared
- * order, while `once`, `capture`, and `passive` — listener options rather
- * than handler statements — stay native pipe modifiers.
+ * order, while `once`, `capture`, and `passive` - listener options rather
+ * than handler statements - stay native pipe modifiers.
  *
- * Without a key-guard modifier the handler is emitted verbatim — a method
+ * Without a key-guard modifier the handler is emitted verbatim - a method
  * name (`handleClick`) or an inline expression (`() => save()`).
  */
 export function eventAttribute(event: EventDefinition): string {

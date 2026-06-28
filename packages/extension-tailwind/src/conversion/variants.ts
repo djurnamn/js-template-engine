@@ -53,7 +53,7 @@ const CONTENT_PSEUDO_ELEMENT_VARIANTS = ['before', 'after', 'file'];
 
 /**
  * Resolves one variant prefix to the nested style-object keys that wrap
- * its declarations, outermost first — `hover` becomes the v4-faithful
+ * its declarations, outermost first - `hover` becomes the v4-faithful
  * `['@media (hover: hover)', ':hover']`, `md` a min-width media query.
  * Variants outside the supported subset are processing errors.
  */

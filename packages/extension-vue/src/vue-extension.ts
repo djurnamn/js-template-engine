@@ -1,12 +1,18 @@
 import {
   collectCss,
+  collectNamedSlotNames,
+  discriminatedSurfaceOf,
+  flattenDiscriminatedProps,
   planTargets,
   resolveComponentOverrides,
+  type BemRuntimeBinding,
+  type DiscriminatedSurface,
   type FrameworkExtension,
   type NormalizedComponent,
   type ResolvedProcessingOptions,
 } from '@js-template-engine/core';
 import type {
+  ElementNode,
   OutputFile,
   ProcessResult,
   Warning,
@@ -32,7 +38,7 @@ export interface VueExtension extends FrameworkExtension {
  *
  * Styling supports all three output strategies; the `<style>` block can be
  * scoped with the component-level `extensions.vue.scoped` option. Scripting
- * supports only `in-file` — handlers live in `<script setup>`, where the
+ * supports only `in-file` - handlers live in `<script setup>`, where the
  * template's `@event` bindings resolve them.
  *
  * @example
@@ -65,16 +71,22 @@ function renderVueComponent(
     resolved.selectorClasses
   );
   const css = collectCss(resolved, plan, stylingStrategy, language);
+  const surface = discriminatedSurfaceOf(resolved.children);
 
   const context: VueContext = {
     plan,
     stylingInline: stylingStrategy === 'inline',
+    namedSlots: collectNamedSlotNames(resolved.children),
+    surfaceElements: surface
+      ? new Set<ElementNode>(surface.branches.map((entry) => entry.element))
+      : undefined,
+    bemRuntimeCalls: resolved.bemRuntimeCalls,
     warnings,
   };
 
   const markup = renderNodes(resolved.children, '', 1, context);
   const templateBlock = `<template>\n${markup.join('\n')}\n</template>`;
-  const scriptBlock = buildScriptSetup(resolved);
+  const scriptBlock = buildScriptSetup(resolved, surface);
   const scoped = resolveScoped(component, stylingStrategy, warnings);
   const styleBlock = buildStyleBlock(
     css,
@@ -102,20 +114,50 @@ function renderVueComponent(
   return { files, warnings };
 }
 
-function buildScriptSetup(component: NormalizedComponent): string | undefined {
+function buildScriptSetup(
+  component: NormalizedComponent,
+  surface: DiscriminatedSurface | undefined
+): string | undefined {
   const sections: string[] = [];
 
-  if (component.imports.length > 0) {
-    sections.push(component.imports.join('\n'));
+  const imports: string[] = [];
+  if (component.bemRuntime !== undefined) {
+    imports.push(
+      `import { createBem } from '${component.bemRuntime.importSource}';`
+    );
+  }
+  imports.push(...component.imports);
+  if (imports.length > 0) {
+    sections.push(imports.join('\n'));
   }
 
-  const interfaceBlock = propsInterface(component.name, component.props);
-  const defineBlock = definePropsStatement(component.name, component.props);
-  const propsSection = [interfaceBlock, defineBlock].filter(
+  // A discriminated surface root renders two roots, so Vue cannot auto-inherit
+  // attributes onto one; `inheritAttrs: false` plus an explicit `v-bind="$attrs"`
+  // per branch (in the markup) carries the consumer's fallthrough attributes.
+  const interfaceBlock = surface
+    ? propsInterface(
+        component.name,
+        flattenDiscriminatedProps(
+          component.props,
+          surface.branches.map((entry) => entry.branch.props ?? {})
+        )
+      )
+    : propsInterface(component.name, component.props);
+  const defineOptionsBlock = surface
+    ? 'defineOptions({ inheritAttrs: false });'
+    : undefined;
+  const defineBlock =
+    definePropsStatement(component.name, component.props) ??
+    (surface ? `defineProps<${component.name}Props>();` : undefined);
+  const propsSection = [interfaceBlock, defineOptionsBlock, defineBlock].filter(
     (block): block is string => block !== undefined
   );
   if (propsSection.length > 0) {
     sections.push(propsSection.join('\n\n'));
+  }
+
+  if (component.bemRuntime !== undefined) {
+    sections.push(`const bem = ${bemSetupCall(component.bemRuntime)};`);
   }
 
   if (component.script !== undefined && component.script.trim() !== '') {
@@ -126,6 +168,29 @@ function buildScriptSetup(component: NormalizedComponent): string | undefined {
     return undefined;
   }
   return `<script setup lang="ts">\n${sections.join('\n\n')}\n</script>`;
+}
+
+/**
+ * The runtime helper setup expression for a component, e.g.
+ * `createBem('Badge')` or `createBem('Badge', { elementSeparator: '-' })`.
+ */
+function bemSetupCall(binding: BemRuntimeBinding): string {
+  return `createBem('${binding.block}'${bemConfigArgument(binding)})`;
+}
+
+/**
+ * The trailing config argument for a runtime helper call, present only when a
+ * separator differs from the helper's defaults (`__` / `--`).
+ */
+function bemConfigArgument(binding: BemRuntimeBinding): string {
+  const entries: string[] = [];
+  if (binding.elementSeparator !== '__') {
+    entries.push(`elementSeparator: '${binding.elementSeparator}'`);
+  }
+  if (binding.modifierSeparator !== '--') {
+    entries.push(`modifierSeparator: '${binding.modifierSeparator}'`);
+  }
+  return entries.length > 0 ? `, { ${entries.join(', ')} }` : '';
 }
 
 /**

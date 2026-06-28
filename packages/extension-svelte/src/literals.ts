@@ -37,7 +37,7 @@ function objectKey(key: string): string {
 
 /**
  * Escapes static text for an element's text content. Static text is always
- * literal, so `{` is escaped to `&#123;` — otherwise a brace in the text
+ * literal, so `{` is escaped to `&#123;` - otherwise a brace in the text
  * would be parsed as the start of a Svelte expression.
  */
 export function escapeText(text: string): string {

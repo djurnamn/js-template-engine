@@ -27,6 +27,14 @@ describe('exportLetDeclarations', () => {
     ).toBe('export let label: string | undefined = undefined;');
   });
 
+  it('does not double `| undefined` when the type already admits it', () => {
+    expect(
+      exportLetDeclarations({
+        open: { type: 'boolean | undefined' },
+      })
+    ).toBe('export let open: boolean | undefined = undefined;');
+  });
+
   it('quotes string defaults as single-quoted literals', () => {
     expect(
       exportLetDeclarations({

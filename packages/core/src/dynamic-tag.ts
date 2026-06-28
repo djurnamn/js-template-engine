@@ -9,7 +9,7 @@ export function isDynamicTag(tag: ElementNode['tag']): tag is DynamicTag {
 }
 
 /**
- * The static tag a node resolves to for non-runtime purposes — the literal
+ * The static tag a node resolves to for non-runtime purposes - the literal
  * tag itself, or a dynamic tag's `default`. It is the basis for the HTML-mode
  * preview, the void/children validation, and the passthrough typed prop
  * surface; the runtime tag (the expression) may differ.

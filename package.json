@@ -1,12 +1,12 @@
 {
   "name": "js-template-engine",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "packageManager": "pnpm@10.9.0",
-  "description": "Define UI components once as typed data and render them to vanilla HTML/CSS/JS or React, Vue, and Svelte — with BEM and Tailwind styling as extensions.",
+  "description": "Define UI components once as typed data and render them to vanilla HTML/CSS/JS or React, Vue, and Svelte, with BEM and Tailwind styling as extensions.",
   "scripts": {
     "build": "turbo run build",
     "build:watch": "turbo run build:watch",
@@ -20,6 +20,7 @@
     "dev": "turbo run dev",
     "format": "prettier --write \"packages/*/src/**/*.{ts,js,json}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,js,json}\"",
+    "voice-lint": "node scripts/voice-lint.mjs",
     "prepublishOnly": "pnpm test",
     "release": "./scripts/release.sh",
     "publish:npm": "./scripts/publish.sh"

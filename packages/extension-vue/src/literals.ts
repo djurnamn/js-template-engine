@@ -37,7 +37,7 @@ function objectKey(key: string): string {
 
 /**
  * Escapes static text for an element's text content. Static text is always
- * literal, so `{` is escaped to `&#123;` — otherwise a `{{ }}` sequence in
+ * literal, so `{` is escaped to `&#123;` - otherwise a `{{ }}` sequence in
  * the text would be parsed as a Vue interpolation.
  */
 export function escapeText(text: string): string {
@@ -56,7 +56,7 @@ export function escapeAttributeValue(text: string): string {
 /**
  * Prepares a binding expression for a double-quoted directive value
  * (`:src="..."`, `v-if="..."`, `@click="..."`). Expressions are emitted
- * verbatim — Vue tooling keeps `&&`, `>`, and `<` raw — with only the
+ * verbatim - Vue tooling keeps `&&`, `>`, and `<` raw - with only the
  * quote character escaped so it cannot terminate the attribute.
  */
 export function bindingExpression(expression: string): string {

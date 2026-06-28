@@ -79,9 +79,9 @@ map to Vue's kebab-cased `KeyboardEvent.key` modifiers: `@keyup.enter`,
 
 | Strategy | Styles | Scripts |
 |---|---|---|
-| `inline` | `style="..."` attributes | — |
+| `inline` | `style="..."` attributes | - |
 | `in-file` (default) | a `<style>` block in the SFC | `<script setup>` |
-| `separate-file` | `<Name>.css` + `<style src>` | — |
+| `separate-file` | `<Name>.css` + `<style src>` | - |
 
 Styles with nested selectors (pseudo-classes, media queries) always require
 a stylesheet and stay in the `<style>` block under the `inline` strategy.
@@ -91,7 +91,7 @@ this extension is a processing error.
 
 The `scss` stylesheet language (`styling.language`) emits nested SCSS. The
 SFC `<style>` block is tagged `<style lang="scss">` (composing with
-`scoped`) under any strategy, and `separate-file` writes `<Name>.scss` — the
+`scoped`) under any strategy, and `separate-file` writes `<Name>.scss` - the
 SFC compiler resolves both.
 
 ### Scoped styles
@@ -117,8 +117,8 @@ a requested `scoped` is ignored with a warning.
 Element nodes may carry Vue-specific overrides under `extensions.vue`:
 `attributes` merges into the node's attributes per key, and `events`
 replaces the node's event list. Override attributes render verbatim, which
-is how framework-specific directives without a generic concept — such as
-`v-model` — are authored:
+is how framework-specific directives without a generic concept - such as
+`v-model` - are authored:
 
 ```ts
 {

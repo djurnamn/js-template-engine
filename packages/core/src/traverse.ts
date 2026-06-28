@@ -1,9 +1,11 @@
 import type { ElementNode, TemplateNode } from '@js-template-engine/types';
 
+import { normalizeNamedSlots } from './slots';
+
 /**
  * Visits every element node in document order, descending into element
  * children, fragment children, conditional branches, iteration children,
- * and slot fallbacks.
+ * slot fallbacks, and projected named-slot content (`ElementNode.slots`).
  */
 export function visitElements(
   nodes: TemplateNode[],
@@ -15,6 +17,9 @@ export function visitElements(
         visitor(node);
         if (node.children) {
           visitElements(node.children, visitor);
+        }
+        for (const named of normalizeNamedSlots(node.slots)) {
+          visitElements(named.content, visitor);
         }
         break;
       case 'fragment':

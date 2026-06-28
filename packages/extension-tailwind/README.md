@@ -1,11 +1,11 @@
 # @js-template-engine/extension-tailwind
 
 The Tailwind styling extension. Contributes utility classes to components
-defined as plain, typed data — alongside any framework extension, or on the
+defined as plain, typed data - alongside any framework extension, or on the
 engine's built-in HTML output. It also converts between utilities and CSS
-in either direction — `tailwind({ output: 'styles' })` turns the utilities
+in either direction - `tailwind({ output: 'styles' })` turns the utilities
 into self-contained CSS, and `tailwind({ convertStyles: true })` turns an
-element's authored CSS into utilities — so the authored format and the
+element's authored CSS into utilities - so the authored format and the
 shipped format become independent choices.
 
 ```ts
@@ -51,7 +51,7 @@ wins).
 Under the default `output: 'classes'`, the classes pass through verbatim.
 Responsive and pseudo-class variants are spelled inline (`md:px-6`,
 `hover:bg-blue-700`), and the extension parses, validates, and converts
-nothing — the generated markup is meant to be processed by Tailwind's own
+nothing - the generated markup is meant to be processed by Tailwind's own
 build, which scans your output files for the classes it should emit.
 
 Because utility classes are shared across nodes by design, generated CSS
@@ -59,7 +59,7 @@ Because utility classes are shared across nodes by design, generated CSS
 selectors; nodes without a semantic class are targeted through a generated
 `data-jte-node` attribute instead.
 
-Condition-gated utilities have no dedicated concept — a conditional class
+Condition-gated utilities have no dedicated concept - a conditional class
 belongs in the node's `conditionalAttributes`, which carries the condition
 explicitly.
 
@@ -69,7 +69,7 @@ explicitly.
 node's utilities are converted into its style object at styling time and
 ride the engine's normal styling pipeline: every output strategy, the
 selector-targeting rules, and every framework target apply downstream
-unchanged — and the generated output needs no Tailwind build behind it
+unchanged - and the generated output needs no Tailwind build behind it
 (the HTML target becomes fully self-contained).
 
 ```ts
@@ -85,7 +85,7 @@ Conversion resolves against the **bundled Tailwind v4 default theme**
 customization. Utilities apply in declared order, later declarations
 winning property conflicts. The node's authored `style` properties win over
 converted ones, recursively inside matching nested blocks. Only the node's
-`extensions.tailwind.classes` are converted — plain class strings, static
+`extensions.tailwind.classes` are converted - plain class strings, static
 or conditional, are never parsed.
 
 Variants become nested style blocks: pseudo-class variants map to
@@ -104,7 +104,7 @@ on its own node**. That covers:
 | Layout | display (`block`, `flex`, `hidden`, ...), visibility, position, `inset`/`top`/`right`/`bottom`/`left`, `z`, `order`, `overflow(-x/-y)`, `object`, `aspect`, `isolate`, `box-border`/`box-content` |
 | Flexbox & grid | `flex-row`/`flex-wrap`/..., `flex`, `grow`, `shrink`, `basis`, `grid-cols`/`grid-rows`, `col-span`/`row-span`/`col-start`/..., `gap(-x/-y)`, `justify`/`items`/`content`/`self`/`justify-items`/`justify-self` |
 | Spacing | `p*` and `m*` (negatives and `auto` included) |
-| Sizing | `w`, `h`, `size`, `min-*`/`max-*` — numeric scale, fractions, keywords, and the container scale (`max-w-lg`) |
+| Sizing | `w`, `h`, `size`, `min-*`/`max-*` - numeric scale, fractions, keywords, and the container scale (`max-w-lg`) |
 | Typography | text sizes (with their paired line height, and the `/` line-height modifier), `text-` alignment and color, `font-` weight and family, `leading`, `tracking`, `italic`, case transforms, decoration lines, `truncate`, `whitespace`, `break-*`, `align`, `list` |
 | Backgrounds | `bg-` color, position, size, repeat, attachment, `bg-none` |
 | Borders | widths, colors, and styles per side; the radius scale per corner |
@@ -123,9 +123,9 @@ Supported variants: the common pseudo-classes (`hover`, `focus`,
 `checked`, `required`, `invalid`, `first`, `last`, `odd`, `even`, and
 friends), the pseudo-elements `placeholder`, `selection` (the node's own),
 `marker`, `backdrop`, `first-line`, `first-letter`, the breakpoints
-`sm`–`2xl`, and `dark`, `motion-safe`, `motion-reduce`, `print`.
+`sm` - `2xl`, and `dark`, `motion-safe`, `motion-reduce`, `print`.
 
-Everything else is a **processing error** naming the utility and its node —
+Everything else is a **processing error** naming the utility and its node -
 never a silent drop. Out by the self-containment rule: utilities built on
 Tailwind's composed custom properties (`ring-*`, transforms, filters,
 gradients, animations, bare `transition`, `before:`/`after:` content),
@@ -138,7 +138,7 @@ targeting other elements (`group-*`, `peer-*`, `has-*`), and arbitrary,
 `tailwind({ convertStyles: true })` is the inverse of `output: 'styles'`:
 each element's authored `style` object becomes Tailwind utility classes,
 and no longer emits as CSS. An author can write plain CSS and ship a kit of
-utility-class components — the storage format and the output format are
+utility-class components - the storage format and the output format are
 independent choices.
 
 ```ts
@@ -153,14 +153,14 @@ Each declaration resolves against the **same bundled v4 default theme** to
 its canonical named utility when the value is on the theme's scale, an
 arbitrary value (`padding: 3px` → `p-[3px]`) when it is not, or an
 arbitrary property (`mask-type: luminance` → `[mask-type:luminance]`) when
-the property has no utility family — so **coverage is total**. A
+the property has no utility family - so **coverage is total**. A
 declaration's `!important` becomes the trailing `!`; an opacity expressed as
 `color-mix()` returns to a `/` opacity modifier where recognizable. Nested
-blocks invert the variant map (a pseudo-selector to `hover:`/`focus:`/…, a
+blocks invert the variant map (a pseudo-selector to `hover:`/`focus:`/..., a
 min-width media query to its responsive prefix, `@media
 (prefers-color-scheme: dark)` to `dark:`, with stacked nesting composing).
-A nested block with no Tailwind variant equivalent — a parent-modifier or
-other arbitrary selector — is a **processing error** naming the selector
+A nested block with no Tailwind variant equivalent - a parent-modifier or
+other arbitrary selector - is a **processing error** naming the selector
 and node.
 
 A per-property `$expression` value cannot become a static utility, so it

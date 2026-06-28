@@ -281,6 +281,21 @@ describe('svelte()', () => {
     expect(content).not.toContain('genericHandler');
   });
 
+  it('lets a node-level svelte tag override replace the element with a component reference', () => {
+    const content = fileContent([
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: { class: 'wrapper' },
+        extensions: { svelte: { tag: 'Modal' } },
+        children: [{ type: 'text', content: 'x' }],
+      },
+    ]);
+    expect(content).toContain('<Modal class="wrapper">');
+    expect(content).toContain('</Modal>');
+    expect(content).not.toContain('<div');
+  });
+
   it('applies a component-level svelte override (style replace)', () => {
     const content = fileContent({
       type: 'component',
@@ -300,5 +315,56 @@ describe('svelte()', () => {
     });
     expect(content).toContain('border: 2px dashed;');
     expect(content).not.toContain('border: 1px solid;');
+  });
+
+  describe('slot-presence conditions', () => {
+    it('resolves a condition naming a slot to $$slots across branches, leaving prop and compound conditions bare', () => {
+      const content = fileContent({
+        type: 'component',
+        name: 'Field',
+        props: { pressed: { type: 'boolean', required: false } },
+        children: [
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon',
+                children: [{ type: 'slot', name: 'icon' }],
+              },
+              {
+                statement: 'else-if',
+                condition: 'prefix',
+                children: [{ type: 'slot', name: 'prefix' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'pressed',
+                children: [{ type: 'text', content: 'on' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon && pressed',
+                children: [{ type: 'text', content: 'both' }],
+              },
+            ],
+          },
+        ],
+      });
+      expect(content).toContain('{#if $$slots.icon}');
+      expect(content).toContain('{:else if $$slots.prefix}');
+      expect(content).toContain('{#if pressed}');
+      expect(content).toContain('{#if icon && pressed}');
+    });
   });
 });

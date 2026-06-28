@@ -170,50 +170,53 @@ describe('process', () => {
       },
     ];
 
-    it("rejects $include under language: 'css'", () => {
+    // A component carrying a $include whose mixin is defined in the
+    // component-level `style` preamble - resolvable under 'css' with no load
+    // path, so the engine expands it to flat CSS itself.
+    const resolvableInclude: Template = {
+      type: 'component',
+      name: 'Boxed',
+      style: '@mixin boxed { padding: 0.5rem; }',
+      children: [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: { class: ['boxed'], style: { $include: 'boxed' } },
+          children: [{ type: 'text', content: 'Hello' }],
+        },
+      ],
+    };
+
+    it("resolves $include under language: 'css' to flat CSS", () => {
+      const result = process(resolvableInclude, {
+        styling: { language: 'css' },
+      });
+      const content = result.files.map((file) => file.content).join('\n');
+      expect(content).toContain('padding: 0.5rem;');
+      expect(content).not.toContain('@include');
+      expect(content).not.toContain('@mixin');
+    });
+
+    it("resolves $include under the 'inline' strategy", () => {
+      const result = process(resolvableInclude, {
+        styling: { language: 'css', outputStrategy: 'inline' },
+      });
+      const content = result.files.map((file) => file.content).join('\n');
+      // A flat-only resolved style inlines as a `style` attribute.
+      expect(content).toContain('style="padding: 0.5rem"');
+    });
+
+    it("throws a TemplateError when a $include can't be resolved under 'css'", () => {
       expect(() =>
         process(includeTemplate, { styling: { language: 'css' } })
       ).toThrow(TemplateError);
     });
 
-    it('rejects $include by default (css)', () => {
+    it('throws by default (css) when a $include is unresolvable', () => {
       expect(() => process(includeTemplate)).toThrow(TemplateError);
     });
 
-    it("rejects $include under language: 'css' with the inline strategy", () => {
-      expect(() =>
-        process(includeTemplate, {
-          styling: { language: 'css', outputStrategy: 'inline' },
-        })
-      ).toThrow(TemplateError);
-    });
-
-    it('reports the node path of the offending style', () => {
-      try {
-        process(includeTemplate);
-        expect.unreachable('should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(TemplateError);
-        expect((error as TemplateError).nodePath).toBe('children[0].style');
-      }
-    });
-
-    it("rejects a $include nested inside a selector block under 'css'", () => {
-      expect(() =>
-        process([
-          {
-            type: 'element',
-            tag: 'div',
-            attributes: {
-              style: { ':hover': { $include: 'focus-ring()' } },
-            },
-            children: [{ type: 'text', content: 'Hello' }],
-          },
-        ])
-      ).toThrow(TemplateError);
-    });
-
-    it("allows $include under language: 'scss'", () => {
+    it("passes $include through verbatim under language: 'scss'", () => {
       const result = process(includeTemplate, {
         styling: { language: 'scss', outputStrategy: 'separate-file' },
       });

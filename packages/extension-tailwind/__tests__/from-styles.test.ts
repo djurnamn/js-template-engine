@@ -115,16 +115,28 @@ describe('style-to-utility conversion', () => {
     );
   });
 
-  it('errors on a $include — Sass source is not a utility', () => {
+  it('errors on a $include - Sass source is not a utility', () => {
     expect(() => classesFor({ $include: "typography('body')" })).toThrow(
-      /\$include.*cannot be converted/s
+      /Sass include.*cannot be converted/s
     );
   });
 
   it('errors on a $include nested inside a variant block', () => {
     expect(() =>
       classesFor({ ':hover': { $include: 'focus-ring()' } })
-    ).toThrow(/\$include.*cannot be converted/s);
+    ).toThrow(/Sass include.*cannot be converted/s);
+  });
+
+  it('errors on an @include at-rule key - Sass source is not a utility', () => {
+    expect(() => classesFor({ '@include typography': true })).toThrow(
+      /Sass include.*cannot be converted/s
+    );
+  });
+
+  it('errors on an @include key nested inside a variant block', () => {
+    expect(() =>
+      classesFor({ ':hover': { '@include focus-ring': true } })
+    ).toThrow(/Sass include.*cannot be converted/s);
   });
 });
 

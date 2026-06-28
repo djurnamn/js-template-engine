@@ -98,9 +98,9 @@ on:keyup={(event) => { if (event.key !== 'Enter') return; submitSearch(event); }
 
 | Strategy | Styles | Scripts |
 |---|---|---|
-| `inline` | `style="..."` attributes | — |
+| `inline` | `style="..."` attributes | - |
 | `in-file` (default) | a `<style>` block in the component | `<script>` |
-| `separate-file` | `<Name>.css` + import from `<script>` | — |
+| `separate-file` | `<Name>.css` + import from `<script>` | - |
 
 Styles with nested selectors (pseudo-classes, media queries) always require
 a stylesheet and stay in the `<style>` block under the `inline` strategy.
@@ -118,8 +118,8 @@ imported from `<script>`.
 Element nodes may carry Svelte-specific overrides under `extensions.svelte`:
 `attributes` merges into the node's attributes per key, and `events`
 replaces the node's event list. Override attributes render verbatim, which
-is how framework-specific bindings without a generic concept — such as the
-`bind:` family — are authored:
+is how framework-specific bindings without a generic concept - such as the
+`bind:` family - are authored:
 
 ```ts
 {

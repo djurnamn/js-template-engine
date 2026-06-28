@@ -34,6 +34,15 @@ export interface StylingOptions {
   language?: 'css' | 'scss';
   /** Defaults to `'in-file'`. */
   outputStrategy?: OutputStrategy;
+  /**
+   * Directories sass resolves `@use`/`@import`/`@include` against, matching
+   * sass's own load-path model. Under `'scss'` output they pass through for
+   * the consumer's own sass build; under `'css'` output (or the `inline`
+   * strategy) the engine resolves Sass source itself against them - expanding
+   * mixins, functions, and `$variables` to flat CSS. Omitted means no load
+   * path (only sass built-in modules resolve).
+   */
+  loadPaths?: string[];
 }
 
 /** Script output configuration. */
@@ -41,7 +50,7 @@ export interface ScriptingOptions {
   /**
    * The script language. `'javascript'` (default) emits plain JavaScript.
    * `'typescript'` types the generated prop-default consts from their
-   * declared prop types; it governs HTML mode only — the framework targets
+   * declared prop types; it governs HTML mode only - the framework targets
    * emit TypeScript intrinsically and are unaffected. TypeScript requires a
    * compile step, so HTML mode supports `'typescript'` only with the
    * `separate-file` strategy (emitting `<Name>.ts`); `in-file`/`inline` are
@@ -56,7 +65,7 @@ export interface ScriptingOptions {
 /**
  * Options for `process(template, options)`.
  *
- * Extensions are passed directly — no registry, no string-key lookup, no
+ * Extensions are passed directly - no registry, no string-key lookup, no
  * auto-detection.
  */
 export interface ProcessingOptions {
@@ -84,7 +93,7 @@ export interface Warning {
  * The result of processing a template.
  *
  * `process()` either returns a result or throws a `TemplateError` with a
- * node path — no silent empty-string outputs.
+ * node path - no silent empty-string outputs.
  */
 export interface ProcessResult {
   files: OutputFile[];

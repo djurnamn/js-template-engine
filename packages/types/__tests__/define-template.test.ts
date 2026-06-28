@@ -69,7 +69,7 @@ describe('defineTemplate', () => {
  * stops erroring, type-check fails.
  */
 
-// @ts-expect-error — unknown node `type` values are rejected
+// @ts-expect-error - unknown node `type` values are rejected
 defineTemplate([{ type: 'banner' }]);
 
 // The constrained `$expression` forms on `class` and `style` are accepted:
@@ -103,7 +103,7 @@ defineTemplate([
     tag: 'div',
     attributes: {
       style: {
-        // @ts-expect-error — `$expression` values are invalid inside nested selector blocks
+        // @ts-expect-error - `$expression` values are invalid inside nested selector blocks
         ':hover': { color: { $expression: 'hoverColor' } },
       },
     },
@@ -114,7 +114,7 @@ defineTemplate([
 // and core validation; structural typing cannot express the sole-key
 // constraint (extra properties survive assignability to ExpressionBinding).
 
-// @ts-expect-error — iteration requires `items`, `item`, and `children`
+// @ts-expect-error - iteration requires `items`, `item`, and `children`
 defineTemplate([{ type: 'iteration', items: 'props.users' }]);
 
 defineTemplate([
@@ -122,7 +122,7 @@ defineTemplate([
     type: 'element',
     tag: 'button',
     events: [
-      // @ts-expect-error — event modifiers are a closed set
+      // @ts-expect-error - event modifiers are a closed set
       { name: 'click', handler: 'handleClick', modifiers: ['debounce'] },
     ],
   },

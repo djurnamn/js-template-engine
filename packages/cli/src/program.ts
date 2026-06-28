@@ -33,6 +33,18 @@ export function parseStylingList(value: string): StylingName[] {
 }
 
 /**
+ * Collects a repeatable option's values into an array, preserving order.
+ * Used for `--load-path`, which may be given more than once.
+ *
+ * @param value - One occurrence's value.
+ * @param previous - The values accumulated so far.
+ * @returns The accumulated values including this one.
+ */
+export function collectRepeated(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+/**
  * Creates the `js-template-engine` command-line program.
  *
  * @returns The configured program; call `parseAsync` to run it.
@@ -87,6 +99,12 @@ export function createProgram(): Command {
         .choices(['css', 'scss'])
         .default('css')
     )
+    .option(
+      '--load-path <path>',
+      'sass load-path directory for resolving @use/@include under styling-language css (repeatable)',
+      collectRepeated,
+      [] as string[]
+    )
     .addOption(
       new Option('--scripting-strategy <strategy>', 'script output strategy')
         .choices(outputStrategies)
@@ -104,6 +122,16 @@ export function createProgram(): Command {
     .option(
       '--bem-modifier-separator <separator>',
       "separator before a BEM modifier (default '--')"
+    )
+    .addOption(
+      new Option(
+        '--bem-mode <mode>',
+        "how BEM classes are rendered: literal class strings, or use-bem bem(...) calls for framework targets (default 'literal')"
+      ).choices(['literal', 'runtime'])
+    )
+    .option(
+      '--bem-import-source <package>',
+      "package the use-bem helper is imported from in runtime mode (default 'use-bem')"
     )
     .addOption(
       new Option(

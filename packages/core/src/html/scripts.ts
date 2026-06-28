@@ -25,11 +25,11 @@ const LISTENER_OPTION_MODIFIERS = ['capture', 'once', 'passive'] as const;
  *
  * Under `scripting.language: 'typescript'` the generated prop-default consts
  * carry their declared prop type (a TypeScript type expression); the
- * component `script` content and event wiring emit verbatim either way — the
+ * component `script` content and event wiring emit verbatim either way - the
  * engine performs no TypeScript transformation of author code.
  *
- * Component import statements are not included — a plain script block has
- * no module scope — and produce a warning instead.
+ * Component import statements are not included - a plain script block has
+ * no module scope - and produce a warning instead.
  */
 export function buildScript(
   component: NormalizedComponent,

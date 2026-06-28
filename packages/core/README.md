@@ -1,7 +1,7 @@
 # @js-template-engine/core
 
 The template engine core. Processes components defined as plain, typed data
-into working HTML, CSS, and JavaScript — no extensions required — and
+into working HTML, CSS, and JavaScript - no extensions required - and
 delegates to framework extensions for other targets.
 
 ```ts
@@ -30,7 +30,7 @@ const result = process(template);
 
 HTML output is a static rendering: a zero-dependency preview and the
 semantic baseline for every framework target. Dynamic concepts render as
-static previews — expressions become `{{ expression }}` placeholders,
+static previews - expressions become `{{ expression }}` placeholders,
 conditionals render every branch between `<!-- if -->` comments, iterations
 render their children once between `<!-- for -->` comments, and slots render
 their fallback content.
@@ -54,7 +54,7 @@ structural violation. `validateTemplate` is exported for standalone use.
 
 ## Extensions
 
-Extensions are passed directly — no registry, no string-key lookup:
+Extensions are passed directly - no registry, no string-key lookup:
 
 ```ts
 process(template, { extensions: [react(), bem()] });

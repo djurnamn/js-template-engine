@@ -30,15 +30,33 @@ describe('collectSlotProps', () => {
         {}
       )
     ).toEqual([
-      { slotName: 'header', propName: 'header' },
-      { slotName: undefined, propName: 'children' },
+      { slotName: 'header', propName: 'header', exposes: [] },
+      { slotName: undefined, propName: 'children', exposes: [] },
     ]);
   });
 
   it('deduplicates repeated uses of the same slot name', () => {
     expect(
       collectSlotProps([{ type: 'slot' }, { type: 'slot' }], {})
-    ).toEqual([{ slotName: undefined, propName: 'children' }]);
+    ).toEqual([{ slotName: undefined, propName: 'children', exposes: [] }]);
+  });
+
+  it('captures a scoped slot exposes record in normalized form', () => {
+    expect(
+      collectSlotProps(
+        [{ type: 'slot', exposes: { api: 'api', state: { value: 'machine.state', type: 'State' } } }],
+        {}
+      )
+    ).toEqual([
+      {
+        slotName: undefined,
+        propName: 'children',
+        exposes: [
+          { name: 'api', value: 'api' },
+          { name: 'state', value: 'machine.state', type: 'State' },
+        ],
+      },
+    ]);
   });
 
   it('rejects two slot names normalizing to the same prop name', () => {

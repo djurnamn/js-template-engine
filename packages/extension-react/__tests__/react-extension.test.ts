@@ -108,6 +108,30 @@ describe('react()', () => {
     expect(content).not.toContain('const styles');
   });
 
+  it('merges a whole-object expression with static props under inline styling', () => {
+    const content = fileContent(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: {
+            style: {
+              $expression: 'computeStyles(props)',
+              backgroundColor: 'blue',
+            },
+          },
+          children: [{ type: 'text', content: 'Styled' }],
+        },
+      ],
+      { styling: { outputStrategy: 'inline' } }
+    );
+    // Whole-object spread is the base layer; the static property overrides it.
+    expect(content).toContain(
+      "style={{ ...computeStyles(props), backgroundColor: 'blue' }}"
+    );
+    expect(content).not.toContain('const styles');
+  });
+
   it('keeps nested-selector styles in a style element under inline styling', () => {
     const content = fileContent(
       [
@@ -179,6 +203,21 @@ describe('react()', () => {
     expect(content).toContain('type="submit"');
     expect(content).toContain('onClick={reactHandler}');
     expect(content).not.toContain('genericHandler');
+  });
+
+  it('lets a node-level react tag override replace the element with a component reference', () => {
+    const content = fileContent([
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: { class: 'wrapper' },
+        extensions: { react: { tag: 'Portal' } },
+        children: [{ type: 'text', content: 'x' }],
+      },
+    ]);
+    expect(content).toContain('<Portal className="wrapper">');
+    expect(content).toContain('</Portal>');
+    expect(content).not.toContain('<div');
   });
 
   it('warns and renders no key for keyless iterations', () => {
@@ -261,5 +300,60 @@ describe('react()', () => {
     expect(content).toContain("import { useCallback } from 'react';");
     expect(content).toContain("const role = 'alert';");
     expect(content).toContain('const handleDismiss = useCallback(() => {}, []);');
+  });
+
+  describe('slot-presence conditions', () => {
+    it('resolves a condition naming a slot to its prop across branches, leaving prop and compound conditions bare', () => {
+      const content = fileContent({
+        type: 'component',
+        name: 'Field',
+        props: { pressed: { type: 'boolean', required: false } },
+        children: [
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon',
+                children: [{ type: 'slot', name: 'icon' }],
+              },
+              {
+                statement: 'else-if',
+                condition: 'prefix',
+                children: [{ type: 'slot', name: 'prefix' }],
+              },
+              {
+                statement: 'else',
+                children: [{ type: 'text', content: 'none' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'pressed',
+                children: [{ type: 'text', content: 'on' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon && pressed',
+                children: [{ type: 'text', content: 'both' }],
+              },
+            ],
+          },
+        ],
+      });
+      expect(content).toContain('props.icon ?');
+      expect(content).toContain(') : props.prefix ?');
+      expect(content).toContain('{pressed &&');
+      expect(content).toContain('{icon && pressed &&');
+    });
   });
 });

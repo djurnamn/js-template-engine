@@ -14,8 +14,8 @@ import { resolveVariant, type ConversionFail } from './variants';
  * Utilities resolve against the bundled Tailwind v4 default theme and apply
  * in declared order, later declarations winning property conflicts; variant
  * prefixes become nested pseudo-selector and at-rule blocks, the leftmost
- * variant outermost. A utility that cannot be converted — unknown, outside
- * the supported subset, or carrying an unsupported value — raises a
+ * variant outermost. A utility that cannot be converted - unknown, outside
+ * the supported subset, or carrying an unsupported value - raises a
  * processing error through `fail`.
  */
 export function convertUtilityClasses(

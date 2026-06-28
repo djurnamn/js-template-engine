@@ -1,5 +1,4 @@
 import {
-  isExpressionBinding,
   normalizeClassList,
   type StylingContext,
   type StylingExtension,
@@ -15,18 +14,18 @@ export interface TailwindOptions {
    * What the extension contributes to each element from its
    * `extensions.tailwind.classes` override:
    *
-   * - `'classes'` (default) — the utility classes pass through verbatim
+   * - `'classes'` (default) - the utility classes pass through verbatim
    *   into the rendered class list, for processing by Tailwind's own
    *   build.
-   * - `'styles'` — no classes are contributed; the utilities are resolved
+   * - `'styles'` - no classes are contributed; the utilities are resolved
    *   against the bundled Tailwind v4 default theme into the element's
    *   style object, so the generated output needs no Tailwind build.
    */
   output?: 'classes' | 'styles';
   /**
    * When `true`, the inverse of `output: 'styles'`: each element's authored
-   * `style` object is converted into Tailwind utility classes — resolved
-   * against the same bundled v4 default theme — and no longer emits as CSS.
+   * `style` object is converted into Tailwind utility classes - resolved
+   * against the same bundled v4 default theme - and no longer emits as CSS.
    * Off-scale values become arbitrary values (`p-[3px]`); properties with no
    * utility family become arbitrary properties (`[mask-type:luminance]`).
    * Per-property `$expression` values cannot become static utilities and
@@ -46,7 +45,7 @@ export interface TailwindExtension extends StylingExtension {
  *
  * Reads each element node's `extensions.tailwind.classes` override. Under
  * the default `output: 'classes'`, the utility classes are appended after
- * the node's static classes in declared order and pass through verbatim —
+ * the node's static classes in declared order and pass through verbatim - 
  * variants are spelled inline (`md:px-6`, `hover:bg-blue-700`) and the
  * generated markup is meant to be processed by Tailwind's own build.
  *
@@ -56,10 +55,10 @@ export interface TailwindExtension extends StylingExtension {
  * blocks, and the result rides the normal styling pipeline (output
  * strategies, selector targeting, every framework target), with the
  * element's authored `style` properties winning conflicts. The supported
- * subset is the self-contained one — utilities that resolve to plain
+ * subset is the self-contained one - utilities that resolve to plain
  * declarations on their own node; anything else is a processing error.
  *
- * Tailwind classes are utilities — shared across nodes by design — so
+ * Tailwind classes are utilities - shared across nodes by design - so
  * generated CSS never uses them as selectors.
  *
  * @example
@@ -88,8 +87,11 @@ export function tailwind(options: TailwindOptions = {}): TailwindExtension {
         return undefined;
       }
       const style = element.attributes?.style;
-      // A whole-object expression style holds no static declarations to lift.
-      if (style === undefined || isExpressionBinding(style)) {
+      // A pure whole-object expression holds no static declarations to lift;
+      // `convertStyleToUtilities` keeps `$expression` in the remaining style
+      // and yields no classes for it, so a mixed node still lifts its static
+      // part and a pure whole-object falls through to the empty-classes guard.
+      if (style === undefined) {
         return undefined;
       }
       const { classes, remainingStyle } = convertStyleToUtilities(

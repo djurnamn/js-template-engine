@@ -11,7 +11,11 @@ export {
   isDynamicTag,
   staticTagOf,
 } from './dynamic-tag';
-export { isExpressionBinding } from './expression-binding';
+export {
+  isExpressionBinding,
+  nodeSpreads,
+  wholeStyleExpression,
+} from './expression-binding';
 export {
   isFrameworkExtension,
   type FrameworkExtension,
@@ -47,12 +51,18 @@ export {
   classExpressions,
   normalizeClassList,
   normalizeTemplate,
+  type BemRuntimeBinding,
+  type BemRuntimeCall,
   type CollapseVocabulary,
   type NormalizedComponent,
 } from './normalize';
 export {
+  discriminatedSurfaceOf,
+  flattenDiscriminatedProps,
   passthroughNodeOf,
   RESERVED_PASSTHROUGH_PROPS,
+  type DiscriminatedSurface,
+  type DiscriminatedSurfaceBranch,
 } from './passthrough';
 export { process } from './process';
 export {
@@ -61,7 +71,16 @@ export {
   type StylingApplication,
   type StylingContext,
   type StylingExtension,
+  type StylingRuntime,
 } from './styling-extensions';
+export {
+  collectNamedSlotNames,
+  normalizeExposes,
+  normalizeNamedSlots,
+  slotConditionTarget,
+  type NormalizedExposedBinding,
+  type NormalizedNamedSlot,
+} from './slots';
 export { TemplateError } from './TemplateError';
 export { visitElements } from './traverse';
 export { validateTemplate } from './validate';

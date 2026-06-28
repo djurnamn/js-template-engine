@@ -1,4 +1,4 @@
-import { relative } from 'node:path';
+import { relative, resolve } from 'node:path';
 
 import { process as processTemplate } from '@js-template-engine/core';
 import type { OutputStrategy } from '@js-template-engine/types';
@@ -21,10 +21,13 @@ export interface RenderCommandOptions {
   componentName?: string;
   stylingStrategy: OutputStrategy;
   stylingLanguage: 'css' | 'scss';
+  loadPath: string[];
   scriptingStrategy: OutputStrategy;
   scriptingLanguage: 'javascript' | 'typescript';
   bemElementSeparator?: string;
   bemModifierSeparator?: string;
+  bemMode?: 'literal' | 'runtime';
+  bemImportSource?: string;
   tailwindOutput?: 'classes' | 'styles';
   tailwindConvertStyles?: boolean;
 }
@@ -67,6 +70,8 @@ export async function renderCommand(
           {
             elementSeparator: options.bemElementSeparator,
             modifierSeparator: options.bemModifierSeparator,
+            mode: options.bemMode,
+            importSource: options.bemImportSource,
           },
           {
             output: options.tailwindOutput,
@@ -76,6 +81,7 @@ export async function renderCommand(
         styling: {
           outputStrategy: options.stylingStrategy,
           language: options.stylingLanguage,
+          loadPaths: options.loadPath.map((path) => resolve(path)),
         },
         scripting: {
           outputStrategy: options.scriptingStrategy,

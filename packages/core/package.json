@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/core",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Template engine core: processes data-defined component templates into HTML, CSS, and JavaScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,8 @@
     "type-check": "tsc --noEmit -p tsconfig.type-check.json"
   },
   "dependencies": {
-    "@js-template-engine/types": "workspace:^"
+    "@js-template-engine/types": "workspace:^",
+    "sass": "^1.101.0"
   },
   "repository": {
     "type": "git",

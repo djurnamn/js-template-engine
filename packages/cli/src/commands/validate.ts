@@ -31,7 +31,7 @@ export async function validateCommand(source: string): Promise<void> {
       console.log(`${label}: valid`);
     } catch (error) {
       failed = true;
-      console.error(`${label}: invalid — ${formatError(error)}`);
+      console.error(`${label}: invalid - ${formatError(error)}`);
     }
   }
 

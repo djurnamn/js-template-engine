@@ -10,6 +10,8 @@ import type { NormalizedComponent } from './normalize';
 export interface ResolvedStylingOptions {
   language: 'css' | 'scss';
   outputStrategy: OutputStrategy;
+  /** Sass load-path directories; empty when none were configured. */
+  loadPaths: string[];
 }
 
 /** Scripting options with defaults applied. */
@@ -46,7 +48,7 @@ export interface FrameworkExtension extends Extension {
    * Whether the framework's in-document style blocks pass through a build
    * step that compiles SCSS (e.g. a Vue/Svelte SFC `<style lang="scss">`).
    * When `false` or absent, the `'scss'` styling language is supported only
-   * with the `separate-file` strategy — an in-document `<style>` block (or
+   * with the `separate-file` strategy - an in-document `<style>` block (or
    * HTML mode's preview) cannot parse SCSS, so `in-file`/`inline` under
    * `'scss'` are a processing error.
    */

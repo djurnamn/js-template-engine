@@ -7,7 +7,7 @@
  * `modifiers` appends one modifier class to the base, in declared order.
  *
  * A node without its own `block` uses the nearest ancestor element's
- * declared `block` — inheritance flows through fragments, conditionals,
+ * declared `block` - inheritance flows through fragments, conditionals,
  * iterations, and slot fallbacks. A node declaring only `element` does not
  * pass a block on to its descendants.
  *

@@ -8,9 +8,12 @@ import type {
 
 import { isExpressionBinding } from './expression-binding';
 import { mergeStyleObjects } from './merge-styles';
+import { normalizeNamedSlots } from './slots';
 import {
   classExpressions,
   normalizeClassList,
+  type BemRuntimeBinding,
+  type BemRuntimeCall,
   type CollapseVocabulary,
   type NormalizedComponent,
 } from './normalize';
@@ -34,8 +37,8 @@ export interface StylingContext {
  * Contributions are unconditional, in one of two forms. Classes are
  * appended after the element's static classes, in the order the extensions
  * appear in `ProcessingOptions.extensions`; duplicates are dropped, the
- * first occurrence winning. Styles — for extensions offering a conversion
- * mode — are nested style objects merged beneath the element's authored
+ * first occurrence winning. Styles - for extensions offering a conversion
+ * mode - are nested style objects merged beneath the element's authored
  * `style`: authored properties win, recursively inside matching nested
  * blocks, and the merged result rides the normal styling pipeline.
  *
@@ -58,7 +61,7 @@ export interface StylingExtension extends Extension {
   /**
    * Returns the styles this extension contributes to an element, merged
    * beneath the element's authored `style` (authored properties win).
-   * Contributed values are static — expression bindings have no defined
+   * Contributed values are static - expression bindings have no defined
    * dynamic rendering for extension-contributed styles.
    */
   contributeStyles?(
@@ -68,7 +71,7 @@ export interface StylingExtension extends Extension {
   /**
    * Converts the element's authored `style` into classes this extension
    * contributes, returning those classes and the style that remains (the
-   * portion that could not be expressed as classes — e.g. per-property
+   * portion that could not be expressed as classes - e.g. per-property
    * `$expression` values). The remaining style replaces the element's
    * authored `style`; an absent remainder removes it. Returning
    * `undefined` leaves the authored `style` untouched.
@@ -82,8 +85,8 @@ export interface StylingExtension extends Extension {
     context: StylingContext
   ): { classes: readonly string[]; remainingStyle?: NestedStyleObject } | undefined;
   /**
-   * Returns the element's collapsible BEM vocabulary — its effective base
-   * class and modifier separator — letting the stylesheet serializers
+   * Returns the element's collapsible BEM vocabulary - its effective base
+   * class and modifier separator - letting the stylesheet serializers
    * collapse a self-compound modifier selector
    * (`&.{baseClass}{modifierSeparator}{suffix}`) to its single-class form,
    * restoring hand-written specificity. Returns `undefined` for an element
@@ -94,6 +97,36 @@ export interface StylingExtension extends Extension {
     element: ElementNode,
     context: StylingContext
   ): CollapseVocabulary | undefined;
+  /**
+   * When present, the extension renders its classes as runtime helper calls
+   * (e.g. `bem('icon', { large: true })`) for framework targets instead of
+   * literal strings. The literal classes still flow through
+   * `contributeClasses` unchanged, so HTML mode and stylesheet targeting are
+   * unaffected - runtime emission is framework-target-only.
+   */
+  readonly runtime?: StylingRuntime;
+}
+
+/**
+ * A styling extension's runtime-mode binding. The constant fields configure
+ * the per-component helper import and setup line; `call` computes one
+ * element's runtime call (or `undefined` when the element contributes none).
+ */
+export interface StylingRuntime {
+  /** The package the runtime helper is imported from, e.g. `'use-bem'`. */
+  readonly importSource: string;
+  /** The element separator the helper is configured with. */
+  readonly elementSeparator: string;
+  /** The modifier separator the helper is configured with. */
+  readonly modifierSeparator: string;
+  /**
+   * Returns the element's runtime call, or `undefined` when it contributes no
+   * runtime classes (no effective block).
+   */
+  call(
+    element: ElementNode,
+    context: StylingContext
+  ): BemRuntimeCall | undefined;
 }
 
 /** Returns true when an extension is a styling extension. */
@@ -117,8 +150,8 @@ export interface StylingApplication {
  *
  * Returns the component untouched when no styling extension is passed.
  * Otherwise returns a copy whose element nodes carry their merged class
- * lists — static classes first, then each extension's contribution in
- * extension order — and whose `selectorClasses` map records each element's
+ * lists - static classes first, then each extension's contribution in
+ * extension order - and whose `selectorClasses` map records each element's
  * selector-eligible classes (static and semantic-extension classes) for
  * CSS targeting. The input template nodes are never mutated.
  */
@@ -135,6 +168,12 @@ export function applyStylingExtensions(
   const selectorClasses = new Map<ElementNode, readonly string[]>();
   const collapseVocabulary = new Map<ElementNode, readonly CollapseVocabulary[]>();
   const warnings: Warning[] = [];
+
+  const runtimeExtension = stylingExtensions.find(
+    (extension) => extension.runtime !== undefined
+  );
+  const bemRuntimeCalls = new Map<ElementNode, BemRuntimeCall>();
+  let componentBlock: string | undefined;
 
   function applyToElement(
     element: ElementNode,
@@ -191,6 +230,22 @@ export function applyStylingExtensions(
     if (vocabularies.length > 0) {
       collapseVocabulary.set(element, vocabularies);
     }
+
+    const runtimeCall = runtimeExtension?.runtime?.call(element, context);
+    if (runtimeCall !== undefined) {
+      if (runtimeCall.declaresBlock) {
+        if (componentBlock === undefined) {
+          componentBlock = runtimeCall.block;
+        } else if (componentBlock !== runtimeCall.block) {
+          context.fail(
+            `BEM runtime mode supports one block per component, but a second ` +
+              `block "${runtimeCall.block}" is declared (the component block ` +
+              `is "${componentBlock}")`
+          );
+        }
+      }
+      bemRuntimeCalls.set(element, runtimeCall);
+    }
     if (contributed.length > 0) {
       // Expression entries render after every literal class source.
       const expressions = classExpressions(element.attributes?.class);
@@ -205,10 +260,18 @@ export function applyStylingExtensions(
 
     if (contributedStyle !== undefined) {
       const authoredStyle = element.attributes?.style;
-      if (authoredStyle !== undefined && isExpressionBinding(authoredStyle)) {
+      // A *pure* whole-object expression has no static object to merge
+      // contributed styles into. A mixed node (whole-object expression beside
+      // static / nested keys) does: `mergeStyleObjects` carries the
+      // `$expression` key through untouched while resolving the static part.
+      if (
+        authoredStyle !== undefined &&
+        isExpressionBinding(authoredStyle) &&
+        Object.keys(authoredStyle).length === 1
+      ) {
         context.fail(
           'Extension-contributed styles cannot merge into a whole-object ' +
-            "expression 'style' — there is no authored object to resolve " +
+            "expression 'style' - there is no authored object to resolve " +
             'property conflicts against'
         );
       }
@@ -237,6 +300,13 @@ export function applyStylingExtensions(
               ...ancestorElements,
               node,
             ]);
+          }
+          for (const named of normalizeNamedSlots(node.slots)) {
+            applyToNodes(
+              named.content,
+              `${nodePath}.slots.${named.name}`,
+              [...ancestorElements, node]
+            );
           }
           break;
         case 'fragment':
@@ -271,8 +341,25 @@ export function applyStylingExtensions(
 
   applyToNodes(children, 'children', []);
 
-  return {
-    component: { ...component, children, selectorClasses, collapseVocabulary },
-    warnings,
+  const component_: NormalizedComponent = {
+    ...component,
+    children,
+    selectorClasses,
+    collapseVocabulary,
   };
+  if (
+    runtimeExtension?.runtime !== undefined &&
+    componentBlock !== undefined &&
+    bemRuntimeCalls.size > 0
+  ) {
+    component_.bemRuntime = {
+      block: componentBlock,
+      elementSeparator: runtimeExtension.runtime.elementSeparator,
+      modifierSeparator: runtimeExtension.runtime.modifierSeparator,
+      importSource: runtimeExtension.runtime.importSource,
+    };
+    component_.bemRuntimeCalls = bemRuntimeCalls;
+  }
+
+  return { component: component_, warnings };
 }

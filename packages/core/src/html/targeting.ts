@@ -21,7 +21,7 @@ export interface ElementTarget {
   /**
    * Set when the engine marked the element because it needed a selector but
    * had no static class; the markup renderer emits the attribute. The index
-   * is a zero-based counter over marked elements in document order — it
+   * is a zero-based counter over marked elements in document order - it
    * links markup, stylesheet, and script within one generated output and
    * carries no meaning beyond it.
    */
@@ -49,19 +49,25 @@ export function hasNestedSelectors(style: NestedStyleObject): boolean {
  * `style` attributes.
  */
 export function hasPlainProperties(style: NestedStyleObject): boolean {
-  return Object.values(style).some(
-    (value) => typeof value === 'string' || typeof value === 'number'
+  return Object.entries(style).some(
+    ([key, value]) =>
+      key !== '$expression' &&
+      (typeof value === 'string' || typeof value === 'number')
   );
 }
 
 /**
- * Returns true when a style object carries a top-level `$include` (Sass
- * source). Like a nested selector it must reach a stylesheet — an
- * `@include` cannot live in an inline `style` attribute — so its presence
- * binds the node to a stylesheet even under the `inline` strategy.
+ * Returns true when a style object carries a top-level Sass include - the
+ * `$include` key or an `@include ...` at-rule key. Like a nested selector it
+ * must reach a stylesheet - an `@include` cannot live in an inline `style`
+ * attribute - so its presence binds the node to a stylesheet even under the
+ * `inline` strategy. (Under `'css'` output, includes resolve before targeting
+ * runs; this binding matters for `'scss'` pass-through.)
  */
 export function hasIncludes(style: NestedStyleObject): boolean {
-  return style.$include !== undefined;
+  return Object.keys(style).some(
+    (key) => key === '$include' || key.startsWith('@include')
+  );
 }
 
 /**
@@ -82,11 +88,11 @@ export function hasExpressionProperties(style: NestedStyleObject): boolean {
  * with nested selectors under `inline`), or when its events are wired
  * through `addEventListener` (the `in-file` and `separate-file` scripting
  * strategies). The selector prefers the element's first selector-eligible
- * class — its first static class, or with styling extensions applied the
+ * class - its first static class, or with styling extensions applied the
  * first entry in `selectorClasses` (static classes followed by
  * semantic-extension classes; utility classes are never selectors). Only
  * elements without one are marked with a `data-jte-node="<n>"` attribute
- * and addressed through an attribute selector — the authored class list is
+ * and addressed through an attribute selector - the authored class list is
  * never extended.
  */
 export function planTargets(
@@ -126,7 +132,11 @@ function needsSelector(
   scriptingStrategy: string
 ): boolean {
   const style = element.attributes?.style;
-  if (style !== undefined && !isExpressionBinding(style)) {
+  // A whole-object `$expression` does not preclude static / nested / include
+  // keys on the same node; the predicates below ignore the `$expression` key,
+  // so a mixed node is bound by its stylesheet-bound siblings and a pure
+  // whole-object expression (no such siblings) is not.
+  if (style !== undefined) {
     const stylesheetBound =
       stylingStrategy === 'inline'
         ? hasNestedSelectors(style) || hasIncludes(style)

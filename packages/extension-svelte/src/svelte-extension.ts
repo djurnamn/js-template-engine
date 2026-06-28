@@ -1,8 +1,12 @@
 import {
   collectCss,
+  collectNamedSlotNames,
+  discriminatedSurfaceOf,
+  flattenDiscriminatedProps,
   passthroughNodeOf,
   planTargets,
   resolveComponentOverrides,
+  type BemRuntimeBinding,
   type FrameworkExtension,
   type NormalizedComponent,
   type ResolvedProcessingOptions,
@@ -11,6 +15,7 @@ import type {
   ElementNode,
   OutputFile,
   ProcessResult,
+  PropDefinition,
   Warning,
 } from '@js-template-engine/types';
 
@@ -36,7 +41,7 @@ export interface SvelteExtension extends FrameworkExtension {
  * `<style>` block.
  *
  * Styling supports all three output strategies. Scripting supports only
- * `in-file` — handlers live in `<script>`, where the markup's `on:event`
+ * `in-file` - handlers live in `<script>`, where the markup's `on:event`
  * bindings resolve them.
  *
  * @example
@@ -70,15 +75,32 @@ function renderSvelteComponent(
     resolved.selectorClasses
   );
   const css = collectCss(resolved, plan, stylingStrategy, language);
+  const surface = discriminatedSurfaceOf(resolved.children);
   const passthroughNode = passthroughNodeOf(resolved.children);
 
   const context: SvelteContext = {
     plan,
     stylingInline: stylingStrategy === 'inline',
     usesStyleSerializer: false,
+    namedSlots: collectNamedSlotNames(resolved.children),
     passthroughNode,
+    surfaceElements: surface
+      ? new Set<ElementNode>(surface.branches.map((entry) => entry.element))
+      : undefined,
+    bemRuntimeCalls: resolved.bemRuntimeCalls,
     warnings,
   };
+
+  // A discriminated surface root: every branch is a passthrough element, so the
+  // surface-contract declarations are emitted and each branch carries the
+  // contract in the markup.
+  const declaredProps = surface
+    ? flattenDiscriminatedProps(
+        resolved.props,
+        surface.branches.map((entry) => entry.branch.props ?? {})
+      )
+    : resolved.props;
+  const hasPassthrough = passthroughNode !== undefined || surface !== undefined;
 
   const markup = renderNodes(resolved.children, '', 0, context).join('\n');
   const separateFile = stylingStrategy === 'separate-file' && css !== '';
@@ -87,7 +109,8 @@ function renderSvelteComponent(
     separateFile,
     styleExtension,
     context,
-    passthroughNode
+    hasPassthrough,
+    declaredProps
   );
   const styleBlock = buildStyleBlock(css, stylingStrategy, language);
 
@@ -113,11 +136,17 @@ function buildScript(
   separateFile: boolean,
   styleExtension: string,
   context: SvelteContext,
-  passthroughNode: ElementNode | undefined
+  hasPassthrough: boolean,
+  declaredProps: Record<string, PropDefinition>
 ): string | undefined {
   const sections: string[] = [];
 
   const imports = [...component.imports];
+  if (component.bemRuntime !== undefined) {
+    imports.unshift(
+      `import { createBem } from '${component.bemRuntime.importSource}';`
+    );
+  }
   if (separateFile) {
     imports.push(`import './${component.name}.${styleExtension}';`);
   }
@@ -125,12 +154,16 @@ function buildScript(
     sections.push(imports.join('\n'));
   }
 
-  const props = exportLetDeclarations(component.props);
+  const props = exportLetDeclarations(declaredProps);
   if (props !== undefined) {
     sections.push(props);
   }
 
-  if (passthroughNode !== undefined) {
+  if (component.bemRuntime !== undefined) {
+    sections.push(`const bem = ${bemSetupCall(component.bemRuntime)};`);
+  }
+
+  if (hasPassthrough) {
     sections.push(passthroughDeclarations());
   }
 
@@ -149,6 +182,29 @@ function buildScript(
 }
 
 /**
+ * The runtime helper setup expression for a component, e.g.
+ * `createBem('Badge')` or `createBem('Badge', { elementSeparator: '-' })`.
+ */
+function bemSetupCall(binding: BemRuntimeBinding): string {
+  return `createBem('${binding.block}'${bemConfigArgument(binding)})`;
+}
+
+/**
+ * The trailing config argument for a runtime helper call, present only when a
+ * separator differs from the helper's defaults (`__` / `--`).
+ */
+function bemConfigArgument(binding: BemRuntimeBinding): string {
+  const entries: string[] = [];
+  if (binding.elementSeparator !== '__') {
+    entries.push(`elementSeparator: '${binding.elementSeparator}'`);
+  }
+  if (binding.modifierSeparator !== '--') {
+    entries.push(`modifierSeparator: '${binding.modifierSeparator}'`);
+  }
+  return entries.length > 0 ? `, { ${entries.join(', ')} }` : '';
+}
+
+/**
  * The generated whole-object style serializer: Svelte's `style` attribute
  * takes a string, so a style expression evaluating to an object of
  * camelCase property→value pairs serializes through this helper.
@@ -156,8 +212,11 @@ function buildScript(
 function styleSerializerDeclaration(): string {
   return [
     `function ${STYLE_SERIALIZER_NAME}(`,
-    '  styleObject: Record<string, string | number>',
+    '  styleObject: Record<string, string | number> | null | undefined',
     '): string {',
+    '  if (styleObject == null) {',
+    "    return '';",
+    '  }',
     '  return Object.entries(styleObject)',
     '    .map(([property, value]) => {',
     "      const cssProperty = property.replace(",
@@ -174,8 +233,8 @@ function styleSerializerDeclaration(): string {
 /**
  * Renders the `<style>` block. Under `separate-file` the CSS is emitted as a
  * sibling `<Name>.css` imported from `<script>`, so no `<style>` block is
- * produced. Otherwise all collected CSS — including the nested-selector CSS
- * the `inline` strategy cannot inline — lands in the block.
+ * produced. Otherwise all collected CSS - including the nested-selector CSS
+ * the `inline` strategy cannot inline - lands in the block.
  */
 function buildStyleBlock(
   css: string,

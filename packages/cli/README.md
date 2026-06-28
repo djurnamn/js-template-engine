@@ -2,7 +2,7 @@
 
 The command-line interface for the JS Template Engine. Renders UI components
 defined as plain, typed data to vanilla HTML/CSS/JS or to React, Vue, and
-Svelte components — with styling methodologies (BEM, Tailwind) applied as
+Svelte components - with styling methodologies (BEM, Tailwind) applied as
 extensions.
 
 ```bash
@@ -21,7 +21,7 @@ npm install --global js-template-engine
 
 ### `render <source>`
 
-Renders a template file — or every template in a directory — and writes the
+Renders a template file - or every template in a directory - and writes the
 generated files.
 
 ```bash
@@ -37,16 +37,19 @@ js-template-engine render src/components --framework svelte --output-directory d
 
 | Option | Default | |
 |---|---|---|
-| `--framework <name>` | — | `react`, `vue`, or `svelte`; omitted renders HTML |
-| `--styling <names>` | — | comma-separated styling extensions (`bem`, `tailwind`), applied in order |
+| `--framework <name>` | - | `react`, `vue`, or `svelte`; omitted renders HTML |
+| `--styling <names>` | - | comma-separated styling extensions (`bem`, `tailwind`), applied in order |
 | `-o, --output-directory <path>` | `./output` | directory generated files are written to |
 | `-n, --component-name <name>` | filename | component name for templates that declare none |
 | `--styling-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
 | `--styling-language <language>` | `css` | `css`, or `scss` for nested output; react and HTML require `--styling-strategy separate-file` under `scss` |
+| `--load-path <path>` | - | sass load-path directory for resolving `@use`/`@include` in component styles under `--styling-language css`; repeatable |
 | `--scripting-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
 | `--scripting-language <language>` | `javascript` | `javascript`, or `typescript` to type the generated prop consts; affects HTML mode only and requires `--scripting-strategy separate-file` (writing `<Name>.ts`) |
 | `--bem-element-separator <separator>` | `__` | separator between BEM block and element |
 | `--bem-modifier-separator <separator>` | `--` | separator before a BEM modifier |
+| `--bem-mode <mode>` | `literal` | `literal` emits BEM class strings; `runtime` emits `use-bem` `bem(...)` calls for framework targets (HTML keeps the literal classes) |
+| `--bem-import-source <package>` | `use-bem` | package the `use-bem` helper is imported from under `--bem-mode runtime` |
 | `--tailwind-output <output>` | `classes` | `classes` passes utilities through for Tailwind's build; `styles` converts them into the generated CSS |
 | `--tailwind-convert-styles` | off | convert each element's authored `style` into Tailwind utility classes |
 
@@ -56,7 +59,7 @@ command exits non-zero.
 
 ### `validate <source>`
 
-Validates a template file — or every template in a directory — against the
+Validates a template file - or every template in a directory - against the
 template format, without writing anything.
 
 ```bash
@@ -72,8 +75,8 @@ any template is invalid.
 A template is plain serializable data, so the CLI accepts it in several
 forms:
 
-- **`.json`** — the transport form.
-- **`.ts`, `.js`, `.mjs`, `.cjs`** — a module whose default export is the
+- **`.json`** - the transport form.
+- **`.ts`, `.js`, `.mjs`, `.cjs`** - a module whose default export is the
   template. TypeScript files are loaded directly; no build step is needed.
 
 ```ts
@@ -105,7 +108,7 @@ rendered; subdirectories are not searched.
 
 ## Component names
 
-The name decides the generated file names (`Button.tsx`, `Button.vue`, …)
+The name decides the generated file names (`Button.tsx`, `Button.vue`, ...)
 and the component identifier inside them. It is resolved in order:
 
 1. the template's own `name`, when it has a `component` root;
@@ -115,7 +118,7 @@ and the component identifier inside them. It is resolved in order:
 ## Programmatic use
 
 The CLI is a thin shell over `@js-template-engine/core`. For build scripts
-and tooling, use the engine directly — extensions are passed as objects, no
+and tooling, use the engine directly - extensions are passed as objects, no
 name mapping involved:
 
 ```ts

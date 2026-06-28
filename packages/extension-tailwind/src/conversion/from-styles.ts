@@ -1,9 +1,9 @@
 /**
- * Converts an authored nested style object into Tailwind utility classes —
+ * Converts an authored nested style object into Tailwind utility classes - 
  * the inverse of `convert.ts`. Each plain declaration becomes its canonical
  * named utility when the value lands on the Tailwind v4 default theme, an
  * arbitrary value (`p-[3px]`) when it does not, or an arbitrary property
- * (`[mask-type:luminance]`) when the property has no utility family — so
+ * (`[mask-type:luminance]`) when the property has no utility family - so
  * coverage is total. Nested selector and at-rule blocks invert to variant
  * prefixes. A nested block with no Tailwind variant equivalent, like a
  * parent-modifier selector, is a processing error.
@@ -11,7 +11,7 @@
  * Every named candidate is checked by round-tripping it back through the
  * forward table (`resolveBaseUtility`): a candidate is used only when it
  * resolves to exactly the declaration it came from, so the reverse mapping
- * can never emit a wrong utility — it falls back to an arbitrary form
+ * can never emit a wrong utility - it falls back to an arbitrary form
  * instead.
  */
 
@@ -63,12 +63,21 @@ export function convertStyleToUtilities(
     if (value === undefined) {
       continue;
     }
-    if (key === '$include') {
+    // The whole-object `$expression` is a runtime value, never a convertible
+    // declaration; keep it in the remaining style for the dynamic mechanism.
+    if (key === '$expression') {
+      if (typeof value === 'string') {
+        remaining.$expression = value;
+        hasRemaining = true;
+      }
+      continue;
+    }
+    if (key === '$include' || key.startsWith('@include')) {
       failInclude(fail);
     }
-    // Array values belong to `$include` alone (handled above); any other is
-    // not a convertible declaration.
-    if (Array.isArray(value)) {
+    // Array and boolean values belong to Sass-source keys (handled above);
+    // any other is not a convertible declaration.
+    if (Array.isArray(value) || typeof value === 'boolean') {
       continue;
     }
     if (isExpressionBinding(value)) {
@@ -104,10 +113,10 @@ function convertNested(
     if (value === undefined) {
       continue;
     }
-    if (key === '$include') {
+    if (key === '$include' || key.startsWith('@include')) {
       failInclude(fail);
     }
-    if (Array.isArray(value)) {
+    if (Array.isArray(value) || typeof value === 'boolean') {
       continue;
     }
     if (isSelectorBlock(value)) {
@@ -119,11 +128,11 @@ function convertNested(
   return classes;
 }
 
-/** A `$include` is Sass source, not expressible as a utility class. */
+/** A Sass include is not expressible as a Tailwind utility class. */
 function failInclude(fail: ConversionFail): never {
   fail(
-    "A '$include' cannot be converted to a Tailwind utility; remove " +
-      'convertStyles or the $include'
+    'A Sass include cannot be converted to a Tailwind utility; remove ' +
+      'convertStyles or the include'
   );
 }
 
@@ -185,7 +194,7 @@ function invertSelector(
   block: NestedSelectorBlock,
   fail: ConversionFail
 ): { variant: string; inner: NestedSelectorBlock } {
-  // The v4 hover form: `@media (hover: hover) { :hover { … } }` is one `hover`.
+  // The v4 hover form: `@media (hover: hover) { :hover { ... } }` is one `hover`.
   if (key === '@media (hover: hover)') {
     const innerKeys = Object.keys(block).filter(
       (innerKey) => block[innerKey] !== undefined
@@ -509,7 +518,7 @@ const INTEGER_ROOTS: Record<
   'grid-row-end': { root: 'row-end', named: { auto: 'auto' } },
 };
 
-/** Properties that accept an arbitrary value (`root-[…]`) rather than only `[prop:…]`. */
+/** Properties that accept an arbitrary value (`root-[...]`) rather than only `[prop:...]`. */
 const ARBITRARY_VALUE_ROOTS: Record<string, string> = {
   ...SPACING_ROOTS,
   ...SIZING_ROOTS,

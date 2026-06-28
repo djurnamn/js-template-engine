@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/extension-vue",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Vue extension for the JS Template Engine: renders data-defined component templates as Vue Single File Components",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

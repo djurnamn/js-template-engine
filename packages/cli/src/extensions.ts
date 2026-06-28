@@ -27,7 +27,7 @@ const frameworkFactories: Record<FrameworkName, () => Extension> = {
  * Builds the extension list for one `process()` call.
  *
  * Styling extensions come first, in the order they were named on the
- * command line — the order their classes are contributed in — followed by
+ * command line - the order their classes are contributed in - followed by
  * the framework extension, if any.
  *
  * @param framework - The framework to render with; `undefined` renders HTML.

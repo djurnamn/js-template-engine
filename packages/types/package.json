@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/types",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Template format for the JS Template Engine: TypeScript types and JSON Schema for data-defined component templates",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

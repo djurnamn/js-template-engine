@@ -1,5 +1,14 @@
-import { TemplateError } from '@js-template-engine/core';
-import type { PropDefinition, TemplateNode } from '@js-template-engine/types';
+import {
+  normalizeExposes,
+  normalizeNamedSlots,
+  TemplateError,
+} from '@js-template-engine/core';
+import type { NormalizedExposedBinding } from '@js-template-engine/core';
+import type {
+  ExposedBinding,
+  PropDefinition,
+  TemplateNode,
+} from '@js-template-engine/types';
 
 import { serializeJavaScriptValue } from './literals';
 
@@ -9,6 +18,26 @@ export interface SlotProp {
   slotName: string | undefined;
   /** The normalized React prop name; `'children'` for the default slot. */
   propName: string;
+  /**
+   * The runtime values the slot exposes (a scoped slot), making its prop a
+   * render prop. Empty for an ordinary slot (a bare `ReactNode` prop).
+   */
+  exposes: NormalizedExposedBinding[];
+}
+
+/**
+ * The React type of a slot prop: a bare `ReactNode` for an ordinary slot, or
+ * a render-prop signature `(scope: { ... }) => ReactNode` for a scoped slot.
+ * Each exposed binding types as its declared `type` or `any`.
+ */
+function slotPropType(slotProp: SlotProp): string {
+  if (slotProp.exposes.length === 0) {
+    return 'ReactNode';
+  }
+  const scope = slotProp.exposes
+    .map((binding) => `${binding.name}: ${binding.type ?? 'any'}`)
+    .join('; ');
+  return `(scope: { ${scope} }) => ReactNode`;
 }
 
 /**
@@ -51,6 +80,9 @@ export function collectSlotProps(
           if (node.children) {
             visit(node.children, `${nodePath}.children`);
           }
+          for (const named of normalizeNamedSlots(node.slots)) {
+            visit(named.content, `${nodePath}.slots.${named.name}`);
+          }
           break;
         case 'fragment':
           visit(node.children, `${nodePath}.children`);
@@ -67,7 +99,7 @@ export function collectSlotProps(
           visit(node.children, `${nodePath}.children`);
           break;
         case 'slot': {
-          registerSlot(node.name, nodePath);
+          registerSlot(node.name, node.exposes, nodePath);
           if (node.fallback) {
             visit(node.fallback, `${nodePath}.fallback`);
           }
@@ -81,6 +113,7 @@ export function collectSlotProps(
 
   const registerSlot = (
     slotName: string | undefined,
+    exposes: Record<string, ExposedBinding> | undefined,
     nodePath: string
   ): void => {
     const propName = slotName === undefined ? 'children' : normalizeSlotName(slotName);
@@ -100,7 +133,11 @@ export function collectSlotProps(
         nodePath
       );
     }
-    const slotProp: SlotProp = { slotName, propName };
+    const slotProp: SlotProp = {
+      slotName,
+      propName,
+      exposes: normalizeExposes(exposes),
+    };
     byPropName.set(propName, slotProp);
     slotProps.push(slotProp);
   };
@@ -115,8 +152,8 @@ export function collectSlotProps(
  * `undefined` when there is nothing to declare.
  *
  * For a passthrough surface root (`passthroughTag` set), the props extend
- * `ComponentPropsWithRef<'<tag>'>` — admitting the consumer's arbitrary
- * attributes plus the ref-as-prop, `className`, and `style` — and the block
+ * `ComponentPropsWithRef<'<tag>'>` - admitting the consumer's arbitrary
+ * attributes plus the ref-as-prop, `className`, and `style` - and the block
  * is always emitted even with no declared or slot entries (a bare type alias
  * then).
  */
@@ -132,7 +169,7 @@ export function propsInterface(
     entries.push(`  ${name}${optionalMarker}: ${definition.type};`);
   }
   for (const slotProp of slotProps) {
-    entries.push(`  ${slotProp.propName}?: ReactNode;`);
+    entries.push(`  ${slotProp.propName}?: ${slotPropType(slotProp)};`);
   }
   if (passthroughTag !== undefined) {
     const base = `ComponentPropsWithRef<'${passthroughTag}'>`;
@@ -148,13 +185,55 @@ export function propsInterface(
 }
 
 /**
+ * Renders the props type for a discriminated surface root as a discriminated
+ * union - one member per branch. Each member intersects the branch element's
+ * typed surface (`ComponentPropsWithRef<'<tag>'>`) with the shared component
+ * props and the branch's own props (the discriminant as a literal type), so a
+ * consumer is typed against whichever element a branch renders.
+ *
+ * @example
+ * type InputProps =
+ *   | (ComponentPropsWithRef<'div'> & { size?: number; visual: true })
+ *   | (ComponentPropsWithRef<'input'> & { size?: number; visual?: false });
+ */
+export function discriminatedPropsInterface(
+  componentName: string,
+  sharedProps: Record<string, PropDefinition>,
+  branches: Array<{ tag: string; props: Record<string, PropDefinition> }>,
+  slotProps: SlotProp[]
+): string {
+  const propLine = (name: string, definition: PropDefinition): string =>
+    `      ${name}${definition.required === true ? '' : '?'}: ${definition.type};`;
+
+  const members = branches.map(({ tag, props }) => {
+    const entries: string[] = [];
+    for (const [name, definition] of Object.entries(sharedProps)) {
+      entries.push(propLine(name, definition));
+    }
+    for (const [name, definition] of Object.entries(props)) {
+      entries.push(propLine(name, definition));
+    }
+    for (const slotProp of slotProps) {
+      entries.push(`      ${slotProp.propName}?: ${slotPropType(slotProp)};`);
+    }
+    const base = `ComponentPropsWithRef<'${tag}'>`;
+    if (entries.length === 0) {
+      return `  | ${base}`;
+    }
+    return `  | (${base} & {\n${entries.join('\n')}\n    })`;
+  });
+
+  return `type ${componentName}Props =\n${members.join('\n')};`;
+}
+
+/**
  * Renders the prop destructuring statement with defaults:
  * `const { label, variant = 'primary' } = props;`. Returns `undefined`
  * when no props are declared.
  *
  * For a passthrough surface root, the consumer `className`, `style`, and
  * `ref` are destructured out (handled explicitly by the renderer) and the
- * remaining undeclared props are gathered into `...rest` for the spread —
+ * remaining undeclared props are gathered into `...rest` for the spread - 
  * so the statement is emitted even with no declared props
  * (`const { className, style, ref, ...rest } = props;`). Slot prop names are
  * destructured too so the framework's slot props never leak into the

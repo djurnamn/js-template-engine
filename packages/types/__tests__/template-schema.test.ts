@@ -104,17 +104,21 @@ describe('template.schema.json', () => {
     ).toBe(false);
   });
 
-  it('rejects whole-object style expressions mixed with other keys', () => {
+  it('accepts a whole-object style expression beside static and nested keys', () => {
     expect(
       validateTemplate([
         {
           type: 'element',
           tag: 'div',
           attributes: {
-            style: { color: 'blue', $expression: 'props.style' },
+            style: {
+              $expression: 'computeStyleVariables(props)',
+              color: 'blue',
+              '@media (max-width: 768px)': { color: 'red' },
+            },
           },
         },
       ])
-    ).toBe(false);
+    ).toBe(true);
   });
 });

@@ -8,10 +8,11 @@ import type {
  * Node-level overrides for the Vue extension, carried under
  * `extensions.vue` on element nodes.
  *
- * `attributes` merges into the node's attributes per key, the override
- * winning; `events` replaces the node's event list. Override attributes
- * render verbatim, which is how framework-specific directives without a
- * generic concept — `v-model`, raw `:` bindings — are authored.
+ * `tag` replaces the node's element for the Vue render; `attributes` merges
+ * into the node's attributes per key, the override winning; `events` replaces
+ * the node's event list. Override attributes render verbatim, which is how
+ * framework-specific directives without a generic concept - `v-model`, raw
+ * `:` bindings - are authored.
  *
  * @example
  * const node: ElementNode = {
@@ -23,6 +24,12 @@ import type {
  * };
  */
 export interface VueNodeOverrides {
+  /**
+   * Replaces the node's resolved tag for the Vue render. A capitalized value
+   * is emitted as a component reference (`'Teleport'` → `<Teleport>`); built-in
+   * elements like `Teleport`/`Transition` need no import.
+   */
+  tag?: string;
   attributes?: Attributes;
   events?: EventDefinition[];
 }

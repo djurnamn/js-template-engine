@@ -1,7 +1,6 @@
 import type {
   Attributes,
   ElementNode,
-  ExpressionBinding,
   NestedStyleObject,
   TemplateNode,
   TextNode,
@@ -9,7 +8,7 @@ import type {
 } from '@js-template-engine/types';
 
 import { staticTagOf } from '../dynamic-tag';
-import { isExpressionBinding } from '../expression-binding';
+import { isExpressionBinding, wholeStyleExpression } from '../expression-binding';
 import { classExpressions, normalizeClassList } from '../normalize';
 import { VOID_ELEMENTS } from '../void-elements';
 import { escapeAttributeValue, escapeText } from './escape';
@@ -198,6 +197,11 @@ function renderAttributes(
     if (value === undefined) {
       continue;
     }
+    if (name === '$spread') {
+      // Object spread has no runtime consumer in static HTML - inert, like
+      // the passthrough root's rest spread.
+      continue;
+    }
     if (name === 'class') {
       const classValue = value as Attributes['class'];
       const tokens = [
@@ -210,7 +214,7 @@ function renderAttributes(
         parts.push(`class="${escapeAttributeValue(tokens.join(' '))}"`);
       }
     } else if (name === 'style') {
-      const style = value as NestedStyleObject | ExpressionBinding;
+      const style = value as NestedStyleObject;
       const preview = styleAttributePreview(style, context.stylingInline);
       if (preview !== '') {
         parts.push(`style="${escapeAttributeValue(preview)}"`);
@@ -246,23 +250,29 @@ function renderAttributes(
 }
 
 /**
- * Builds the static `style` attribute preview. Expression values — whole
- * style objects and individual property values — render as
+ * Builds the static `style` attribute preview. Expression values - whole
+ * style objects and individual property values - render as
  * `{{ expression }}` placeholders regardless of the styling strategy; static
  * plain properties render only under the `inline` strategy and only when the
  * style has no nested selectors (which force the whole style to a
  * stylesheet). Returns an empty string when there is nothing to render.
  */
 function styleAttributePreview(
-  style: NestedStyleObject | ExpressionBinding,
+  style: NestedStyleObject,
   stylingInline: boolean
 ): string {
-  if (isExpressionBinding(style)) {
-    return `{{ ${style.$expression.trim()} }}`;
-  }
   const includeStatic = stylingInline && !hasNestedSelectors(style);
   const declarations: string[] = [];
+  // The whole-object expression renders first (the base layer), then
+  // per-property expressions and static properties in authored order.
+  const wholeExpression = wholeStyleExpression(style);
+  if (wholeExpression !== undefined) {
+    declarations.push(`{{ ${wholeExpression.trim()} }}`);
+  }
   for (const [key, value] of Object.entries(style)) {
+    if (key === '$expression') {
+      continue;
+    }
     if (isExpressionBinding(value)) {
       declarations.push(
         `${toKebabCaseProperty(key)}: {{ ${value.$expression.trim()} }}`

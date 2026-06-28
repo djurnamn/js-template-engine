@@ -1,29 +1,30 @@
 import type {
-  Attributes,
   NestedStyleObject,
   ProcessingOptions,
   ProcessResult,
   Template,
-  TemplateNode,
+  Warning,
 } from '@js-template-engine/types';
 
-import { isExpressionBinding } from './expression-binding';
 import {
   isFrameworkExtension,
   type FrameworkExtension,
   type ResolvedProcessingOptions,
 } from './extension';
+import { isExpressionBinding } from './expression-binding';
 import { renderHtml } from './html/render-html';
+import { resolveSassStyles } from './html/resolve-sass';
 import { normalizeTemplate, type NormalizedComponent } from './normalize';
 import { applyStylingExtensions } from './styling-extensions';
 import { TemplateError } from './TemplateError';
+import { visitElements } from './traverse';
 import { validateTemplate } from './validate';
 
 /**
  * Processes a template into output files.
  *
  * The pipeline validates the template (throwing a `TemplateError` with a
- * node path on the first violation), then renders it — with the built-in
+ * node path on the first violation), then renders it - with the built-in
  * HTML renderer, or with the framework extension passed in
  * `options.extensions`. Styling and scripting each default to the
  * `in-file` output strategy.
@@ -48,6 +49,7 @@ export function process(
     styling: {
       language: options.styling?.language ?? 'css',
       outputStrategy: options.styling?.outputStrategy ?? 'in-file',
+      loadPaths: options.styling?.loadPaths ?? [],
     },
     scripting: {
       language: options.scripting?.language ?? 'javascript',
@@ -55,9 +57,13 @@ export function process(
     },
   };
 
-  const component = normalizeTemplate(template, resolved.componentName);
+  const normalized = normalizeTemplate(template, resolved.componentName);
 
-  assertIncludeReach(component, resolved);
+  // Under `css`/`inline` output, resolve Sass source (`@include`, functions,
+  // `$variables`) to flat CSS before styling extensions and rendering; under
+  // `scss` output it passes through verbatim for the consumer's own sass
+  // build.
+  const component = resolveSassStyles(normalized, resolved.styling);
 
   const frameworks = resolved.extensions.filter(isFrameworkExtension);
   if (frameworks.length > 1) {
@@ -81,10 +87,70 @@ export function process(
     result = framework.render(styling.component, resolved);
   }
 
-  if (styling.warnings.length === 0) {
+  const deprecations = collectIncludeDeprecations(normalized);
+  if (styling.warnings.length === 0 && deprecations.length === 0) {
     return result;
   }
-  return { ...result, warnings: [...styling.warnings, ...result.warnings] };
+  return {
+    ...result,
+    warnings: [...deprecations, ...styling.warnings, ...result.warnings],
+  };
+}
+
+/** The processing warning emitted once per template that uses `$include`. */
+const INCLUDE_DEPRECATION_MESSAGE =
+  "The '$include' style key is deprecated and will be removed in 3.0.0; " +
+  "use an '@include ...' at-rule key instead (e.g. \"@include name\": true for " +
+  'a no-content include, or "@include name": { ... } for a content block).';
+
+/**
+ * Returns the `$include` deprecation warning when any node's style (top-level
+ * or nested, including conditional attributes) carries the legacy `$include`
+ * key - a single notice per template, not one per occurrence. The blessed
+ * form is the `@include ...` at-rule key.
+ */
+function collectIncludeDeprecations(
+  component: NormalizedComponent
+): Warning[] {
+  let found = false;
+  visitElements(component.children, (element) => {
+    if (styleUsesDollarInclude(element.attributes?.style)) {
+      found = true;
+    }
+    for (const conditional of element.conditionalAttributes ?? []) {
+      if (styleUsesDollarInclude(conditional.attributes.style)) {
+        found = true;
+      }
+    }
+  });
+  return found ? [{ message: INCLUDE_DEPRECATION_MESSAGE }] : [];
+}
+
+/** Whether a style value carries a `$include` key, at any nesting depth. */
+function styleUsesDollarInclude(
+  style: NestedStyleObject | undefined
+): boolean {
+  // A whole-object `$expression` (a string-valued key) does not preclude a
+  // `$include` sibling, so scan the object regardless; object-valued recursion
+  // below naturally skips the string `$expression` key.
+  if (style === undefined) {
+    return false;
+  }
+  if (style.$include !== undefined) {
+    return true;
+  }
+  for (const value of Object.values(style)) {
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !isExpressionBinding(value) &&
+      styleUsesDollarInclude(value as NestedStyleObject)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -115,13 +181,13 @@ function assertLanguageSupport(
 
 /**
  * Enforces the `'typescript'` scripting-language reach: it requires a
- * compile step, so HTML mode — whose script is a
- * browser-run `<script>` block or `on*` attribute — supports it only with
+ * compile step, so HTML mode - whose script is a
+ * browser-run `<script>` block or `on*` attribute - supports it only with
  * the `separate-file` strategy (emitting `<Name>.ts`); `in-file`/`inline`
  * are a processing error, never a silent fallback. The framework targets
  * emit TypeScript intrinsically (their renderers produce `.tsx` /
  * `<script setup lang="ts">` / `<script lang="ts">` regardless), so the
- * language axis is a no-op for them — never an error.
+ * language axis is a no-op for them - never an error.
  */
 function assertScriptLanguageSupport(
   framework: FrameworkExtension | undefined,
@@ -139,115 +205,6 @@ function assertScriptLanguageSupport(
   throw new TemplateError(
     `The 'html' target supports the 'typescript' scripting language only with the 'separate-file' output strategy; received '${options.scripting.outputStrategy}'`
   );
-}
-
-/**
- * Enforces the `$include` reach: a `$include`
- * is Sass source that only a sass build can resolve, so it requires
- * `styling.language: 'scss'`. Under `'css'` there is no sass build to
- * resolve it — a processing error naming the node path, never a silent
- * fallback (the engine does not resolve Sass source). The strategy reach is
- * handled separately: `'scss'` + `inline` on the react/HTML targets is
- * already a language-reach error (`assertLanguageSupport`), and on Vue/
- * Svelte the `$include` block rides the SFC `<style lang="scss">`.
- */
-function assertIncludeReach(
-  component: NormalizedComponent,
-  options: ResolvedProcessingOptions
-): void {
-  if (options.styling.language === 'scss') {
-    return;
-  }
-  const path = findIncludePath(component.children, 'children');
-  if (path !== undefined) {
-    throw new TemplateError(
-      "A '$include' requires styling.language: 'scss'; there is no sass build to resolve it under 'css'",
-      path
-    );
-  }
-}
-
-/**
- * Returns the node path of the first style carrying a `$include`, or
- * `undefined`. Walks the same node shapes as validation, checking each
- * element's `style` and its `conditionalAttributes` styles.
- */
-function findIncludePath(
-  nodes: TemplateNode[],
-  path: string
-): string | undefined {
-  for (let index = 0; index < nodes.length; index += 1) {
-    const node = nodes[index];
-    const nodePath = `${path}[${index}]`;
-    if (node.type === 'element') {
-      if (styleHasInclude(node.attributes?.style)) {
-        return `${nodePath}.style`;
-      }
-      for (let c = 0; c < (node.conditionalAttributes?.length ?? 0); c += 1) {
-        if (styleHasInclude(node.conditionalAttributes?.[c].attributes.style)) {
-          return `${nodePath}.conditionalAttributes[${c}].style`;
-        }
-      }
-    }
-    const found = findIncludePath(childNodesOf(node), `${nodePath}${childPathSuffix(node)}`);
-    if (found !== undefined) {
-      return found;
-    }
-  }
-  return undefined;
-}
-
-function styleHasInclude(style: Attributes['style']): boolean {
-  if (style === undefined || isExpressionBinding(style)) {
-    return false;
-  }
-  return objectHasInclude(style);
-}
-
-function objectHasInclude(style: NestedStyleObject): boolean {
-  if (style.$include !== undefined) {
-    return true;
-  }
-  for (const value of Object.values(style)) {
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
-      !isExpressionBinding(value) &&
-      objectHasInclude(value as NestedStyleObject)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/** The child node array to recurse into for a node, mirroring validation. */
-function childNodesOf(node: TemplateNode): TemplateNode[] {
-  switch (node.type) {
-    case 'element':
-    case 'fragment':
-    case 'iteration':
-      return node.children ?? [];
-    case 'slot':
-      return node.fallback ?? [];
-    case 'conditional':
-      return node.conditions.flatMap((branch) => branch.children);
-    default:
-      return [];
-  }
-}
-
-/** The path suffix added when recursing into a node's children. */
-function childPathSuffix(node: TemplateNode): string {
-  switch (node.type) {
-    case 'slot':
-      return '.fallback';
-    case 'conditional':
-      return '.conditions';
-    default:
-      return '.children';
-  }
 }
 
 function assertStrategySupport(

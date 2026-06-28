@@ -5,9 +5,15 @@ import {
   hasPlainProperties,
   isDynamicTag,
   isExpressionBinding,
+  nodeSpreads,
   normalizeClassList,
+  normalizeExposes,
+  normalizeNamedSlots,
   serializeInlineStyle,
+  slotConditionTarget,
   toKebabCaseProperty,
+  wholeStyleExpression,
+  type BemRuntimeCall,
   type TargetPlan,
 } from '@js-template-engine/core';
 import type {
@@ -16,7 +22,6 @@ import type {
   ConditionalAttributes,
   ConditionalNode,
   ElementNode,
-  ExpressionBinding,
   IterationNode,
   NestedStyleObject,
   SlotNode,
@@ -39,6 +44,8 @@ export interface SvelteContext {
   plan: TargetPlan;
   /** True when the styling output strategy is `inline`. */
   stylingInline: boolean;
+  /** The declared named-slot names, for slot-presence conditions. */
+  namedSlots: ReadonlySet<string>;
   /**
    * Set when a whole-object style expression was rendered; the component
    * builder then emits the generated style serializer into `<script>`.
@@ -50,6 +57,19 @@ export interface SvelteContext {
    * and `bind:this={element}` exposes the DOM handle.
    */
   passthroughNode?: ElementNode;
+  /**
+   * The branch surface elements of a discriminated surface root. Each carries
+   * the surface contract (`{...$$restProps}`, `class`/`style` merge,
+   * `bind:this={element}`) in its branch, exactly like a single passthrough
+   * root.
+   */
+  surfaceElements?: ReadonlySet<ElementNode>;
+  /**
+   * Per-element BEM runtime calls, set when a styling extension is in runtime
+   * mode. A node present here renders its BEM classes as the `bem(...)` call
+   * instead of the literal classes.
+   */
+  bemRuntimeCalls?: ReadonlyMap<ElementNode, BemRuntimeCall>;
   warnings: Warning[];
 }
 
@@ -139,9 +159,9 @@ function renderConditional(
   node.conditions.forEach((branch, index) => {
     const childPath = `${path}.conditions[${index}].children`;
     if (branch.statement === 'if') {
-      lines.push(`${padding}{#if ${expression(String(branch.condition))}}`);
+      lines.push(`${padding}{#if ${conditionExpression(branch, context)}}`);
     } else if (branch.statement === 'else-if') {
-      lines.push(`${padding}{:else if ${expression(String(branch.condition))}}`);
+      lines.push(`${padding}{:else if ${conditionExpression(branch, context)}}`);
     } else {
       lines.push(`${padding}{:else}`);
     }
@@ -150,6 +170,23 @@ function renderConditional(
   lines.push(`${padding}{/if}`);
 
   return lines;
+}
+
+/**
+ * The expression a branch condition emits. A bare identifier naming a declared
+ * named slot becomes that slot's Svelte presence check (`$$slots.<name>`),
+ * since the bare slot name is not an `export let` prop; every other condition
+ * is emitted verbatim through {@link expression}.
+ */
+function conditionExpression(
+  branch: ConditionalNode['conditions'][number],
+  context: SvelteContext
+): string {
+  const slotName = slotConditionTarget(branch.condition, context.namedSlots);
+  if (slotName !== undefined) {
+    return `$$slots.${slotName}`;
+  }
+  return expression(String(branch.condition));
 }
 
 /**
@@ -193,10 +230,15 @@ function renderSlot(
   context: SvelteContext
 ): string[] {
   const padding = pad(indent);
-  const nameAttr =
-    node.name !== undefined
-      ? ` name="${escapeAttributeValue(node.name)}"`
-      : '';
+  const slotAttributes: string[] = [];
+  if (node.name !== undefined) {
+    slotAttributes.push(`name="${escapeAttributeValue(node.name)}"`);
+  }
+  // A scoped slot binds its exposed values on the `<slot>` element.
+  for (const binding of normalizeExposes(node.exposes)) {
+    slotAttributes.push(`${binding.name}={${expression(binding.value)}}`);
+  }
+  const nameAttr = slotAttributes.length > 0 ? ` ${slotAttributes.join(' ')}` : '';
   const fallback = node.fallback ?? [];
 
   if (fallback.length === 0) {
@@ -242,14 +284,50 @@ function renderElement(
   context: SvelteContext
 ): string[] {
   const padding = pad(indent);
-  // A dynamic tag renders as `<svelte:element this={…}>`; the `this` binding
-  // leads the attributes, the expression emitted verbatim.
-  const dynamic = isDynamicTag(node.tag) ? node.tag : undefined;
-  const tag = dynamic ? 'svelte:element' : node.tag;
+  // A per-target `tag` override replaces the element wholesale (a capitalized
+  // value renders as a component reference) and suppresses the dynamic-tag
+  // path. Otherwise a dynamic tag renders as `<svelte:element this={...}>`; the
+  // `this` binding leads the attributes, the expression emitted verbatim.
+  const tagOverride = (node.extensions?.svelte as SvelteNodeOverrides | undefined)
+    ?.tag;
+  const dynamic =
+    tagOverride === undefined && isDynamicTag(node.tag) ? node.tag : undefined;
+  const tag = tagOverride ?? (dynamic ? 'svelte:element' : node.tag);
   const thisBinding = dynamic ? [`this={${dynamic.$expression}}`] : [];
-  const parts = [...thisBinding, ...buildAttributeParts(node, path, context)];
+  // A component-reference node with `slotScope` receives the composed
+  // component's default scoped slot via `let:`, scoping its children.
+  const letBindings =
+    node.slotScope !== undefined && node.slotScope.length > 0
+      ? node.slotScope.map((name) => `let:${name}`)
+      : [];
+  const parts = [
+    ...thisBinding,
+    ...letBindings,
+    ...buildAttributeParts(node, path, context),
+  ];
   const children = node.children ?? [];
   const joined = parts.length > 0 ? ` ${parts.join(' ')}` : '';
+  // A component-reference node with `slots` projects content into the composed
+  // component's named slots, each rendered as a `<svelte:fragment slot="name">`
+  // child; a scoped named slot receives its scope through `let:` on the
+  // fragment. The default children stay bare (Svelte distinguishes by the
+  // `slot` attribute), and a default `slotScope` stays as the tag-level `let:`.
+  const namedSlots = normalizeNamedSlots(node.slots);
+  const slotFragments = namedSlots.flatMap((named) => {
+    const lets = named.slotScope.map((name) => `let:${name}`);
+    const attributes = [`slot="${named.name}"`, ...lets].join(' ');
+    return [
+      `${pad(indent + 1)}<svelte:fragment ${attributes}>`,
+      ...renderNodes(
+        named.content,
+        `${path}.slots.${named.name}.content`,
+        indent + 2,
+        context
+      ),
+      `${pad(indent + 1)}</svelte:fragment>`,
+    ];
+  });
+  const hasNamedSlots = slotFragments.length > 0;
 
   const multilineOpen = (closer: string): string[] => [
     `${padding}<${tag}`,
@@ -257,7 +335,7 @@ function renderElement(
     `${padding}${closer}`,
   ];
 
-  if (children.length === 0) {
+  if (children.length === 0 && !hasNamedSlots) {
     const single = `${padding}<${tag}${joined} />`;
     return fits(single) ? [single] : multilineOpen('/>');
   }
@@ -265,7 +343,7 @@ function renderElement(
   const open = `<${tag}${joined}>`;
   const close = `</${tag}>`;
 
-  if (children.every((child) => child.type === 'text')) {
+  if (!hasNamedSlots && children.every((child) => child.type === 'text')) {
     const text = children.map((child) => textPiece(child as TextNode)).join('');
     const single = `${padding}${open}${text}${close}`;
     if (fits(single)) {
@@ -283,6 +361,7 @@ function renderElement(
   return [
     ...openLines,
     ...renderNodes(children, `${path}.children`, indent + 1, context),
+    ...slotFragments,
     `${padding}${close}`,
   ];
 }
@@ -296,33 +375,62 @@ function buildAttributeParts(
   const attributes = { ...node.attributes, ...override?.attributes };
   const events = override?.events ?? node.events ?? [];
   const conditionals = node.conditionalAttributes ?? [];
-  const isPassthrough = node === context.passthroughNode;
+  const isPassthrough =
+    node === context.passthroughNode ||
+    context.surfaceElements?.has(node) === true;
   // The consumer `class` (the reserved-word-aliased prop) is appended
   // after the authored expression classes.
   const consumerClasses = isPassthrough ? ['className'] : [];
 
+  // In BEM runtime mode this node renders its BEM classes as the `bem(...)`
+  // call: the contributed literals are suppressed from the static class list
+  // and the folded conditional classes from the conditional rendering.
+  const runtimeCall = context.bemRuntimeCalls?.get(node);
+  const contributedClasses = new Set(runtimeCall?.contributedClasses ?? []);
+  const foldedClasses = new Set(runtimeCall?.foldedConditionalClasses ?? []);
+  const classConditionals =
+    foldedClasses.size === 0
+      ? conditionals
+      : conditionals.map((conditional) => ({
+          ...conditional,
+          attributes: {
+            ...conditional.attributes,
+            class: normalizeClassList(conditional.attributes.class).filter(
+              (className) => !foldedClasses.has(className)
+            ),
+          },
+        }));
+
   const parts: string[] = [];
+  // Object spreads lead the authored attributes (which override per key).
+  parts.push(
+    ...nodeSpreads(attributes).map((source) => `{...${expression(source)}}`)
+  );
   let classRendered = false;
   let styleRendered = false;
 
   for (const [name, value] of Object.entries(attributes)) {
-    if (value === undefined) {
+    if (value === undefined || name === '$spread') {
       continue;
     }
     if (name === 'class') {
       const classValue = value as Attributes['class'];
+      const staticClasses = normalizeClassList(classValue).filter(
+        (className) => !contributedClasses.has(className)
+      );
       parts.push(
         ...classParts(
-          normalizeClassList(classValue),
-          conditionals,
-          [...classExpressions(classValue), ...consumerClasses]
+          staticClasses,
+          classConditionals,
+          [...classExpressions(classValue), ...consumerClasses],
+          runtimeCall?.expression
         )
       );
       classRendered = true;
     } else if (name === 'style') {
       parts.push(
         ...styleParts(
-          value as NestedStyleObject | ExpressionBinding,
+          value as NestedStyleObject,
           context,
           isPassthrough ? 'style' : undefined
         )
@@ -342,7 +450,9 @@ function buildAttributeParts(
   }
 
   if (!classRendered) {
-    parts.push(...classParts([], conditionals, consumerClasses));
+    parts.push(
+      ...classParts([], classConditionals, consumerClasses, runtimeCall?.expression)
+    );
   }
 
   for (const conditional of conditionals) {
@@ -382,8 +492,8 @@ function buildAttributeParts(
 
 /**
  * Builds the class attribute parts: a `class` attribute from the authored
- * classes — with guarded `{...}` interpolations appended for expression
- * classes, so a falsy runtime value contributes nothing — then a
+ * classes - with guarded `{...}` interpolations appended for expression
+ * classes, so a falsy runtime value contributes nothing - then a
  * `class:NAME={condition}` directive for each condition-gated class. The
  * fixed concatenation order (static first, then conditional in array
  * order, then expression classes in authored order) is applied with
@@ -392,25 +502,40 @@ function buildAttributeParts(
 function classParts(
   staticClasses: string[],
   conditionals: ConditionalAttributes[],
-  expressionClasses: string[]
+  expressionClasses: string[],
+  runtimeCall?: string
 ): string[] {
   const parts: string[] = [];
-  if (
-    staticClasses.length === 0 &&
-    expressionClasses.length === 1
-  ) {
-    parts.push(`class={${expression(expressionClasses[0])} || ''}`);
-  } else if (staticClasses.length > 0 || expressionClasses.length > 0) {
+  if (runtimeCall === undefined) {
+    if (staticClasses.length === 0 && expressionClasses.length === 1) {
+      parts.push(`class={${expression(expressionClasses[0])} || ''}`);
+    } else if (staticClasses.length > 0 || expressionClasses.length > 0) {
+      let attributeValue =
+        staticClasses.length > 0
+          ? escapeAttributeValue(staticClasses.join(' '))
+          : '';
+      expressionClasses.forEach((classExpression, index) => {
+        const guarded = expression(classExpression);
+        attributeValue +=
+          attributeValue === '' && index === 0
+            ? `{${guarded} || ''}`
+            : `{${guarded} ? ' ' + ${guarded} : ''}`;
+      });
+      parts.push(`class="${attributeValue}"`);
+    }
+  } else if (staticClasses.length === 0 && expressionClasses.length === 0) {
+    // The runtime call always yields a non-empty string, so it carries no
+    // falsy guard.
+    parts.push(`class={${expression(runtimeCall)}}`);
+  } else {
     let attributeValue =
       staticClasses.length > 0
-        ? escapeAttributeValue(staticClasses.join(' '))
+        ? `${escapeAttributeValue(staticClasses.join(' '))} `
         : '';
-    expressionClasses.forEach((classExpression, index) => {
+    attributeValue += `{${expression(runtimeCall)}}`;
+    expressionClasses.forEach((classExpression) => {
       const guarded = expression(classExpression);
-      attributeValue +=
-        attributeValue === '' && index === 0
-          ? `{${guarded} || ''}`
-          : `{${guarded} ? ' ' + ${guarded} : ''}`;
+      attributeValue += `{${guarded} ? ' ' + ${guarded} : ''}`;
     });
     parts.push(`class="${attributeValue}"`);
   }
@@ -438,42 +563,59 @@ function classParts(
  * Builds the style attribute parts. A whole-object expression renders
  * through the generated style serializer (`style={serializeStyleObject(...)}`).
  * Otherwise expression-valued properties always render as `style:property`
- * directives — they go through Svelte's dynamic style mechanism regardless
- * of the styling strategy — while static plain properties render as a
+ * directives - they go through Svelte's dynamic style mechanism regardless
+ * of the styling strategy - while static plain properties render as a
  * static `style="..."` attribute only under the `inline` strategy (and only
  * when no nested selectors force the style to a stylesheet).
  */
 function styleParts(
-  style: NestedStyleObject | ExpressionBinding,
+  style: NestedStyleObject,
   context: SvelteContext,
   consumerStyle?: string
 ): string[] {
-  if (isExpressionBinding(style)) {
-    context.usesStyleSerializer = true;
-    const serialized = `${STYLE_SERIALIZER_NAME}(${expression(style.$expression)})`;
-    if (consumerStyle !== undefined) {
-      return [
-        `style="{${serialized}}{${consumerStyle} ? '; ' + ${consumerStyle} : ''}"`,
-      ];
-    }
-    return [`style={${serialized}}`];
-  }
   const parts: string[] = [];
-  let stringStyleEmitted = false;
-  if (
+  const wholeExpression = wholeStyleExpression(style);
+  const includeStatic =
     context.stylingInline &&
     !hasNestedSelectors(style) &&
-    hasPlainProperties(style)
-  ) {
-    const inline = escapeAttributeValue(serializeInlineStyle(style));
+    hasPlainProperties(style);
+
+  let serialized: string | undefined;
+  if (wholeExpression !== undefined) {
+    context.usesStyleSerializer = true;
+    serialized = `${STYLE_SERIALIZER_NAME}(${expression(wholeExpression)})`;
+  }
+
+  // The `style` attribute string layers the whole-object serializer output
+  // (base) under any static inline declarations, with the consumer style
+  // appended last. `style:property` directives (per-property expressions)
+  // override this attribute in Svelte's model.
+  let stringStyleEmitted = false;
+  if (serialized !== undefined && !includeStatic && consumerStyle === undefined) {
+    // A lone whole-object expression keeps the bare `style={...}` form.
+    parts.push(`style={${serialized}}`);
+    stringStyleEmitted = true;
+  } else if (serialized !== undefined || includeStatic) {
+    const segments: string[] = [];
+    if (serialized !== undefined) {
+      segments.push(`{${serialized}}`);
+    }
+    if (includeStatic) {
+      segments.push(escapeAttributeValue(serializeInlineStyle(style)));
+    }
+    const base = segments.join('; ');
     parts.push(
       consumerStyle !== undefined
-        ? `style="${inline}{${consumerStyle} ? '; ' + ${consumerStyle} : ''}"`
-        : `style="${inline}"`
+        ? `style="${base}{${consumerStyle} ? '; ' + ${consumerStyle} : ''}"`
+        : `style="${base}"`
     );
     stringStyleEmitted = true;
   }
+
   for (const [property, value] of Object.entries(style)) {
+    if (property === '$expression') {
+      continue;
+    }
     if (isExpressionBinding(value)) {
       parts.push(
         `style:${toKebabCaseProperty(property)}={${expression(value.$expression)}}`

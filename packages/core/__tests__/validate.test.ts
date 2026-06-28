@@ -200,19 +200,21 @@ describe('validateTemplate', () => {
     );
   });
 
-  it('rejects whole-object style expressions mixed with other keys', () => {
-    expectTemplateError(
-      [
-        {
-          type: 'element',
-          tag: 'div',
-          attributes: {
-            style: { color: 'blue', $expression: 'props.style' },
+  it('accepts a whole-object style expression beside static, nested, and per-property keys', () => {
+    validateTemplate([
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: {
+          style: {
+            $expression: 'computeStyleVariables(props)',
+            display: 'flex',
+            '--gap': { $expression: "gap + 'px'" },
+            '@media (max-width: 768px)': { display: 'block' },
           },
         },
-      ],
-      '[0].attributes.style'
-    );
+      },
+    ]);
   });
 
   it('rejects expression values inside nested selector blocks', () => {
@@ -290,6 +292,53 @@ describe('validateTemplate', () => {
     );
   });
 
+  it('accepts @include at-rule keys: true, empty object, and content block', () => {
+    validateTemplate([
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: {
+          style: {
+            '@include typography-body': true,
+            '@include reset': {},
+            '@include hover': { color: 'red', ':hover': { color: 'blue' } },
+            ':focus': { '@include focus-ring': true },
+          },
+        },
+      },
+    ]);
+  });
+
+  it('rejects a non-true, non-object @include value', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: { style: { '@include typography': 'body' } as never },
+        },
+      ],
+      '[0].attributes.style.@include typography'
+    );
+  });
+
+  it('rejects an $expression inside an @include content block', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: {
+            style: {
+              '@include box': { color: { $expression: 'props.color' } },
+            },
+          },
+        },
+      ],
+      '[0].attributes.style.@include box.color'
+    );
+  });
+
   it('rejects expression bindings on class inside conditionalAttributes', () => {
     expectTemplateError(
       [
@@ -340,6 +389,85 @@ describe('validateTemplate', () => {
         },
       ],
       '[0].conditionalAttributes[0].attributes.style.color'
+    );
+  });
+
+  it('accepts a $spread expression binding and an array of them', () => {
+    validateTemplate([
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: {
+          $spread: { $expression: 'backdropProps' },
+          class: ['overlay'],
+        },
+      },
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: {
+          $spread: [{ $expression: 'rootProps' }, { $expression: 'stateProps' }],
+        },
+      },
+    ]);
+  });
+
+  it('rejects a static $spread value', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: { $spread: 'notAnExpression' },
+        },
+      ],
+      '[0].attributes.$spread'
+    );
+  });
+
+  it('rejects a static value inside a $spread array', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: {
+            $spread: [{ $expression: 'rootProps' }, 'oops'],
+          },
+        },
+      ],
+      '[0].attributes.$spread[1]'
+    );
+  });
+
+  it('rejects an empty $spread array', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          attributes: { $spread: [] },
+        },
+      ],
+      '[0].attributes.$spread'
+    );
+  });
+
+  it('rejects $spread inside conditionalAttributes', () => {
+    expectTemplateError(
+      [
+        {
+          type: 'element',
+          tag: 'div',
+          conditionalAttributes: [
+            {
+              condition: 'isActive',
+              attributes: { $spread: { $expression: 'props.extra' } },
+            },
+          ],
+        },
+      ],
+      '[0].conditionalAttributes[0].attributes.$spread'
     );
   });
 

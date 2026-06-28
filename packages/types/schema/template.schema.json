@@ -194,6 +194,20 @@
           "$ref": "#/definitions/ExtensionOverrides",
           "description": "Per-extension overrides."
         },
+        "slotScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names the runtime values a composed component exposes through its default scoped slot, bringing them into scope of this node's projected `children`. Valid only on a component-reference node (a capitalized tag); each entry is a binding identifier the composed component's default slot exposes (its `SlotNode.exposes` keys). The children may then reference those identifiers freely.\n\nPer target: React wraps the children as a function child (`{({ api }) => (...)}`), Vue emits `v-slot=\"{ api }\"`, Svelte emits `let:api`. HTML mode ignores it (a static preview has no consumer). Only the default slot is supported."
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/NamedSlotContent"
+          },
+          "description": "Content projected into a composed child's **named** slots, keyed by slot name (the child's  {@link  SlotNode.name } ); this node's `children` continue to fill the default slot. Valid only on a component-reference node (a capitalized tag). Each value is the projected content (an ordinary named slot), or a `{ content, slotScope? }` object whose `slotScope` names the bindings received from that named slot's exposed scope (a scoped named slot), brought into scope of `content`.\n\nPer target: React passes each as the slot's prop (`closeButton={...}`, a render prop `closeButton={({ row }) => ...}` when scoped); Vue emits `<template #closeButton>` (`#closeButton=\"{ row }\"` when scoped); Svelte emits `<svelte:fragment slot=\"closeButton\">` (`let:row` when scoped). HTML mode ignores it (a static preview has no slot consumer). The provider seam is  {@link  SlotNode }  (a named, optionally scoped, slot)."
+        },
         "passthrough": {
           "type": "boolean",
           "description": "Marks this element as the component's surface root: a consumer's undeclared props/attributes spread onto it, a consumer-supplied `className`/`class` and `style` merge into its class list and styles, and it exposes a DOM handle (React ref-as-prop, Vue `$el`, Svelte a bindable `element`). At most one element per component may set it, and it must be the component's single root rendered element with an intrinsic HTML tag."
@@ -210,11 +224,11 @@
       "properties": {
         "$expression": {
           "type": "string",
-          "description": "The runtime tag expression, e.g. `'as'` — a JavaScript expression."
+          "description": "The runtime tag expression, e.g. `'as'` - a JavaScript expression."
         },
         "default": {
           "type": "string",
-          "description": "The static fallback tag — preview, validation, and typing basis."
+          "description": "The static fallback tag - preview, validation, and typing basis."
         }
       },
       "required": [
@@ -222,7 +236,7 @@
         "default"
       ],
       "additionalProperties": false,
-      "description": "A dynamic tag: the element's tag name is resolved from a runtime expression instead of a literal. `$expression` is an opaque JavaScript expression (the engine emits it verbatim, never parses it) yielding the runtime tag — an intrinsic tag string or a component identifier. `default` is a required static tag: the basis for the HTML-mode static preview, the void/children validation check, and — on a passthrough surface root — the typed prop surface. The engine never injects `default` as a runtime fallback; an author wanting one writes it into the expression. Allowed only on a component's single root rendered element."
+      "description": "A dynamic tag: the element's tag name is resolved from a runtime expression instead of a literal. `$expression` is an opaque JavaScript expression (the engine emits it verbatim, never parses it) yielding the runtime tag - an intrinsic tag string or a component identifier. `default` is a required static tag: the basis for the HTML-mode static preview, the void/children validation check, and - on a passthrough surface root - the typed prop surface. The engine never injects `default` as a runtime fallback; an author wanting one writes it into the expression. Allowed only on a component's single root rendered element."
     },
     "Attributes": {
       "type": "object",
@@ -242,18 +256,25 @@
               "$ref": "#/definitions/ExpressionBinding"
             }
           ],
-          "description": "Classes. The array form is canonical; the string form is accepted, normalized, and literal-only. Array entries — or the sole value — may be `$expression` bindings: expression classes render after every other class source, in authored order among themselves, and a falsy expression value contributes nothing at runtime."
+          "description": "Classes. The array form is canonical; the string form is accepted, normalized, and literal-only. Array entries - or the sole value - may be `$expression` bindings: expression classes render after every other class source, in authored order among themselves, and a falsy expression value contributes nothing at runtime."
         },
         "style": {
+          "$ref": "#/definitions/NestedStyleObject",
+          "description": "Nested style object. A top-level `$expression` key carries a whole-object expression evaluating to a plain object of camelCase CSS property→value pairs; it may stand alone or coexist with static properties, includes, nested selectors, and per-property `$expression` values on the same node."
+        },
+        "$spread": {
           "anyOf": [
             {
-              "$ref": "#/definitions/NestedStyleObject"
+              "$ref": "#/definitions/ExpressionBinding"
             },
             {
-              "$ref": "#/definitions/ExpressionBinding"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExpressionBinding"
+              }
             }
           ],
-          "description": "Nested style object, or an `$expression` binding evaluating to a plain object of camelCase CSS property→value pairs."
+          "description": "Object spread. Each  {@link  ExpressionBinding }  names a runtime object whose own enumerable properties are spread onto this element (or, on a component-reference node, its props): React `{...x}`, Vue `v-bind=\"x\"`, Svelte `{...x}`. An array spreads several objects in order. Spreads lead the node's attributes - authored attributes, classes, and styles follow and override per key (consumers add, they do not replace). Unlike the passthrough root's undeclared-rest spread, `$spread` targets a *named* object and is allowed on any element, not the root alone. HTML mode is inert (no runtime consumer)."
         }
       },
       "additionalProperties": {
@@ -275,7 +296,7 @@
           }
         ]
       },
-      "description": "The single attribute map for both static and dynamic values.\n\n`class` and `style` have dedicated shapes. Both accept `$expression` bindings in constrained forms — expression entries in the class list (or as its sole value), expression values on top-level style properties, or an expression as the entire style object. *Condition-gated* classes and styles go through `conditionalAttributes` instead, which carries the condition explicitly and is literal-only."
+      "description": "The single attribute map for both static and dynamic values.\n\n`class` and `style` have dedicated shapes. Both accept `$expression` bindings in constrained forms - expression entries in the class list (or as its sole value), expression values on top-level style properties, or a top-level `$expression` key carrying the whole-object expression (which may coexist with static and nested keys). The reserved `$spread` key spreads a named runtime object's own properties onto the element (or composed component) ahead of the authored attributes. *Condition-gated* classes and styles go through `conditionalAttributes` instead, which carries the condition explicitly and is literal-only."
     },
     "ClassEntry": {
       "anyOf": [
@@ -299,14 +320,14 @@
         "$expression"
       ],
       "additionalProperties": false,
-      "description": "A dynamic attribute binding.\n\nThe `$` sigil marks the key as engine-reserved: `$expression` can never be a legitimate CSS property, class name, or HTML attribute, so the wrapper is unambiguous against every other value shape in the format. The expression is a JavaScript expression, treated as an opaque string and emitted verbatim into the target syntax — the engine never parses or evaluates it."
+      "description": "A dynamic attribute binding.\n\nThe `$` sigil marks the key as engine-reserved: `$expression` can never be a legitimate CSS property, class name, or HTML attribute, so the wrapper is unambiguous against every other value shape in the format. The expression is a JavaScript expression, treated as an opaque string and emitted verbatim into the target syntax - the engine never parses or evaluates it."
     },
     "NestedStyleObject": {
       "type": "object",
       "properties": {
         "$expression": {
-          "not": {},
-          "description": "`$expression` is engine-reserved and never a valid style key. A fully dynamic style is an `ExpressionBinding` in place of the style object, not a key inside it."
+          "type": "string",
+          "description": "A whole-object style expression: a string evaluating to a plain object of camelCase CSS property→value pairs, rendered through the target's dynamic style mechanism. May coexist with static properties, includes, nested selectors, and per-property `$expression` values on the same node (see the interface summary for the merge order). Banned inside nested selector blocks - stylesheets cannot hold runtime values."
         },
         "$include": {
           "anyOf": [
@@ -320,7 +341,7 @@
               }
             }
           ],
-          "description": "Sass `@include` statement(s), emitted verbatim under `styling.language: 'scss'`. A compile-time-opaque string, or an array for several includes in authored order; never produces a CSS declaration. A processing error under `styling.language: 'css'` (no sass build to resolve it)."
+          "deprecated": "Use an `@include ...` at-rule key instead\n(`'@include name': true` for a no-content include). Sass `@include`\nstatement(s), emitted verbatim under `styling.language: 'scss'`. A\ncompile-time-opaque string, or an array for several includes in authored\norder; never produces a CSS declaration. Under `styling.language: 'css'`\nthe engine resolves it against `styling.loadPaths`."
         }
       },
       "additionalProperties": {
@@ -330,6 +351,9 @@
           },
           {
             "type": "number"
+          },
+          {
+            "type": "boolean"
           },
           {
             "type": "array",
@@ -348,7 +372,7 @@
           }
         ]
       },
-      "description": "A nested style object.\n\nAccepts plain CSS properties (camelCase or kebab-case), pseudo-selectors (`':hover'`), media queries (`'@media (max-width: 768px)'`), and parent-modifier selectors (`'.button--large &'`) as keys. Nested selectors always require a stylesheet and therefore force a class-based selector for the node.\n\nTop-level plain properties — CSS custom properties included — may carry `$expression` values; these render through the target framework's dynamic style mechanism and never enter generated CSS. To make the entire style dynamic, use an `$expression` binding as the whole `style` value instead (mixing `$expression` with other keys is invalid).\n\nA `$include` key carries Sass `@include` statement(s) — the inverse of `$expression`: compile-time-opaque source (not runtime), legal in any block including nested selector blocks, emitted verbatim under `styling.language: 'scss'`."
+      "description": "A nested style object.\n\nAccepts plain CSS properties (camelCase or kebab-case), pseudo-selectors (`':hover'`), media queries (`'@media (max-width: 768px)'`), and parent-modifier selectors (`'.button--large &'`) as keys. Nested selectors always require a stylesheet and therefore force a class-based selector for the node.\n\nTop-level plain properties - CSS custom properties included - may carry `$expression` values; these render through the target framework's dynamic style mechanism and never enter generated CSS. To make the entire style dynamic, give the object a top-level `$expression` key (a string expression evaluating to a plain object of property→value pairs). It may\n**coexist** with static properties, `$include`/`@include`, nested selectors, and per-property `$expression` values on the same node: static and nested keys route to the stylesheet (or inline per strategy) as usual, while the whole-object expression renders through the dynamic mechanism. Where both reach the same inline mechanism, the merge order is whole-object first (the base layer), then authored static / per-property values, then any passthrough consumer `style` (later wins).\n\nAn `@include ...` at-rule key carries a Sass mixin include - the inverse of `$expression`: compile-time source (not runtime), legal in any block including nested selector blocks. Its value encodes whether a content block is passed:\n\n- `'@include name': true` (or `{}`) → `@include name;` (no content)\n- `'@include name': { ... }` → `@include name { ... }` (the object is the   content block)\n\nIncludes are emitted in authored order, interleaved with sibling declarations, so an include followed by an overriding declaration cascades as written. Under `styling.language: 'scss'` they pass through for the consumer's own sass build; under `'css'` (or the `inline` strategy) the engine resolves them against `styling.loadPaths`."
     },
     "NestedSelectorBlock": {
       "type": "object",
@@ -369,7 +393,7 @@
               }
             }
           ],
-          "description": "Sass `@include` statement(s), emitted verbatim under `styling.language: 'scss'`. A compile-time-opaque string, or an array for several includes in authored order; never produces a CSS declaration."
+          "deprecated": "Use an `@include ...` at-rule key instead\n(`'@include name': true` for a no-content include). Sass `@include`\nstatement(s), emitted verbatim under `styling.language: 'scss'`. A\ncompile-time-opaque string, or an array for several includes in authored\norder; never produces a CSS declaration."
         }
       },
       "additionalProperties": {
@@ -379,6 +403,9 @@
           },
           {
             "type": "number"
+          },
+          {
+            "type": "boolean"
           },
           {
             "type": "array",
@@ -394,7 +421,7 @@
           }
         ]
       },
-      "description": "A nested selector block inside a style object: the value of a pseudo-selector, at-rule, or parent-modifier key.\n\nNesting composes recursively — at-rules, pseudo-selectors, and parent-modifier selectors may contain one another, with at-rules wrapping outermost in the emitted CSS. Selector blocks always emit to a stylesheet, so their values are static only: `$expression` bindings are invalid inside them (stylesheets cannot hold runtime values).\n\nA `$include` key carries Sass `@include` statement(s) — compile-time source emitted verbatim under `styling.language: 'scss'`. Unlike `$expression`, it *is* valid inside selector blocks (it resolves at the consumer's sass build, not at runtime)."
+      "description": "A nested selector block inside a style object: the value of a pseudo-selector, at-rule, or parent-modifier key.\n\nNesting composes recursively - at-rules, pseudo-selectors, and parent-modifier selectors may contain one another, with at-rules wrapping outermost in the emitted CSS. Selector blocks always emit to a stylesheet, so their values are static only: `$expression` bindings are invalid inside them (stylesheets cannot hold runtime values).\n\nAn `@include ...` at-rule key carries a Sass mixin include - compile-time source. Its value encodes whether a content block is passed: `true` (or an empty object) emits a no-content `@include name;` statement, while a non-empty object emits `@include name { ... }` with that object as the content block. Like a selector block, it is valid inside nested blocks."
     },
     "AttributeValue": {
       "anyOf": [
@@ -430,7 +457,7 @@
         "attributes"
       ],
       "additionalProperties": false,
-      "description": "Condition-gated attributes.\n\nRenders as a generated class expression in React, `:class` object syntax in Vue, and `class:` directives in Svelte; HTML mode omits them from markup (warning emitted) but still generates CSS for the referenced classes.\n\n`class` and `style` are literal-only here — the condition is their dynamism; `$expression` values inside conditional attributes are a validation error."
+      "description": "Condition-gated attributes.\n\nRenders as a generated class expression in React, `:class` object syntax in Vue, and `class:` directives in Svelte; HTML mode omits them from markup (warning emitted) but still generates CSS for the referenced classes.\n\n`class` and `style` are literal-only here - the condition is their dynamism; `$expression` values inside conditional attributes are a validation error."
     },
     "EventDefinition": {
       "type": "object",
@@ -504,12 +531,44 @@
         "arrow-left",
         "arrow-right"
       ],
-      "description": "A key-guard event modifier: the handler only runs when the corresponding `KeyboardEvent.key` value matches (`'Enter'`, `'Escape'`, `'Tab'`, `' '`, `'Backspace'`, `'Delete'`, `'ArrowUp'`, ...).\n\nAt most one key modifier is allowed per event definition — chained key guards filter on a single `event.key` and could never pass together; multiple accepted keys are written as separate event entries."
+      "description": "A key-guard event modifier: the handler only runs when the corresponding `KeyboardEvent.key` value matches (`'Enter'`, `'Escape'`, `'Tab'`, `' '`, `'Backspace'`, `'Delete'`, `'ArrowUp'`, ...).\n\nAt most one key modifier is allowed per event definition - chained key guards filter on a single `event.key` and could never pass together; multiple accepted keys are written as separate event entries."
     },
     "ExtensionOverrides": {
       "type": "object",
       "additionalProperties": {},
       "description": "Per-extension node overrides.\n\nAny node may carry overrides under `extensions.<key>`, where `key` is the extension's declared name (`'react'`, `'vue'`, `'bem'`, `'tailwind'`, ...). The override shape is defined by each extension and typed via module augmentation of this interface, so `defineTemplate` autocompletes installed extensions' options.\n\nResolution priority: extension-specific override → generic concept → nothing. Overrides for extensions not present in `ProcessingOptions.extensions` are inert, not errors."
+    },
+    "NamedSlotContent": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TemplateNode"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TemplateNode"
+              }
+            },
+            "slotScope": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Content a composing node projects into one of a composed child's named slots (see  {@link  ElementNode.slots } ).\n\nThe shorthand array form is the projected content (an ordinary named slot). The object form adds `slotScope` - binding names received from that named slot's exposed scope (a scoped named slot), brought into scope of `content`, the same mechanism as  {@link  ElementNode.slotScope }  for the default slot."
     },
     "TextNode": {
       "type": "object",
@@ -524,7 +583,7 @@
         },
         "expression": {
           "type": "string",
-          "description": "Dynamic text, e.g. `'user.name'` — a JavaScript expression."
+          "description": "Dynamic text, e.g. `'user.name'` - a JavaScript expression."
         }
       },
       "required": [
@@ -589,13 +648,43 @@
             "$ref": "#/definitions/TemplateNode"
           },
           "description": "Rendered when nothing is projected."
+        },
+        "exposes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ExposedBinding"
+          },
+          "description": "Runtime values this slot exposes to its projected content, keyed by the scope binding name consumers see. Each value is the provider-scope expression (and, in the object form, an optional React type). Absent = an ordinary, non-scoped slot."
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "description": "A content projection point.\n\nHTML mode renders `fallback` (slots have no consumer in static HTML); React uses the `{children}` / `{slots.<name>}` prop convention; Vue and Svelte render `<slot>` elements. Fallbacks must not contain slot nodes."
+      "description": "A content projection point.\n\nHTML mode renders `fallback` (slots have no consumer in static HTML); React uses the `{children}` / `{slots.<name>}` prop convention; Vue and Svelte render `<slot>` elements. Fallbacks must not contain slot nodes.\n\nA slot may expose runtime values to its projected content (`exposes`), making it a scoped slot: React turns the slot prop into a render prop (`children?: (scope) => ReactNode`), Vue binds them on the `<slot>` (`<slot :api=\"api\" />`), and Svelte binds them likewise (`<slot api={api} />`). A composing node receives them through  {@link  ElementNode.slotScope } ."
+    },
+    "ExposedBinding": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "One runtime value a slot exposes to its projected content (a scoped slot).\n\nThe shorthand string form is the provider-scope JavaScript expression, typed `any` in the generated React render-prop signature. The object form adds an optional TypeScript `type` for that React signature; the type flows to a React consumer through inference from the composed component's `children` type. `type` has no effect on Vue or Svelte (legacy `<slot>` scope is untyped) and is ignored in HTML mode."
     },
     "ConditionalNode": {
       "type": "object",
@@ -628,6 +717,13 @@
           "type": "string",
           "description": "A JavaScript expression."
         },
+        "props": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/PropDefinition"
+          },
+          "description": "Props scoped to this branch of a discriminated surface root."
+        },
         "children": {
           "type": "array",
           "items": {
@@ -640,7 +736,7 @@
         "children"
       ],
       "additionalProperties": false,
-      "description": "One branch of a conditional.\n\n`condition` is required except for `'else'`."
+      "description": "One branch of a conditional.\n\n`condition` is required except for `'else'`.\n\n`props` declares props scoped to this branch - used only when the conditional is a component's discriminated surface root (each branch a single `passthrough` element of a different intrinsic tag). The props assemble into a discriminated union: each branch contributes its element's typed surface plus these branch props (typically the discriminant as a literal type, e.g. `visual: { type: 'true' }`). Props shared across branches stay on the component (`ComponentNode.props`); a name that is content in one branch and a native attribute in another lives as a shared prop bound explicitly per branch, never as a branch prop."
     },
     "ConditionalStatement": {
       "type": "string",

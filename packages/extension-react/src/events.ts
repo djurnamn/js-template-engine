@@ -102,7 +102,7 @@ export function eventProp(
  *
  * Two events whose names resolve to the same React prop (two `keydown`
  * handlers → `onKeyDown`, but not `keydown` vs a captured `keydown`) cannot
- * both be spelled as props — React would keep only the last. They merge
+ * both be spelled as props - React would keep only the last. They merge
  * into one handler that invokes each in declared order. A handler with an
  * early-returning guard (`self` or a key modifier) is isolated in its own
  * arrow so its `return` cannot skip the handlers that follow it.
@@ -163,7 +163,7 @@ function eventStatements(event: EventDefinition): string[] {
 
 /**
  * Whether the event's guards include an early `return` (the `self` and
- * key-guard modifiers) — such a handler must be isolated when merged so its
+ * key-guard modifiers) - such a handler must be isolated when merged so its
  * `return` does not skip later same-name handlers.
  */
 function needsIsolation(event: EventDefinition): boolean {

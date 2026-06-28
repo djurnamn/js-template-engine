@@ -3,6 +3,17 @@ import type { JsonValue, PropDefinition } from '@js-template-engine/types';
 import { serializeJavaScriptValue } from './literals';
 
 /**
+ * Whether a TypeScript type expression already admits `undefined` as a union
+ * member, so widening an optional prop's type would double it.
+ */
+function typeAdmitsUndefined(type: string): boolean {
+  return type
+    .split('|')
+    .map((part) => part.trim())
+    .includes('undefined');
+}
+
+/**
  * Renders the component's props as Svelte `export let` declarations, in
  * authored order. Returns `undefined` when no props are declared.
  *
@@ -29,7 +40,12 @@ export function exportLetDeclarations(
     if (definition.required === true) {
       return `export let ${name}: ${definition.type};`;
     }
-    return `export let ${name}: ${definition.type} | undefined = undefined;`;
+    // Widen an optional prop's type with `| undefined`, unless it already
+    // admits `undefined` (avoid a doubled `boolean | undefined | undefined`).
+    const optionalType = typeAdmitsUndefined(definition.type)
+      ? definition.type
+      : `${definition.type} | undefined`;
+    return `export let ${name}: ${optionalType} = undefined;`;
   });
 
   return lines.join('\n');

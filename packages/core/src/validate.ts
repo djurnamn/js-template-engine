@@ -11,7 +11,11 @@ import type {
 import { isDynamicTag, staticTagOf } from './dynamic-tag';
 import { isExpressionBinding } from './expression-binding';
 import { isKeyEventModifier } from './key-event-modifiers';
-import { RESERVED_PASSTHROUGH_PROPS } from './passthrough';
+import {
+  discriminatedSurfaceOf,
+  RESERVED_PASSTHROUGH_PROPS,
+} from './passthrough';
+import { normalizeNamedSlots } from './slots';
 import { TemplateError } from './TemplateError';
 import { VOID_ELEMENTS } from './void-elements';
 
@@ -25,6 +29,9 @@ const NODE_TYPES = new Set([
   'conditional',
   'iteration',
 ]);
+
+/** A bare JavaScript identifier - no member access, calls, or operators. */
+const IDENTIFIER_PATTERN = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 interface ValidationContext {
   /** True while validating the subtree of a slot's fallback. */
@@ -122,6 +129,57 @@ function validatePassthrough(
   if (passthroughs.length === 0) {
     return;
   }
+
+  const reserved = new Set(RESERVED_PASSTHROUGH_PROPS);
+  const sharedProps = Array.isArray(template)
+    ? []
+    : Object.keys(template.props ?? {});
+
+  // A discriminated surface root: a single root conditional whose every branch
+  // is a passthrough element. Multiple passthroughs are legal here, so this
+  // case is handled before the single-root rules below.
+  const surface = discriminatedSurfaceOf(rootChildren);
+  if (surface !== undefined) {
+    const branchElements = new Set(surface.branches.map((entry) => entry.element));
+    for (const { node, path } of passthroughs) {
+      if (!branchElements.has(node)) {
+        throw new TemplateError(
+          "A passthrough element must be the component's single root rendered element, or a branch root of its discriminated surface root",
+          path
+        );
+      }
+      const tagName = staticTagOf(node.tag);
+      if (!/^[a-z]/.test(tagName)) {
+        throw new TemplateError(
+          `A passthrough element requires an intrinsic HTML tag; '${tagName}' is a component reference`,
+          path
+        );
+      }
+    }
+
+    const branchProps = surface.branches.flatMap((entry) =>
+      Object.keys(entry.branch.props ?? {})
+    );
+    const surfacePath = passthroughs[0].path;
+    for (const propName of [...sharedProps, ...branchProps]) {
+      if (reserved.has(propName)) {
+        throw new TemplateError(
+          `A passthrough component must not declare the reserved prop '${propName}'; the surface contract owns ${RESERVED_PASSTHROUGH_PROPS.join(', ')}`,
+          surfacePath
+        );
+      }
+    }
+    for (const slotName of slotNames) {
+      if (reserved.has(slotName)) {
+        throw new TemplateError(
+          `A passthrough component must not declare a slot named '${slotName}'; the surface contract reserves ${RESERVED_PASSTHROUGH_PROPS.join(', ')}`,
+          surfacePath
+        );
+      }
+    }
+    return;
+  }
+
   if (passthroughs.length > 1) {
     throw new TemplateError(
       'At most one element per component may set passthrough',
@@ -145,11 +203,7 @@ function validatePassthrough(
     );
   }
 
-  const reserved = new Set(RESERVED_PASSTHROUGH_PROPS);
-  const declaredProps = Array.isArray(template)
-    ? []
-    : Object.keys(template.props ?? {});
-  for (const propName of declaredProps) {
+  for (const propName of sharedProps) {
     if (reserved.has(propName)) {
       throw new TemplateError(
         `A passthrough component must not declare the reserved prop '${propName}'; the surface contract owns ${RESERVED_PASSTHROUGH_PROPS.join(', ')}`,
@@ -191,6 +245,15 @@ function collectSurfaceNodes(
         }
         if (node.children) {
           collectSurfaceNodes(node.children, `${nodePath}.children`, passthroughs, slotNames, dynamicTags);
+        }
+        for (const named of normalizeNamedSlots(node.slots)) {
+          collectSurfaceNodes(
+            named.content,
+            `${nodePath}.slots.${named.name}`,
+            passthroughs,
+            slotNames,
+            dynamicTags
+          );
         }
         break;
       case 'fragment':
@@ -264,6 +327,9 @@ function validateNode(
           path
         );
       }
+      if (node.exposes !== undefined) {
+        validateExposes(node.exposes, `${path}.exposes`);
+      }
       node.fallback?.forEach((child, index) => {
         validateNode(child, `${path}.fallback[${index}]`, {
           insideSlotFallback: true,
@@ -327,15 +393,160 @@ function validateElement(
     );
   }
 
+  if (node.slotScope !== undefined) {
+    validateSlotScope(node, effectiveTag, path);
+  }
+
+  if (node.slots !== undefined) {
+    validateSlots(node, effectiveTag, path, context);
+  }
+
   node.children?.forEach((child, index) => {
     validateNode(child, `${path}.children[${index}]`, context);
   });
 }
 
+/**
+ * Validates the `exposes` record of a scoped slot: each key is a bare
+ * identifier (the scope binding name), and each value is a non-empty
+ * provider-scope expression (string shorthand or `{ value, type? }`), with an
+ * optional non-empty `type` string.
+ */
+function validateExposes(exposes: unknown, path: string): void {
+  if (typeof exposes !== 'object' || exposes === null || Array.isArray(exposes)) {
+    throw new TemplateError(
+      "'exposes' must be a record of binding names to expressions",
+      path
+    );
+  }
+  for (const [name, binding] of Object.entries(exposes)) {
+    const bindingPath = `${path}.${name}`;
+    if (!IDENTIFIER_PATTERN.test(name)) {
+      throw new TemplateError(
+        `An 'exposes' key must be a valid identifier; '${name}' is not`,
+        bindingPath
+      );
+    }
+    if (typeof binding === 'string') {
+      validateExpression(binding, bindingPath);
+      continue;
+    }
+    if (typeof binding !== 'object' || binding === null || Array.isArray(binding)) {
+      throw new TemplateError(
+        "An 'exposes' value must be an expression string or a { value, type? } object",
+        bindingPath
+      );
+    }
+    validateExpression((binding as { value?: unknown }).value, `${bindingPath}.value`);
+    const type = (binding as { type?: unknown }).type;
+    if (type !== undefined && (typeof type !== 'string' || type.trim() === '')) {
+      throw new TemplateError(
+        "An 'exposes' type must be a non-empty string",
+        `${bindingPath}.type`
+      );
+    }
+  }
+}
+
+/**
+ * Validates the `slotScope` of a consuming node: allowed only on a
+ * component-reference node (a capitalized tag), it must be a non-empty array
+ * of binding identifiers, and the node must have children to bring into scope.
+ */
+function validateSlotScope(
+  node: ElementNode,
+  effectiveTag: string,
+  path: string
+): void {
+  const slotScopePath = `${path}.slotScope`;
+  if (/^[a-z]/.test(effectiveTag)) {
+    throw new TemplateError(
+      `'slotScope' is allowed only on a component-reference node; '${effectiveTag}' is an intrinsic element`,
+      slotScopePath
+    );
+  }
+  if (!Array.isArray(node.slotScope) || node.slotScope.length === 0) {
+    throw new TemplateError(
+      "'slotScope' must be a non-empty array of binding identifiers",
+      slotScopePath
+    );
+  }
+  node.slotScope.forEach((name, index) => {
+    if (typeof name !== 'string' || !IDENTIFIER_PATTERN.test(name)) {
+      throw new TemplateError(
+        "Each 'slotScope' entry must be a valid identifier",
+        `${slotScopePath}[${index}]`
+      );
+    }
+  });
+  if ((node.children?.length ?? 0) === 0) {
+    throw new TemplateError(
+      "'slotScope' requires children to bring into scope",
+      slotScopePath
+    );
+  }
+}
+
+/**
+ * Validates the `slots` map of a consuming node (named-slot projection):
+ * allowed only on a component-reference node (a capitalized tag), each key a
+ * non-empty slot name and each value a non-empty content array or a
+ * `{ content, slotScope? }` object (content non-empty; `slotScope`, when
+ * present, a non-empty array of binding identifiers). Recurses into the
+ * projected content nodes.
+ */
+function validateSlots(
+  node: ElementNode,
+  effectiveTag: string,
+  path: string,
+  context: ValidationContext
+): void {
+  const slotsPath = `${path}.slots`;
+  if (/^[a-z]/.test(effectiveTag)) {
+    throw new TemplateError(
+      `'slots' is allowed only on a component-reference node; '${effectiveTag}' is an intrinsic element`,
+      slotsPath
+    );
+  }
+  if (
+    typeof node.slots !== 'object' ||
+    node.slots === null ||
+    Array.isArray(node.slots)
+  ) {
+    throw new TemplateError(
+      "'slots' must be a record of slot names to projected content",
+      slotsPath
+    );
+  }
+  for (const named of normalizeNamedSlots(node.slots)) {
+    const slotPath = `${slotsPath}.${named.name}`;
+    if (named.name.trim() === '') {
+      throw new TemplateError("A 'slots' key must be a non-empty slot name", slotPath);
+    }
+    if (!Array.isArray(named.content) || named.content.length === 0) {
+      throw new TemplateError(
+        `The slot '${named.name}' must project a non-empty array of content nodes`,
+        `${slotPath}.content`
+      );
+    }
+    named.slotScope.forEach((name, index) => {
+      if (typeof name !== 'string' || !IDENTIFIER_PATTERN.test(name)) {
+        throw new TemplateError(
+          "Each 'slotScope' entry must be a valid identifier",
+          `${slotPath}.slotScope[${index}]`
+        );
+      }
+    });
+    named.content.forEach((child, index) => {
+      validateNode(child, `${slotPath}.content[${index}]`, context);
+    });
+  }
+}
+
 interface AttributeRules {
   /**
    * False inside `conditionalAttributes`, where `class` and `style` are
-   * literal-only — the condition is their dynamism.
+   * literal-only - the condition is their dynamism.
    */
   expressionsAllowed: boolean;
 }
@@ -353,10 +564,49 @@ function validateAttributes(
       validateClass(value as Attributes['class'], `${path}.class`, rules);
     } else if (name === 'style') {
       validateStyle(value as Attributes['style'], `${path}.style`, rules);
+    } else if (name === '$spread') {
+      validateSpread(value, `${path}.$spread`, rules);
     } else if (isExpressionBinding(value)) {
       validateExpression(value.$expression, `${path}.${name}`);
     }
   }
+}
+
+/**
+ * Validates the `$spread` directive: an expression binding, or a non-empty
+ * array of them, naming the runtime objects spread onto the node. Static
+ * values are rejected - a spread is inherently a runtime reference - and
+ * `$spread` is not allowed inside `conditionalAttributes` (the condition is
+ * the dynamism there; a spread carries its own).
+ */
+function validateSpread(
+  value: unknown,
+  path: string,
+  rules: AttributeRules
+): void {
+  if (!rules.expressionsAllowed) {
+    throw new TemplateError(
+      "'$spread' is not allowed inside conditionalAttributes",
+      path
+    );
+  }
+  const entries = Array.isArray(value) ? value : [value];
+  if (entries.length === 0) {
+    throw new TemplateError(
+      "'$spread' must carry an expression binding or a non-empty array of them",
+      path
+    );
+  }
+  entries.forEach((entry, index) => {
+    const entryPath = Array.isArray(value) ? `${path}[${index}]` : path;
+    if (!isExpressionBinding(entry)) {
+      throw new TemplateError(
+        "'$spread' values must be { $expression } bindings, not static values",
+        entryPath
+      );
+    }
+    validateExpression(entry.$expression, entryPath);
+  });
 }
 
 function validateClass(
@@ -389,20 +639,17 @@ function validateStyle(
     return;
   }
   if ('$expression' in value) {
-    if (Object.keys(value).length > 1) {
-      throw new TemplateError(
-        "A whole-object style expression must have '$expression' as its sole key",
-        path
-      );
-    }
+    // A whole-object style expression may coexist with static properties,
+    // includes, nested selectors, and per-property expressions: validate it
+    // here, then fall through to validate the remaining keys as an ordinary
+    // style object (which skips the string-valued `$expression` key).
     if (!rules.expressionsAllowed) {
       throw new TemplateError(
         "Expression bindings are not allowed on 'style' inside conditionalAttributes; the condition is the dynamism",
         path
       );
     }
-    validateExpression(value.$expression, path);
-    return;
+    validateExpression((value as { $expression: unknown }).$expression, path);
   }
   validateStyleObject(value, path, rules, false);
 }
@@ -416,6 +663,10 @@ function validateStyleObject(
   for (const [key, value] of Object.entries(style)) {
     if (key === '$include') {
       validateInclude(value, `${path}.${key}`);
+      continue;
+    }
+    if (key.startsWith('@include')) {
+      validateIncludeKey(value, `${path}.${key}`, rules);
       continue;
     }
     if (value === undefined || typeof value !== 'object' || value === null) {
@@ -443,10 +694,43 @@ function validateStyleObject(
 }
 
 /**
+ * Validates an `@include ...` at-rule key's value: `true` (a no-content
+ * statement) or an object (the content block, validated like a nested
+ * selector block - no `$expression` inside). Any other value (a string,
+ * number, array, or `false`) is a processing error. An empty object is the
+ * no-content form and passes.
+ */
+function validateIncludeKey(
+  value: unknown,
+  path: string,
+  rules: AttributeRules
+): void {
+  if (value === true) {
+    return;
+  }
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !isExpressionBinding(value)
+  ) {
+    validateStyleObject(value, path, rules, true);
+    return;
+  }
+  throw new TemplateError(
+    "An '@include' value must be `true` (a no-content statement) or an object (a content block)",
+    path
+  );
+}
+
+/**
  * Validates a `$include` value: a non-empty string, or an array of
  * non-empty strings (several `@include` statements in authored order). The
- * statements themselves are opaque source — checked for non-emptiness,
+ * statements themselves are opaque source - checked for non-emptiness,
  * never parsed.
+ *
+ * @deprecated `$include` is superseded by `@include ...` at-rule keys; this
+ *   validation supports the deprecation window.
  */
 function validateInclude(value: unknown, path: string): void {
   const statements = Array.isArray(value) ? value : [value];

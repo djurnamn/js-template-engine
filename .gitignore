@@ -63,3 +63,6 @@ playwright-report/
 # Test-scaffolded kits
 packages/scaffold-ui-kit/.test-build-*/
 packages/integration-tests/.kit-e2e/
+
+# React compile-check scratch output
+packages/integration-tests/.compile-check/

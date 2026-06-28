@@ -2,7 +2,7 @@
 
 This guide walks through the template format and every render target. By
 the end you will have defined a component once, as data, and rendered it as
-vanilla HTML/CSS/JS, React, Vue, and Svelte — with BEM or Tailwind classes
+vanilla HTML/CSS/JS, React, Vue, and Svelte - with BEM or Tailwind classes
 applied as extensions.
 
 ## Install
@@ -22,7 +22,7 @@ npm install --save-dev @js-template-engine/types
 ## Your first template
 
 A template is plain, JSON-compatible data. Author it as a TypeScript module
-for autocompletion and compile-time checking — `defineTemplate` is an
+for autocompletion and compile-time checking - `defineTemplate` is an
 identity helper that types the data and returns it unchanged:
 
 ```ts
@@ -48,7 +48,7 @@ npx js-template-engine render greeting.ts
 # wrote output/Greeting.html
 ```
 
-With no `--framework` flag, the engine renders vanilla HTML — a working,
+With no `--framework` flag, the engine renders vanilla HTML - a working,
 zero-dependency output that is also the semantic baseline every framework
 target follows.
 
@@ -80,7 +80,7 @@ export default defineTemplate({
 });
 ```
 
-Framework targets turn `props` into their native form — a typed props
+Framework targets turn `props` into their native form - a typed props
 interface in React, `defineProps` in Vue, `export let` declarations in
 Svelte. A template can also be a bare array of nodes when component
 metadata isn't needed; the component name then comes from the
@@ -89,7 +89,7 @@ metadata isn't needed; the component name then comes from the
 ## Dynamic values
 
 Dynamic values are JavaScript expressions carried as opaque strings. The
-engine emits them verbatim into the target syntax — it never evaluates
+engine emits them verbatim into the target syntax - it never evaluates
 them.
 
 **Text** is either static `content` or a dynamic `expression`:
@@ -118,7 +118,7 @@ In React this renders `src={props.avatarUrl}`, in Vue `:src`, in Svelte
 `src={...}`; the HTML rendering shows a `{{ props.avatarUrl }}`
 placeholder.
 
-**Classes** accept `$expression` entries alongside literals — in the array
+**Classes** accept `$expression` entries alongside literals - in the array
 form or as the sole value:
 
 ```ts
@@ -131,7 +131,7 @@ value contributes nothing (React and Svelte generate falsy guards; Vue's
 array `:class` binding drops falsy entries), and they are never used as
 generated CSS selectors.
 
-**Styles** take expressions per property — CSS custom properties included —
+**Styles** take expressions per property - CSS custom properties included -
 or as the entire style object (`$expression` as the sole key, evaluating to
 an object of camelCase property→value pairs):
 
@@ -145,16 +145,33 @@ attributes: {
 attributes: { style: { $expression: 'computeStyleVariables(props)' } }
 ```
 
-Expression styles always render through the target's dynamic mechanism —
+Expression styles always render through the target's dynamic mechanism -
 React `style` objects, Vue `:style`, Svelte `style:property` directives
-(whole-object via a generated serializer helper) — and never enter
+(whole-object via a generated serializer helper) - and never enter
 generated CSS; static sibling properties follow the configured styling
 strategy unchanged. Expressions are invalid inside nested selector blocks:
 stylesheets cannot hold runtime values.
 
+**Spread** merges a named runtime object's own properties onto a node with the
+reserved `$spread` key. Its value is an `$expression`, or an array of them to
+spread several objects in order:
+
+```ts
+attributes: {
+  $spread: { $expression: 'backdropProps' },
+  class: ['overlay'],
+}
+```
+
+The spread leads the node's attributes, so authored attributes, classes, and
+styles follow it and win per key. React renders `{...backdropProps}`, Vue
+`v-bind="backdropProps"`, Svelte `{...backdropProps}`; the HTML rendering is
+inert, with no runtime object to spread. It works on a component reference the
+same way, spreading onto that component's props.
+
 ## Conditionals
 
-A `conditional` node holds the whole branch list — `if`, any number of
+A `conditional` node holds the whole branch list - `if`, any number of
 `else-if`, and an optional `else`:
 
 ```ts
@@ -183,7 +200,7 @@ Svelte `{#if}` blocks. The HTML rendering shows every branch between
 `<!-- if -->` comments.
 
 **Conditional attributes** put a condition on attributes rather than
-markup — the idiomatic form for state-dependent classes:
+markup - the idiomatic form for state-dependent classes:
 
 ```ts
 {
@@ -202,7 +219,7 @@ markup — the idiomatic form for state-dependent classes:
 React renders a class expression, Vue `:class` object syntax, Svelte
 `class:` directives. Styles attached to a conditional class are kept in
 the CSS output for every target. `class` and `style` inside
-`conditionalAttributes` are literal-only — the condition is their
+`conditionalAttributes` are literal-only - the condition is their
 dynamism; pass-through `$expression` values belong on the node's
 `attributes`.
 
@@ -262,6 +279,40 @@ primitive, so each slot becomes an optional `ReactNode` prop (the default
 slot is `children`; named slots are camelCased prop names) with the
 fallback applied via `??`. The HTML rendering shows the fallback in place.
 
+A slot can expose runtime values to whatever fills it through an `exposes`
+record - a render prop in React, a scoped `<slot>` in Vue and Svelte:
+
+```ts
+{ type: 'slot', exposes: { api: 'api' } }
+```
+
+The consuming side names what it receives with `slotScope` (see Composing
+components). React calls the children as a function with the exposed scope, Vue
+binds `<slot :api="api" />`, Svelte `<slot api={api} />`.
+
+A `conditional` whose `condition` is a bare slot name resolves to that slot's
+presence check instead of a plain identifier - the wrapper-when-filled pattern
+for an optional icon or affix:
+
+```ts
+{
+  type: 'conditional',
+  conditions: [
+    {
+      statement: 'if',
+      condition: 'icon',
+      children: [
+        { type: 'element', tag: 'span', children: [{ type: 'slot', name: 'icon' }] },
+      ],
+    },
+  ],
+}
+```
+
+React renders `props.icon &&`, Vue `v-if="$slots.icon"`, Svelte
+`{#if $$slots.icon}`. Only a bare slot name resolves this way; a compound
+expression that merely mentions one is emitted verbatim.
+
 ## Events
 
 Events sit on the element node, with optional modifiers:
@@ -278,7 +329,7 @@ Events sit on the element node, with optional modifiers:
 Event names are generic DOM names; each target maps them natively
 (`click` → `onClick` in React, `@click` in Vue, `on:click` in Svelte; in
 the HTML rendering, handlers are wired in the script block). The modifier
-vocabulary is `prevent`, `stop`, `self`, `once`, `capture`, `passive` —
+vocabulary is `prevent`, `stop`, `self`, `once`, `capture`, `passive` -
 mapped natively where the target supports it (Vue `@submit.prevent`,
 Svelte `on:submit|preventDefault`) and wrapped in generated handler code
 where it doesn't. A modifier a target cannot express emits a warning.
@@ -297,14 +348,14 @@ events: [
 Vue maps them natively (`@keyup.enter`, `@keydown.prevent.arrow-down`);
 React, Svelte, and the HTML rendering wrap the handler in a generated
 `event.key` guard, composed with the other modifiers in declared order.
-At most one key modifier per event definition — chained key guards could
+At most one key modifier per event definition - chained key guards could
 never pass together; write multiple accepted keys as separate event
 entries.
 
 ## Styles and output strategies
 
 Styles live on the nodes they style, as nested style objects supporting
-pseudo-classes, media queries, and parent-modifier selectors — nesting
+pseudo-classes, media queries, and parent-modifier selectors - nesting
 composes recursively, with at-rules wrapping outermost in the emitted CSS:
 
 ```ts
@@ -326,7 +377,7 @@ composes recursively, with at-rules wrapping outermost in the emitted CSS:
 
 Where the generated CSS needs a selector, the engine uses the node's first
 class; a node with no usable class is marked with a generated
-`data-jte-node` attribute and targeted through it — authored class lists
+`data-jte-node` attribute and targeted through it - authored class lists
 stay untouched.
 
 How styles and scripts are emitted is an output decision, not a template
@@ -350,7 +401,7 @@ falling back.
 
 ### CSS or SCSS output
 
-The stylesheet language is a separate choice — `styling.language`, `'css'`
+The stylesheet language is a separate choice - `styling.language`, `'css'`
 (default) or `'scss'`. Under `'scss'` the nested style objects emit as
 nested SCSS blocks (`&:hover`, nested `@media`, `.ancestor &`) instead of
 flattened rules; the two compile to the same cascade.
@@ -363,47 +414,61 @@ npx js-template-engine render button.ts --styling-language scss --styling-strate
 SCSS presumes a build step. Vue and Svelte tag their SFC style block
 `<style lang="scss">` under any strategy; the **react target and HTML
 mode** support `'scss'` only with `separate-file` (`Button.scss` + an
-import or `<link>`) — an in-document `<style>` block a browser can't parse
+import or `<link>`) - an in-document `<style>` block a browser can't parse
 is a processing error, not a silent fallback. Programmatically:
 `process(template, { styling: { language: 'scss', outputStrategy: 'separate-file' } })`.
 
-Under `'scss'` a style object may also carry Sass source that your own
-build resolves. A `$include` key holds one or more `@include` statements —
-valid in any block, including nested ones — emitted verbatim:
+A style object can also carry Sass `@include`s, written as at-rule keys. The
+value is the content block: `true` (or `{}`) for a no-content include, an
+object for one that takes a body. Includes interleave with sibling declarations
+in authored order, so an include followed by an overriding declaration cascades
+as written - legal in any block, nested ones included:
 
 ```ts
 attributes: {
   style: {
-    $include: "typography('label')",
-    color: '#1f2933',
-    ':hover': { $include: ['elevation(1)', 'focus-ring()'] },
+    '@include typography': true,
+    fontWeight: 700,
+    ':hover': { '@include hover-lift': true },
   },
 }
-// .field {
-//   @include typography('label');
-//   color: #1f2933;
+// .label {
+//   @include typography;
+//   font-weight: 700;
 //
 //   &:hover {
-//     @include elevation(1);
-//     @include focus-ring();
+//     @include hover-lift;
 //   }
 // }
 ```
 
-`$include` is compile-time source: it requires `language: 'scss'` (under
-`'css'` there is no Sass build to resolve it — a processing error). And the
-component-level `style` string becomes the **file-scope preamble** under
-`'scss'` — `@use` imports, local `$variables`, mixins, and `@keyframes`,
-emitted ahead of every node rule, where your `$include`s resolve.
+The component-level `style` string is the **file-scope preamble** - `@use`
+imports, `$variables`, mixins, and `@keyframes`, emitted ahead of every node
+rule, where the includes resolve.
+
+Under `'scss'` output the includes pass through verbatim for your own build to
+resolve. Under `'css'` output (or the `inline` strategy) the engine resolves
+them itself with Dart Sass against the directories in `styling.loadPaths`,
+expanding mixins, functions, and `$variables` to plain CSS - so a template that
+authors its styles in Sass still renders to any language a consumer picks. Token
+`var()` references survive the compile, so themed output stays reactive. From
+the CLI, point at the helper directories with a repeatable `--load-path`.
+
+```bash
+npx js-template-engine render button.ts --styling-language css --load-path src/styles
+```
+
+(An earlier `$include` key holds the same Sass `@include` source and still
+works, but emits a deprecation warning; prefer `@include` at-rule keys.)
 
 ### JavaScript or TypeScript output
 
-The script language is the matching choice — `scripting.language`,
+The script language is the matching choice - `scripting.language`,
 `'javascript'` (default) or `'typescript'`. Under `'typescript'` the
 generated prop-default consts carry their declared types
 (`const variant: 'primary' | 'secondary' = 'primary';`); your component
-`script` and event wiring emit verbatim. It governs HTML mode only — the
-React, Vue, and Svelte renderers emit TypeScript regardless — and, like
+`script` and event wiring emit verbatim. It governs HTML mode only - the
+React, Vue, and Svelte renderers emit TypeScript regardless - and, like
 SCSS, presumes a build step, so HTML mode supports it only with
 `separate-file` (writing `Button.ts`); `in-file`/`inline` are a processing
 error.
@@ -423,7 +488,7 @@ npx js-template-engine render src/components --framework vue    --output-directo
 npx js-template-engine render src/components --framework svelte --output-directory dist/svelte
 ```
 
-Programmatically, extensions are passed directly — no registry, no string
+Programmatically, extensions are passed directly - no registry, no string
 keys:
 
 ```ts
@@ -438,12 +503,13 @@ for (const file of result.files) {
 
 One framework extension per `process()` call; each render is one target.
 Per-framework escape hatches exist as node- and component-level overrides
-(`extensions.react`, `extensions.vue`, `extensions.svelte`) for attributes
-and events only that framework should see — `v-model` in Vue, `bind:` in
-Svelte — rendered verbatim by that target and ignored by every other.
+(`extensions.react`, `extensions.vue`, `extensions.svelte`): attributes and
+events a single target should see (`v-model` in Vue, `bind:` in Svelte), and a
+per-target `tag`. Each is rendered verbatim by that target and ignored by every
+other.
 
 **Composing components.** A `tag` may name a component identifier
-(`tag: 'UserAvatar'`) — the way to render one component inside another.
+(`tag: 'UserAvatar'`) - the way to render one component inside another.
 Supply the matching import through the per-extension `imports` overrides
 when module paths differ per target:
 
@@ -465,13 +531,56 @@ when module paths differ per target:
 Framework renderers emit the tag verbatim as a component reference; the
 HTML rendering emits the literal `<UserAvatar>` tag as its static preview.
 
+**A different element per target.** The per-target `tag` override swaps the
+rendered element for one target - the route for a node that portals differently
+in each framework:
+
+```ts
+{
+  type: 'element',
+  tag: 'div',
+  extensions: {
+    react: { tag: 'Portal' },
+    vue: { tag: 'Teleport', attributes: { to: 'body' } },
+  },
+}
+```
+
+React renders `<Portal>`, Vue `<Teleport to="body">`, Svelte and HTML keep the
+base `<div>`. A capitalized value is a component reference; bring it into scope
+with the component-level `imports` override.
+
+**Filling a composed component's slots.** A component-reference node fills the
+default slot with its `children`, named slots with a `slots` map, and receives a
+scoped slot's exposed values with `slotScope`:
+
+```ts
+{
+  type: 'element',
+  tag: 'Modal',
+  slotScope: ['api'],
+  slots: {
+    closeButton: [
+      { type: 'element', tag: 'button', children: [{ type: 'text', content: 'Close' }] },
+    ],
+  },
+  children: [{ type: 'text', content: 'Body' }],
+}
+```
+
+React passes each named slot as a prop (`closeButton={...}`) and the exposed scope
+as a render prop; Vue emits `<template #closeButton>` and consumes the scope with
+`v-slot`; Svelte emits `<svelte:fragment slot="closeButton">` and `let:`. A named
+slot can itself be scoped by giving it `{ content, slotScope }` instead of a bare
+array.
+
 ## Styling extensions: BEM and Tailwind
 
 Styling extensions contribute classes to element nodes; they compose with
 any framework target, and with each other.
 
 **BEM.** Declare a block on a container and elements/modifiers on
-descendants — the block is inherited from the nearest ancestor that
+descendants - the block is inherited from the nearest ancestor that
 declares one:
 
 ```ts
@@ -502,7 +611,7 @@ process(template, { extensions: [react(), bem()] });
 (defaults `'__'` and `'--'`).
 
 **Tailwind.** Utility classes ride along per node, written exactly as
-Tailwind expects them — variants included:
+Tailwind expects them - variants included:
 
 ```ts
 import { tailwind } from '@js-template-engine/extension-tailwind';
@@ -518,8 +627,8 @@ import { tailwind } from '@js-template-engine/extension-tailwind';
 process(template, { extensions: [react(), tailwind()] });
 ```
 
-Classes merge in a fixed order — static first, then each styling extension
-in the order passed, then conditional classes, then expression classes —
+Classes merge in a fixed order - static first, then each styling extension
+in the order passed, then conditional classes, then expression classes -
 with first-occurrence deduplication of the literal sources. A template can carry both `bem` and `tailwind` blocks;
 each is inert unless its extension is active, so the same source renders
 correctly for every configuration.
@@ -527,7 +636,7 @@ correctly for every configuration.
 **Tailwind without a Tailwind build.** The same utilities can instead be
 converted into ordinary CSS: `tailwind({ output: 'styles' })` resolves
 them against the bundled Tailwind v4 default theme into each node's style
-object — variants become pseudo-selector and media-query blocks — and the
+object - variants become pseudo-selector and media-query blocks - and the
 result flows through the normal styling pipeline, so the generated
 components are self-contained. How you author and what you ship become
 independent choices:
@@ -541,11 +650,11 @@ process(template, { extensions: [react(), tailwind({ output: 'styles' })] });
 
 The conversion covers the utilities that resolve to plain declarations on
 their own node (see the extension README for the exact table); anything
-outside that — and any unknown utility — is a loud processing error, never
+outside that - and any unknown utility - is a loud processing error, never
 a silent drop.
 
 The reverse also works: `tailwind({ convertStyles: true })` turns each
-element's authored `style` into utility classes against the same theme —
+element's authored `style` into utility classes against the same theme -
 on-scale values become named utilities, everything else an arbitrary value
 or property, so coverage is total. Authoring in plain CSS and shipping
 utility-class components becomes just another independent choice:
@@ -564,7 +673,7 @@ utilities.
 ## JSON templates and validation
 
 Templates are serializable by construction, so everything above also works
-as plain JSON — the transport form for generators and tooling. The types
+as plain JSON - the transport form for generators and tooling. The types
 package ships a generated JSON Schema for validating it, and the CLI
 validates either form directly:
 
@@ -578,10 +687,11 @@ same path.
 
 ## Building a UI kit
 
-To turn templates into a publishable, multi-framework component library —
+To turn templates into a publishable, multi-framework component library -
 single source of truth in `src/components/`, built output per target, and
 a consumer CLI that copies components into consuming projects with zero
-engine dependencies — use [scaffold-ui-kit](../packages/scaffold-ui-kit):
+engine dependencies - use [scaffold-ui-kit](https://github.com/djurnamn/scaffold-ui-kit),
+a separate project built on this engine:
 
 ```bash
 npx scaffold-ui-kit my-ui-kit
@@ -589,10 +699,10 @@ npx scaffold-ui-kit my-ui-kit
 
 ## Reference
 
-- [`@js-template-engine/types`](../packages/types) — the template format
-- [`@js-template-engine/core`](../packages/core) — the engine and extension contract
-- [`js-template-engine`](../packages/cli) — the CLI
-- [`scaffold-ui-kit`](../packages/scaffold-ui-kit) — the kit scaffolder
+- [`@js-template-engine/types`](../packages/types) - the template format
+- [`@js-template-engine/core`](../packages/core) - the engine and extension contract
+- [`js-template-engine`](../packages/cli) - the CLI
+- [`scaffold-ui-kit`](https://github.com/djurnamn/scaffold-ui-kit) - the kit scaffolder (a separate project)
 - Extensions: [react](../packages/extension-react), [vue](../packages/extension-vue),
   [svelte](../packages/extension-svelte), [bem](../packages/extension-bem),
   [tailwind](../packages/extension-tailwind)

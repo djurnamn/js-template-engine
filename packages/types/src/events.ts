@@ -3,7 +3,7 @@
  * `KeyboardEvent.key` value matches (`'Enter'`, `'Escape'`, `'Tab'`, `' '`,
  * `'Backspace'`, `'Delete'`, `'ArrowUp'`, ...).
  *
- * At most one key modifier is allowed per event definition — chained key
+ * At most one key modifier is allowed per event definition - chained key
  * guards filter on a single `event.key` and could never pass together;
  * multiple accepted keys are written as separate event entries.
  */

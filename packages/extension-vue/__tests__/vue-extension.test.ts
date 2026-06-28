@@ -318,6 +318,20 @@ describe('vue()', () => {
     expect(content).not.toContain('genericHandler');
   });
 
+  it('lets a node-level vue tag override replace the element and merge its attributes', () => {
+    const content = fileContent([
+      {
+        type: 'element',
+        tag: 'div',
+        extensions: { vue: { tag: 'Teleport', attributes: { to: 'body' } } },
+        children: [{ type: 'text', content: 'x' }],
+      },
+    ]);
+    expect(content).toContain('<Teleport to="body">');
+    expect(content).toContain('</Teleport>');
+    expect(content).not.toContain('<div');
+  });
+
   it('applies a component-level vue override (style replace)', () => {
     const content = fileContent({
       type: 'component',
@@ -337,5 +351,56 @@ describe('vue()', () => {
     });
     expect(content).toContain('border: 2px dashed;');
     expect(content).not.toContain('border: 1px solid;');
+  });
+
+  describe('slot-presence conditions', () => {
+    it('resolves a condition naming a slot to $slots across branches, leaving prop and compound conditions bare', () => {
+      const content = fileContent({
+        type: 'component',
+        name: 'Field',
+        props: { pressed: { type: 'boolean', required: false } },
+        children: [
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon',
+                children: [{ type: 'slot', name: 'icon' }],
+              },
+              {
+                statement: 'else-if',
+                condition: 'prefix',
+                children: [{ type: 'slot', name: 'prefix' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'pressed',
+                children: [{ type: 'text', content: 'on' }],
+              },
+            ],
+          },
+          {
+            type: 'conditional',
+            conditions: [
+              {
+                statement: 'if',
+                condition: 'icon && pressed',
+                children: [{ type: 'text', content: 'both' }],
+              },
+            ],
+          },
+        ],
+      });
+      expect(content).toContain('v-if="$slots.icon"');
+      expect(content).toContain('v-else-if="$slots.prefix"');
+      expect(content).toContain('v-if="pressed"');
+      expect(content).toContain('v-if="icon && pressed"');
+    });
   });
 });

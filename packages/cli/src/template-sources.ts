@@ -66,7 +66,7 @@ export async function loadTemplate(filePath: string): Promise<Template> {
 }
 
 /**
- * Whether a module's default export has a template's root shape — a node
+ * Whether a module's default export has a template's root shape - a node
  * array or a node object. Modules without a default export resolve to
  * their namespace object, which this rules out.
  */
