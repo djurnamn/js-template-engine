@@ -1,5 +1,6 @@
 import {
   classExpressions,
+  formatBemCall,
   GENERATED_NODE_ATTRIBUTE,
   hasNestedSelectors,
   hasPlainProperties,
@@ -9,8 +10,8 @@ import {
   normalizeClassList,
   normalizeExposes,
   normalizeNamedSlots,
+  rewriteSlotReferences,
   serializeInlineStyle,
-  slotConditionTarget,
   wholeStyleExpression,
   type BemRuntimeCall,
   type TargetPlan,
@@ -162,21 +163,47 @@ function renderConditional(
   return lines;
 }
 
+/** Vue's slot-presence form for a named slot. */
+function vuePresence(slotName: string): string {
+  return `$slots.${slotName}`;
+}
+
 /**
- * The expression a branch condition emits. A bare identifier naming a declared
- * named slot becomes that slot's Vue presence check (`$slots.<name>`), since
- * the bare slot name is not a declared prop; every other condition is emitted
+ * The expression a branch condition emits. A reference to a declared named
+ * slot becomes that slot's Vue presence check (`$slots.<name>`), since the
+ * bare slot name is not a declared prop; the rest of the condition is emitted
  * verbatim.
  */
 function conditionExpression(
   branch: ConditionalNode['conditions'][number],
   context: VueContext
 ): string {
-  const slotName = slotConditionTarget(branch.condition, context.namedSlots);
-  if (slotName !== undefined) {
-    return `$slots.${slotName}`;
-  }
-  return String(branch.condition);
+  return String(
+    rewriteSlotReferences(branch.condition, context.namedSlots, vuePresence)
+  );
+}
+
+/**
+ * The runtime `bem(...)` call for a node, with named-slot references in its
+ * conditional modifiers resolved to Vue's `$slots.<name>` presence form - the
+ * same resolution the conditional nodes apply.
+ */
+function bemCallExpression(
+  runtimeCall: BemRuntimeCall,
+  context: VueContext
+): string {
+  return formatBemCall(
+    runtimeCall.elementName,
+    runtimeCall.staticModifiers,
+    runtimeCall.conditionalModifiers.map((modifier) => ({
+      modifier: modifier.modifier,
+      condition: rewriteSlotReferences(
+        modifier.condition,
+        context.namedSlots,
+        vuePresence
+      )!,
+    }))
+  );
 }
 
 function renderIteration(
@@ -394,12 +421,26 @@ function buildAttributeParts(
   const override = node.extensions?.vue as VueNodeOverrides | undefined;
   const attributes = { ...node.attributes, ...override?.attributes };
   const events = override?.events ?? node.events ?? [];
-  const conditionals = node.conditionalAttributes ?? [];
+  // Named-slot references in each condition resolve to Vue's `$slots` presence
+  // form here, so attribute/class expressions match the conditional nodes that
+  // gate on the same slot.
+  const conditionals = (node.conditionalAttributes ?? []).map((conditional) => ({
+    ...conditional,
+    condition: rewriteSlotReferences(
+      conditional.condition,
+      context.namedSlots,
+      vuePresence
+    )!,
+  }));
 
   // In BEM runtime mode this node renders its BEM classes as the `bem(...)`
   // call: the contributed literals are suppressed from the static class list
   // and the folded conditional classes from the conditional rendering.
   const runtimeCall = context.bemRuntimeCalls?.get(node);
+  const runtimeCallExpression =
+    runtimeCall === undefined
+      ? undefined
+      : bemCallExpression(runtimeCall, context);
   const contributedClasses = new Set(runtimeCall?.contributedClasses ?? []);
   const foldedClasses = new Set(runtimeCall?.foldedConditionalClasses ?? []);
   const classConditionals =
@@ -438,7 +479,7 @@ function buildAttributeParts(
           staticClasses,
           classConditionals,
           classExpressions(classValue),
-          runtimeCall?.expression
+          runtimeCallExpression
         )
       );
       classRendered = true;
@@ -464,7 +505,7 @@ function buildAttributeParts(
 
   if (!classRendered) {
     parts.push(
-      ...classParts([], classConditionals, [], runtimeCall?.expression)
+      ...classParts([], classConditionals, [], runtimeCallExpression)
     );
   }
 

@@ -1,5 +1,6 @@
 import {
   normalizeClassList,
+  type BemConditionalModifier,
   type BemRuntimeCall,
   type CollapseVocabulary,
   type StylingContext,
@@ -127,7 +128,7 @@ export function bem(options: BemOptions = {}): BemExtension {
       // Fold a conditional class that parses as `{base}{separator}{modifier}`
       // into the call's record argument; out-of-vocabulary conditional classes
       // are left for ordinary conditional rendering.
-      const foldedModifiers: { modifier: string; condition: string }[] = [];
+      const foldedModifiers: BemConditionalModifier[] = [];
       const foldedConditionalClasses: string[] = [];
       const prefix = `${base}${modifierSeparator}`;
       for (const conditional of element.conditionalAttributes ?? []) {
@@ -145,11 +146,9 @@ export function bem(options: BemOptions = {}): BemExtension {
       return {
         block,
         declaresBlock: declaredBlock !== undefined,
-        expression: buildCallExpression(
-          elementName,
-          staticModifiers,
-          foldedModifiers
-        ),
+        elementName,
+        staticModifiers,
+        conditionalModifiers: foldedModifiers,
         contributedClasses: [
           base,
           ...staticModifiers.map(
@@ -192,63 +191,6 @@ export function bem(options: BemOptions = {}): BemExtension {
         : { baseClass: base, modifierSeparator };
     },
   };
-}
-
-/**
- * Builds the `bem(...)` call expression for one element. The element name is
- * the first argument (`undefined` when block-level with modifiers, omitted
- * when block-level with none); the modifiers form the second argument.
- */
-function buildCallExpression(
-  elementName: string | undefined,
-  staticModifiers: readonly string[],
-  foldedModifiers: readonly { modifier: string; condition: string }[]
-): string {
-  const modifierArgument = buildModifierArgument(staticModifiers, foldedModifiers);
-  if (modifierArgument === undefined) {
-    return elementName === undefined ? 'bem()' : `bem(${quote(elementName)})`;
-  }
-  const elementArgument =
-    elementName === undefined ? 'undefined' : quote(elementName);
-  return `bem(${elementArgument}, ${modifierArgument})`;
-}
-
-/**
- * Builds the modifier argument: a record when any modifier is conditional
- * (static entries keyed to `true`, folded entries to their condition), a bare
- * string or array for static-only modifiers, or `undefined` when there are
- * none.
- */
-function buildModifierArgument(
-  staticModifiers: readonly string[],
-  foldedModifiers: readonly { modifier: string; condition: string }[]
-): string | undefined {
-  if (foldedModifiers.length > 0) {
-    const entries = [
-      ...staticModifiers.map((modifier) => `${objectKey(modifier)}: true`),
-      ...foldedModifiers.map(
-        ({ modifier, condition }) => `${objectKey(modifier)}: ${condition}`
-      ),
-    ];
-    return `{ ${entries.join(', ')} }`;
-  }
-  if (staticModifiers.length === 0) {
-    return undefined;
-  }
-  if (staticModifiers.length === 1) {
-    return quote(staticModifiers[0]);
-  }
-  return `[${staticModifiers.map(quote).join(', ')}]`;
-}
-
-/** Single-quotes a string literal for emission. */
-function quote(value: string): string {
-  return `'${value}'`;
-}
-
-/** Returns a record key: a bare identifier where valid, otherwise quoted. */
-function objectKey(value: string): string {
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value) ? value : quote(value);
 }
 
 /** Returns the nearest ancestor element's declared block, if any. */

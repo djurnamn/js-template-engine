@@ -5,6 +5,7 @@ import {
   KEY_EVENT_MODIFIER_KEYS,
   keyGuardStatement,
 } from '../src/key-event-modifiers';
+import { parenthesizeClassExpression } from '../src/class-expression';
 import { classExpressions, normalizeClassList } from '../src/normalize';
 
 describe('normalizeClassList', () => {
@@ -40,6 +41,49 @@ describe('classExpressions', () => {
     expect(
       classExpressions([{ $expression: 'same' }, { $expression: 'same' }])
     ).toEqual(['same', 'same']);
+  });
+});
+
+describe('parenthesizeClassExpression', () => {
+  it('leaves atoms and additive concatenations untouched', () => {
+    // These bind at least as tightly as the surrounding `' ' +`, so wrapping
+    // them would only add noise (and churn every passthrough golden).
+    expect(parenthesizeClassExpression('className')).toBe('className');
+    expect(parenthesizeClassExpression('props.tone')).toBe('props.tone');
+    expect(parenthesizeClassExpression('tone?.value')).toBe('tone?.value');
+    expect(parenthesizeClassExpression("'Block--' + variant")).toBe(
+      "'Block--' + variant"
+    );
+  });
+
+  it('wraps a top-level logical or ternary operator', () => {
+    expect(parenthesizeClassExpression("active ? 'on' : 'off'")).toBe(
+      "(active ? 'on' : 'off')"
+    );
+    expect(parenthesizeClassExpression("variant || 'default'")).toBe(
+      "(variant || 'default')"
+    );
+    expect(parenthesizeClassExpression('tone ?? fallback')).toBe(
+      '(tone ?? fallback)'
+    );
+    // `&&` is a hazard in the `' ' +` operand slot (unlike the React
+    // short-circuit scanner, which excludes it).
+    expect(parenthesizeClassExpression("active && 'is-active'")).toBe(
+      "(active && 'is-active')"
+    );
+  });
+
+  it('ignores operators nested inside parentheses or string literals', () => {
+    expect(parenthesizeClassExpression("base('a || b')")).toBe("base('a || b')");
+    expect(parenthesizeClassExpression("prefix + (a || b)")).toBe(
+      'prefix + (a || b)'
+    );
+  });
+
+  it('trims before inspecting', () => {
+    expect(parenthesizeClassExpression("  variant || 'x'  ")).toBe(
+      "(variant || 'x')"
+    );
   });
 });
 

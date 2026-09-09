@@ -96,6 +96,49 @@ describe('render', () => {
     expect(component).toContain('export function Button');
   });
 
+  it('renders a legacy Svelte component by default', async () => {
+    const source = writeTemplate('button.json', buttonTemplate);
+    const outputDirectory = join(directory, 'output');
+
+    await run(
+      'render',
+      source,
+      '--framework',
+      'svelte',
+      '--output-directory',
+      outputDirectory
+    );
+
+    const component = readFileSync(
+      join(outputDirectory, 'Button.svelte'),
+      'utf8'
+    );
+    expect(component).not.toContain('$props()');
+    expect(component).not.toContain('svelte:options');
+  });
+
+  it('renders a Svelte runes component with --svelte-mode runes', async () => {
+    const source = writeTemplate('button.json', buttonTemplate);
+    const outputDirectory = join(directory, 'output');
+
+    await run(
+      'render',
+      source,
+      '--framework',
+      'svelte',
+      '--svelte-mode',
+      'runes',
+      '--output-directory',
+      outputDirectory
+    );
+
+    const component = readFileSync(
+      join(outputDirectory, 'Button.svelte'),
+      'utf8'
+    );
+    expect(component).toMatch(/\$props\(\)|svelte:options/);
+  });
+
   it('derives the component name from the filename', async () => {
     const source = writeTemplate('icon-badge.json', [
       { type: 'element', tag: 'span' },

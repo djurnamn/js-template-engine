@@ -4,9 +4,6 @@ import type {
   TemplateNode,
 } from '@js-template-engine/types';
 
-/** A bare JavaScript identifier - no member access, calls, or operators. */
-const IDENTIFIER_PATTERN = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
-
 /** One runtime value a scoped slot exposes, in normalized form. */
 export interface NormalizedExposedBinding {
   /** The scope binding name consumers see. */
@@ -127,33 +124,105 @@ export function collectNamedSlotNames(nodes: TemplateNode[]): Set<string> {
 }
 
 /**
- * Resolves the named slot a conditional `condition` refers to, or `undefined`
- * when it refers to none. A match requires `condition` to be a bare
- * identifier (no member access or operators) that exactly equals a declared
- * named-slot name - the optional-slot wrapper pattern (`condition: 'icon'`
- * gating a wrapper around `{ type: 'slot', name: 'icon' }`).
+ * Rewrites every reference to a declared named slot inside an expression to
+ * that slot's per-target presence form, leaving the rest of the expression
+ * verbatim. A bare slot name (`'icon'`), a negation (`'!icon'`), and a
+ * compound expression (`'icon && size > 2'`) all resolve their slot
+ * references; each framework target supplies its own presence form via
+ * `toPresence` (React `props.<propName>`, Vue `$slots.<name>`, Svelte
+ * `$$slots.<name>`).
  *
- * Each framework target turns the returned name into its own slot-presence
- * check (React `props.<propName>`, Vue `$slots.<name>`, Svelte
- * `$$slots.<name>`) rather than emitting the bare identifier, which is not in
- * scope outside React's slot props. Compound expressions that merely contain
- * a slot name (`'icon && size > 2'`) do not match - the identifier inside is
- * not rewritten.
+ * The expression is tokenized rather than pattern-matched so that two false
+ * positives are avoided: a member-access tail (`'foo.icon'` - the `icon` after
+ * a `.`) and an identifier inside a string literal (`"'icon'"`) are left
+ * untouched. A token the tokenizer cannot confidently classify as a free
+ * identifier is likewise left verbatim. The default (unnamed) slot is not
+ * identifier-addressable and so is never matched.
  *
- * @param condition - The conditional branch condition, if any.
+ * @param expression - The condition or attribute expression, if any.
  * @param namedSlots - The component's declared named-slot names.
- * @returns The matched slot name, or `undefined`.
+ * @param toPresence - Maps a matched slot name to its target presence form.
+ * @returns The expression with slot references rewritten, or `undefined` when
+ *   `expression` is `undefined`.
+ *
+ * @example
+ * rewriteSlotReferences('!icon', new Set(['icon']), (name) => `$$slots.${name}`)
+ * // => '!$$slots.icon'
  */
-export function slotConditionTarget(
-  condition: string | undefined,
-  namedSlots: ReadonlySet<string>
+export function rewriteSlotReferences(
+  expression: string | undefined,
+  namedSlots: ReadonlySet<string>,
+  toPresence: (slotName: string) => string
 ): string | undefined {
-  if (condition === undefined) {
-    return undefined;
+  if (expression === undefined || namedSlots.size === 0) {
+    return expression;
   }
-  const identifier = condition.trim();
-  if (!IDENTIFIER_PATTERN.test(identifier)) {
-    return undefined;
+
+  let result = '';
+  let index = 0;
+  // The last non-whitespace character emitted from the source, used to detect
+  // a member-access tail (`foo.icon`, `foo?.icon`) regardless of spacing.
+  let lastSignificant = '';
+  const { length } = expression;
+
+  while (index < length) {
+    const char = expression[index];
+
+    // String literals copy verbatim (honoring escapes); their contents are
+    // never rewritten.
+    if (char === "'" || char === '"' || char === '`') {
+      const quote = char;
+      result += char;
+      index += 1;
+      while (index < length) {
+        const inner = expression[index];
+        result += inner;
+        index += 1;
+        if (inner === '\\' && index < length) {
+          result += expression[index];
+          index += 1;
+          continue;
+        }
+        if (inner === quote) {
+          break;
+        }
+      }
+      lastSignificant = quote;
+      continue;
+    }
+
+    // Identifiers rewrite when they name a declared slot and are not a
+    // member-access tail.
+    if (isIdentifierStart(char)) {
+      let identifier = char;
+      index += 1;
+      while (index < length && isIdentifierPart(expression[index])) {
+        identifier += expression[index];
+        index += 1;
+      }
+      const isMemberAccess = lastSignificant === '.';
+      result +=
+        !isMemberAccess && namedSlots.has(identifier)
+          ? toPresence(identifier)
+          : identifier;
+      lastSignificant = identifier[identifier.length - 1];
+      continue;
+    }
+
+    result += char;
+    if (!/\s/.test(char)) {
+      lastSignificant = char;
+    }
+    index += 1;
   }
-  return namedSlots.has(identifier) ? identifier : undefined;
+
+  return result;
+}
+
+function isIdentifierStart(char: string): boolean {
+  return /[A-Za-z_$]/.test(char);
+}
+
+function isIdentifierPart(char: string): boolean {
+  return /[A-Za-z0-9_$]/.test(char);
 }

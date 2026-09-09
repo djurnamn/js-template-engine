@@ -46,6 +46,38 @@ through `options.styling` and `options.scripting`:
 | `in-file` (default) | a `<style>` block | a `<script>` block |
 | `separate-file` | `Button.css` + link | `Button.js` + script tag |
 
+Under `separate-file`, `styling.stylesheetLink: 'none'` emits the stylesheet
+and links it from nowhere - no import, no `<style src>` block, no `<link>` -
+leaving how the styles are loaded to whoever consumes the output:
+
+```ts
+process(template, {
+  styling: { outputStrategy: 'separate-file', stylesheetLink: 'none' },
+});
+```
+
+## Cascade layers
+
+`styling.layer` wraps collected stylesheet rules in a cascade layer, so a
+component holds the same cascade position however its styles are taken - from
+an aggregate stylesheet or from the per-component one beside it:
+
+```ts
+process(template, {
+  styling: {
+    layer: { name: 'kit.components', order: ['kit.reset', 'kit.components'] },
+  },
+});
+```
+
+`order` declares the full layer order ahead of the wrapper, in every emitted
+stylesheet: cascade-layer order is fixed by first declaration, and a
+per-component stylesheet may be the first thing a consumer loads. The layer
+applies under every output strategy wherever rules reach a stylesheet; inline
+`style="..."` declarations carry none. Under `styling.language: 'scss'` the
+component-level preamble's `@use` and `@forward` loads stay above the layer
+block, where sass requires them.
+
 ## Validation
 
 `process()` validates the template first and throws a `TemplateError`

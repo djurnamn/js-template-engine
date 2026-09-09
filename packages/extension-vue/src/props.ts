@@ -24,19 +24,26 @@ export function propsInterface(
 }
 
 /**
- * Whether a prop's TypeScript type is `boolean` for the purposes of Vue's
- * Boolean prop casting - `boolean`, or `boolean` unioned only with `undefined`
- * and/or `null` (`boolean | undefined`). A union with any other member
- * (`boolean | 'auto'`), or a named type, is deliberately **not** matched: the
- * engine sees only the type string and cannot reason about Vue's runtime cast
- * for those, so it stays conservative and leaves them to the author.
+ * Whether a prop's TypeScript type includes a Boolean-casting union member,
+ * for the purposes of Vue's Boolean prop casting: the `boolean` keyword or a
+ * literal `false`/`true` member. Vue's type-based `defineProps` resolves any
+ * of these to a runtime types array containing `Boolean` (`boolean | string`
+ * and `false | 'default'` both become `[Boolean, String]`), which sets the
+ * Boolean-cast flag - so the absent prop is cast to `false` exactly as for a
+ * pure `boolean` prop. Matching is textual on the authored type string: any
+ * `|`-split member that is exactly `boolean`, `false`, or `true`. A quoted
+ * `'false'`/`'true'` string literal stays unmatched (Vue resolves it to
+ * `String` - no cast), as does a member nested inside a generic or
+ * parenthesized type (`Array<boolean | string>` splits into fragments that
+ * never equal a casting member, and Vue resolves the outer type without the
+ * Boolean flag). A named type alias that expands to a boolean-containing
+ * union is not visible in the type string and stays unmatched: an author
+ * using one declares the `undefined` default explicitly.
  */
-function isBooleanType(type: string): boolean {
-  const remainder = type
-    .split('|')
-    .map((part) => part.trim())
-    .filter((part) => part !== 'undefined' && part !== 'null');
-  return remainder.length === 1 && remainder[0] === 'boolean';
+const BOOLEAN_CASTING_MEMBERS = new Set(['boolean', 'false', 'true']);
+
+function includesBooleanType(type: string): boolean {
+  return type.split('|').some((part) => BOOLEAN_CASTING_MEMBERS.has(part.trim()));
 }
 
 /**
@@ -47,13 +54,15 @@ function isBooleanType(type: string): boolean {
  * - no defaults: `defineProps<NameProps>();`
  * - with defaults: `withDefaults(defineProps<NameProps>(), { ... });`
  *
- * An optional `boolean` prop with no declared default is emitted with an
- * explicit `undefined` default. Without it, Vue's Boolean casting coerces the
- * absent prop to `false`, diverging from React and Svelte (where an absent
- * optional prop is `undefined`); declaring any default - even `undefined` - 
- * opts the prop out of the cast, restoring cross-target parity. This matters
- * for a controlled/uncontrolled sentinel prop, where `value === undefined` is
- * semantically distinct from `false`.
+ * An optional prop whose type includes a Boolean-casting member (pure
+ * `boolean`, a `boolean` union member as in `boolean | string`, or a literal
+ * `false`/`true` member as in `false | 'default'`) and that declares no
+ * default is emitted with an explicit `undefined` default. Without it, Vue's Boolean casting
+ * coerces the absent prop to `false`, diverging from React and Svelte (where
+ * an absent optional prop is `undefined`); declaring any default - even
+ * `undefined` - opts the prop out of the cast, restoring cross-target parity.
+ * This matters for a controlled/uncontrolled sentinel prop, where
+ * `value === undefined` is semantically distinct from `false`.
  */
 export function definePropsStatement(
   componentName: string,
@@ -70,7 +79,10 @@ export function definePropsStatement(
       entries.push(
         `  ${name}: ${serializeJavaScriptValue(definition.default as JsonValue)},`
       );
-    } else if (definition.required !== true && isBooleanType(definition.type)) {
+    } else if (
+      definition.required !== true &&
+      includesBooleanType(definition.type)
+    ) {
       entries.push(`  ${name}: undefined,`);
     }
   }

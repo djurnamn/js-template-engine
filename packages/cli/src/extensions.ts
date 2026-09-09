@@ -1,6 +1,9 @@
 import { bem, type BemOptions } from '@js-template-engine/extension-bem';
 import { react } from '@js-template-engine/extension-react';
-import { svelte } from '@js-template-engine/extension-svelte';
+import {
+  svelte,
+  type SvelteOptions,
+} from '@js-template-engine/extension-svelte';
 import {
   tailwind,
   type TailwindOptions,
@@ -17,10 +20,12 @@ export const stylingNames = ['bem', 'tailwind'] as const;
 export type FrameworkName = (typeof frameworkNames)[number];
 export type StylingName = (typeof stylingNames)[number];
 
-const frameworkFactories: Record<FrameworkName, () => Extension> = {
+const frameworkFactories: Record<
+  Exclude<FrameworkName, 'svelte'>,
+  () => Extension
+> = {
   react,
   vue,
-  svelte,
 };
 
 /**
@@ -34,19 +39,25 @@ const frameworkFactories: Record<FrameworkName, () => Extension> = {
  * @param styling - Styling extension names, in application order.
  * @param bemOptions - Options forwarded to the BEM extension factory.
  * @param tailwindOptions - Options forwarded to the Tailwind extension factory.
+ * @param svelteOptions - Options forwarded to the Svelte extension factory.
  * @returns Extension instances ready for `process()`.
  */
 export function buildExtensions(
   framework: FrameworkName | undefined,
   styling: readonly StylingName[],
   bemOptions: BemOptions = {},
-  tailwindOptions: TailwindOptions = {}
+  tailwindOptions: TailwindOptions = {},
+  svelteOptions: SvelteOptions = {}
 ): Extension[] {
   const extensions: Extension[] = styling.map((name) =>
     name === 'bem' ? bem(bemOptions) : tailwind(tailwindOptions)
   );
   if (framework !== undefined) {
-    extensions.push(frameworkFactories[framework]());
+    extensions.push(
+      framework === 'svelte'
+        ? svelte(svelteOptions)
+        : frameworkFactories[framework]()
+    );
   }
   return extensions;
 }

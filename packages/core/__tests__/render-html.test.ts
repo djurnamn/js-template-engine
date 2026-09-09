@@ -463,6 +463,38 @@ describe('renderHtml', () => {
       );
     });
 
+    it('stylesheetLink none emits the stylesheet without the link element', () => {
+      const result = process(template, {
+        styling: {
+          outputStrategy: 'separate-file',
+          stylesheetLink: 'none',
+        },
+      });
+      expect(result.files.map((file) => file.path)).toEqual([
+        'Badge.html',
+        'Badge.css',
+      ]);
+      const html = result.files[0].content;
+      expect(html).not.toContain('<link');
+      expect(html).not.toContain('<style>');
+      expect(result.files[1].content).toBe(
+        '.badge {\n  color: white;\n  background-color: crimson;\n}\n'
+      );
+    });
+
+    it('rejects stylesheetLink none without the separate-file strategy', () => {
+      expect(() =>
+        process(template, {
+          styling: { outputStrategy: 'in-file', stylesheetLink: 'none' },
+        })
+      ).toThrow(/requires the 'separate-file' styling strategy/);
+      expect(() =>
+        process(template, {
+          styling: { outputStrategy: 'inline', stylesheetLink: 'none' },
+        })
+      ).toThrow(/there is no separate stylesheet to leave unlinked/);
+    });
+
     it('inline wraps non-identifier handlers as invoked function expressions', () => {
       const result = process(
         [

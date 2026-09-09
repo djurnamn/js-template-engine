@@ -33,6 +33,26 @@ describe('vue()', () => {
     ).toThrowError(TemplateError);
   });
 
+  it('emits the stylesheet without a style block under stylesheetLink none', () => {
+    const template: Template = [
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: { class: ['card'], style: { color: 'red' } },
+        children: [{ type: 'text', content: 'Hi' }],
+      },
+    ];
+    const result = processWithVue(template, {
+      styling: { outputStrategy: 'separate-file', stylesheetLink: 'none' },
+    });
+    expect(result.files.map((file) => file.path)).toEqual([
+      'Component.vue',
+      'Component.css',
+    ]);
+    expect(result.files[0].content).not.toContain('<style');
+    expect(result.files[1].content).toContain('.card {');
+  });
+
   it('names the output file after the component', () => {
     const result = processWithVue({
       type: 'component',
@@ -354,7 +374,7 @@ describe('vue()', () => {
   });
 
   describe('slot-presence conditions', () => {
-    it('resolves a condition naming a slot to $slots across branches, leaving prop and compound conditions bare', () => {
+    it('resolves slot references to $slots across branches and inside a compound condition, leaving non-slot identifiers bare', () => {
       const content = fileContent({
         type: 'component',
         name: 'Field',
@@ -400,7 +420,7 @@ describe('vue()', () => {
       expect(content).toContain('v-if="$slots.icon"');
       expect(content).toContain('v-else-if="$slots.prefix"');
       expect(content).toContain('v-if="pressed"');
-      expect(content).toContain('v-if="icon && pressed"');
+      expect(content).toContain('v-if="$slots.icon && pressed"');
     });
   });
 });

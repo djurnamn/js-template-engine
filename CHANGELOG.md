@@ -5,6 +5,87 @@ All notable changes to JS Template Engine are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-09
+
+A minor release. Every change is additive and backward compatible with 2.1.0 -
+existing templates render unchanged, and every existing output is byte-identical
+unless a fix below names it. The additions bring a Svelte 5 runes dialect,
+finer control over emitted stylesheets, and a component-valued root tag.
+
+### Added
+
+- **Svelte runes mode.** `svelte({ mode: 'runes' })` renders the same templates
+  as Svelte 5 runes components: a typed `Props` interface destructured from
+  `$props()`, snippet props rendered with `{@render}` in place of `<slot>` and
+  `let:` (a scoped slot's exposes bundled into one object parameter, as in the
+  React render-prop shape), `<name> !== undefined` slot presence, and `onevent`
+  attributes with generated wrappers for the event modifiers. Same-name events
+  merge into one handler in declared order. A file with no rune of its own opts
+  in with `<svelte:options runes={true} />`. The default, `mode: 'legacy'`,
+  emits the classic dialect exactly as before. The CLI gains `--svelte-mode`.
+- **Stylesheet emitted without its link.** `styling.stylesheetLink: 'none'`
+  emits the `separate-file` stylesheet and links it from nowhere: no `import` on
+  React and Svelte, no `<style src>` block on a Vue SFC, no `<link>` in HTML
+  mode. The default, `'component'`, keeps the link as before. Pairing `'none'`
+  with a strategy that emits no separate stylesheet is an error. The CLI gains
+  `--stylesheet-link`.
+- **Cascade layers.** `styling.layer: { name, order? }` wraps emitted stylesheet
+  rules in `@layer <name> { ... }` under every output strategy, so a component
+  holds one cascade position however its styles are taken. `order` declares the
+  full layer order ahead of the wrapper in every emitted stylesheet, because
+  cascade order is fixed by first declaration and a per-component stylesheet may
+  be the first one a consumer loads. Under `scss`, `@use` and `@forward` loads
+  and a leading `@layer` statement are hoisted above the block. The CLI gains
+  `--styling-layer` and `--styling-layer-order`.
+- **Component-valued dynamic root tag.** A dynamic root `tag` whose expression
+  may resolve to a component value (the polymorphic `as={Link}` pattern)
+  declares `componentValued: true`. React and Vue accept both values as they
+  are; Svelte, whose `<svelte:element>` renders tag names only, emits a `typeof`
+  branch with a string arm and a component arm, with element-only custom
+  property `style:` directives rewritten to the component form on the
+  component arm.
+
+### Changed
+
+- **Slot-presence references resolve anywhere in an expression.** A reference
+  to a declared named slot resolves to that slot's per-target presence form
+  wherever it appears as a free identifier - bare, negated (`!icon`), or in a
+  compound expression - and in attribute and class expressions as well as
+  `conditional` conditions, including a `conditionalAttributes` condition
+  folded into a runtime BEM call. A slot name inside a string literal or as a
+  member-access tail is left untouched. Previously only a bare identifier in a
+  `conditional` condition resolved.
+
+### Fixed
+
+- **Svelte runes composes a declared event with the passthrough spread.** On a
+  passthrough root, a declared `events` binding was emitted as a plain
+  attribute after the rest spread, so it overwrote a handler the consumer's
+  spread carried for the same event, and erased it when the declared handler
+  prop was unset. Both handlers now run in order, declared first, and no
+  listener is attached when neither is supplied. Legacy mode was unaffected.
+- **Svelte runes aliases a snippet prop shadowed by a same-named projection.**
+  A component projecting its own named slot, with a fallback, into a composed
+  child's slot of the same name emitted a `{#snippet}` that shadowed the
+  destructured snippet prop, so the fallback guard tested the snippet itself
+  and rendered it from within its own body. The prop now destructures under an
+  alias and every generated reference reads it; the `Props` interface keeps
+  the public name.
+- **Vue emits the parity `undefined` default for boolean-containing union
+  props.** An optional prop whose union type includes `boolean` or a literal
+  `true`/`false` (`false | 'soft' | 'hard'`) was cast to `false` when absent on
+  Vue only, breaking a `prop === false` sentinel. Such a prop now carries the
+  same explicit `undefined` default as a plain optional boolean.
+- **React and Svelte parenthesize a compound `class` expression.** A `class`
+  `$expression` part whose top level carried `&&`, `||`, `??`, or a ternary
+  reassociated inside the presence guard and rendered the wrong value. Such a
+  part is now parenthesized before it is embedded; simpler parts are emitted
+  verbatim as before.
+- **Svelte style serializer drops a nullish entry.** A whole-object `style`
+  entry whose runtime value is `null` or `undefined` was serialized as the text
+  `undefined`, which a CSS custom property stores as a valid value. The
+  generated helper now omits such an entry, matching React and Vue.
+
 ## [2.1.0] - 2026-06-28
 
 A minor release. Every change is additive and backward compatible with 2.0.0 -

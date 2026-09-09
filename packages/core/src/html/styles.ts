@@ -1,4 +1,4 @@
-import type { NestedStyleObject } from '@js-template-engine/types';
+import type { NestedStyleObject, StyleLayer } from '@js-template-engine/types';
 
 import { isExpressionBinding } from '../expression-binding';
 import type { CollapseVocabulary, NormalizedComponent } from '../normalize';
@@ -15,12 +15,17 @@ import { hasIncludes, hasNestedSelectors, type TargetPlan } from './targeting';
  * Under the `inline` styling strategy, element styles consisting solely of
  * plain properties render as `style` attributes instead and are skipped
  * here; styles with nested selectors always require a stylesheet.
+ *
+ * A `layer` wraps the collected rules in `@layer <name> { ... }` (and
+ * declares the layer order ahead of it), so every target's stylesheet holds
+ * the same cascade position - see {@link applyLayer}.
  */
 export function collectCss(
   component: NormalizedComponent,
   plan: TargetPlan,
   stylingStrategy: string,
-  language: 'css' | 'scss' = 'css'
+  language: 'css' | 'scss' = 'css',
+  layer?: StyleLayer
 ): string {
   const chunks: string[] = [];
 
@@ -80,7 +85,113 @@ export function collectCss(
     }
   });
 
-  return chunks.join('\n\n');
+  return applyLayer(chunks.join('\n\n'), layer, language);
+}
+
+/** Sass load at-rules, which must precede everything else in a `.scss` file. */
+const SASS_LOAD_PATTERN = /^@(?:use|forward)\b/;
+
+/**
+ * A cascade-layer *statement* (`@layer a, b, c;`) - the order-declaring form,
+ * as opposed to the `@layer name { ... }` block form, which is rules.
+ */
+const LAYER_STATEMENT_PATTERN = /^@layer\s+[^{};]+;$/;
+
+/**
+ * Wraps collected CSS in its cascade layer, declaring the layer order ahead
+ * of the wrapper when one is configured.
+ *
+ * A leading run of at-rules that belong at file scope is hoisted above the
+ * wrapper rather than swept into it:
+ *
+ * - **Sass loads** (`@use`, `@forward`, under `'scss'`) must stay at the top
+ *   of the file - `@use` inside `@layer` is a sass error, and a module loaded
+ *   before the block emits its own CSS outside the layer.
+ * - **Layer statements** (`@layer a, b, c;`, under either language) declare
+ *   order, and nesting one inside a layer block declares *sub*-layers of it
+ *   (`kit.components.kit.reset`) - silently, and nothing in the author's
+ *   source shows why the cascade then misbehaves. A component style that
+ *   already states an order keeps stating the same one.
+ *
+ * The configured `layer.order` is emitted per stylesheet for the same reason
+ * order statements exist at all: cascade order is fixed by first declaration,
+ * a per-component stylesheet may be the first thing a consumer loads, and
+ * repeating an identical order costs nothing.
+ */
+function applyLayer(
+  css: string,
+  layer: StyleLayer | undefined,
+  language: 'css' | 'scss'
+): string {
+  if (layer === undefined || css === '') {
+    return css;
+  }
+  const { hoisted, rules } = splitHoistedAtRules(css, language);
+  if (rules.trim() === '') {
+    return css;
+  }
+
+  const sections: string[] = [];
+  if (hoisted.length > 0) {
+    sections.push(hoisted.join('\n'));
+  }
+  if (layer.order !== undefined && layer.order.length > 0) {
+    sections.push(`@layer ${layer.order.join(', ')};`);
+  }
+  const body = rules
+    .split('\n')
+    .map((line) => (line === '' ? line : `  ${line}`))
+    .join('\n');
+  sections.push(`@layer ${layer.name} {\n${body}\n}`);
+  return sections.join('\n\n');
+}
+
+/**
+ * Splits the leading run of file-scope at-rules off collected CSS. A sass
+ * load may span lines (`@use 'x' with (...)`), so it runs to its terminating
+ * `;`; blank lines and comments between them stay in the run, and anything
+ * else ends it - including a `@layer name { ... }` block, which is rules and
+ * belongs inside the wrapper.
+ */
+function splitHoistedAtRules(
+  css: string,
+  language: 'css' | 'scss'
+): { hoisted: string[]; rules: string } {
+  const lines = css.split('\n');
+  let index = 0;
+  let lastHoisted = -1;
+  while (index < lines.length) {
+    const line = lines[index].trim();
+    if (line === '' || line.startsWith('//') || line.startsWith('/*')) {
+      index += 1;
+      continue;
+    }
+    if (LAYER_STATEMENT_PATTERN.test(line)) {
+      lastHoisted = index;
+      index += 1;
+      continue;
+    }
+    if (language !== 'scss' || !SASS_LOAD_PATTERN.test(line) || line.includes('{')) {
+      break;
+    }
+    while (index < lines.length && !lines[index].trimEnd().endsWith(';')) {
+      index += 1;
+    }
+    lastHoisted = index;
+    index += 1;
+  }
+  if (lastHoisted === -1) {
+    return { hoisted: [], rules: css };
+  }
+  return {
+    hoisted: lines
+      .slice(0, lastHoisted + 1)
+      .filter((line) => line.trim() !== ''),
+    rules: lines
+      .slice(lastHoisted + 1)
+      .join('\n')
+      .replace(/^\n+/, ''),
+  };
 }
 
 /**

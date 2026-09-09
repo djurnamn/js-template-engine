@@ -15,6 +15,7 @@ import type {
   ElementNode,
   OutputFile,
   ProcessResult,
+  StylesheetLink,
   Warning,
 } from '@js-template-engine/types';
 
@@ -70,7 +71,13 @@ function renderVueComponent(
     'inline',
     resolved.selectorClasses
   );
-  const css = collectCss(resolved, plan, stylingStrategy, language);
+  const css = collectCss(
+    resolved,
+    plan,
+    stylingStrategy,
+    language,
+    options.styling.layer
+  );
   const surface = discriminatedSurfaceOf(resolved.children);
 
   const context: VueContext = {
@@ -91,6 +98,7 @@ function renderVueComponent(
   const styleBlock = buildStyleBlock(
     css,
     stylingStrategy,
+    options.styling.stylesheetLink,
     scoped,
     resolved.name,
     language
@@ -220,9 +228,16 @@ function resolveScoped(
   return true;
 }
 
+/**
+ * Renders the SFC `<style>` block. Under `separate-file` the block is the
+ * link to the emitted sibling stylesheet - so `stylesheetLink: 'none'`
+ * emits no block at all rather than an empty one, the SFC form of omitting
+ * an import.
+ */
 function buildStyleBlock(
   css: string,
   stylingStrategy: string,
+  stylesheetLink: StylesheetLink,
   scoped: boolean,
   componentName: string,
   language: 'css' | 'scss'
@@ -232,7 +247,9 @@ function buildStyleBlock(
   }
   const extension = language === 'scss' ? 'scss' : 'css';
   if (stylingStrategy === 'separate-file') {
-    return `<style src="./${componentName}.${extension}"></style>`;
+    return stylesheetLink === 'component'
+      ? `<style src="./${componentName}.${extension}"></style>`
+      : undefined;
   }
   const langAttribute = language === 'scss' ? ' lang="scss"' : '';
   return `<style${langAttribute}${scoped ? ' scoped' : ''}>\n${css}\n</style>`;

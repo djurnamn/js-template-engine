@@ -1,7 +1,7 @@
 import type { TemplateNode } from '@js-template-engine/types';
 import { describe, expect, it } from 'vitest';
 
-import { collectNamedSlotNames, slotConditionTarget } from '../src/slots';
+import { collectNamedSlotNames, rewriteSlotReferences } from '../src/slots';
 
 describe('collectNamedSlotNames', () => {
   it('collects named slots, descending into wrappers, conditionals, iterations, and fallbacks', () => {
@@ -45,25 +45,65 @@ describe('collectNamedSlotNames', () => {
   });
 });
 
-describe('slotConditionTarget', () => {
+describe('rewriteSlotReferences', () => {
   const slots = new Set(['icon', 'prefix']);
+  const presence = (name: string): string => `$$slots.${name}`;
 
-  it('matches a bare identifier naming a declared slot', () => {
-    expect(slotConditionTarget('icon', slots)).toBe('icon');
-    expect(slotConditionTarget('  icon  ', slots)).toBe('icon');
+  it('rewrites a bare slot identifier', () => {
+    expect(rewriteSlotReferences('icon', slots, presence)).toBe('$$slots.icon');
   });
 
-  it('does not match an identifier that names no declared slot', () => {
-    expect(slotConditionTarget('pressed', slots)).toBeUndefined();
+  it('rewrites a negated slot reference', () => {
+    expect(rewriteSlotReferences('!icon', slots, presence)).toBe(
+      '!$$slots.icon'
+    );
   });
 
-  it('does not match a compound expression that merely contains a slot name', () => {
-    expect(slotConditionTarget('icon && size > 2', slots)).toBeUndefined();
-    expect(slotConditionTarget('props.icon', slots)).toBeUndefined();
-    expect(slotConditionTarget('!icon', slots)).toBeUndefined();
+  it('rewrites every slot reference inside a compound expression', () => {
+    expect(rewriteSlotReferences('icon && size > 2', slots, presence)).toBe(
+      '$$slots.icon && size > 2'
+    );
+    expect(rewriteSlotReferences('!icon || prefix', slots, presence)).toBe(
+      '!$$slots.icon || $$slots.prefix'
+    );
   });
 
-  it('returns undefined for an absent condition (an else branch)', () => {
-    expect(slotConditionTarget(undefined, slots)).toBeUndefined();
+  it('leaves identifiers that name no declared slot verbatim', () => {
+    expect(rewriteSlotReferences('pressed', slots, presence)).toBe('pressed');
+    expect(rewriteSlotReferences('iconLabel', slots, presence)).toBe(
+      'iconLabel'
+    );
+  });
+
+  it('does not rewrite a member-access tail', () => {
+    expect(rewriteSlotReferences('props.icon', slots, presence)).toBe(
+      'props.icon'
+    );
+    expect(rewriteSlotReferences('foo?.icon', slots, presence)).toBe(
+      'foo?.icon'
+    );
+    expect(rewriteSlotReferences('a . icon', slots, presence)).toBe('a . icon');
+  });
+
+  it('does not rewrite a slot name inside a string literal', () => {
+    expect(rewriteSlotReferences("state === 'icon'", slots, presence)).toBe(
+      "state === 'icon'"
+    );
+    expect(rewriteSlotReferences('icon ? "icon" : x', slots, presence)).toBe(
+      '$$slots.icon ? "icon" : x'
+    );
+  });
+
+  it('is idempotent on already-rewritten output', () => {
+    const once = rewriteSlotReferences('!icon', slots, presence)!;
+    expect(rewriteSlotReferences(once, slots, presence)).toBe(once);
+  });
+
+  it('returns the expression unchanged when there are no named slots', () => {
+    expect(rewriteSlotReferences('!icon', new Set(), presence)).toBe('!icon');
+  });
+
+  it('returns undefined for an absent expression (an else branch)', () => {
+    expect(rewriteSlotReferences(undefined, slots, presence)).toBeUndefined();
   });
 });

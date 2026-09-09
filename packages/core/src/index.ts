@@ -46,6 +46,8 @@ export {
   KEY_EVENT_MODIFIER_KEYS,
   keyGuardStatement,
 } from './key-event-modifiers';
+export { formatBemCall, type BemConditionalModifier } from './bem-call';
+export { parenthesizeClassExpression } from './class-expression';
 export { mergeStyleObjects } from './merge-styles';
 export {
   classExpressions,
@@ -77,7 +79,7 @@ export {
   collectNamedSlotNames,
   normalizeExposes,
   normalizeNamedSlots,
-  slotConditionTarget,
+  rewriteSlotReferences,
   type NormalizedExposedBinding,
   type NormalizedNamedSlot,
 } from './slots';

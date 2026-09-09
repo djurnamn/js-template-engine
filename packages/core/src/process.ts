@@ -49,7 +49,9 @@ export function process(
     styling: {
       language: options.styling?.language ?? 'css',
       outputStrategy: options.styling?.outputStrategy ?? 'in-file',
+      stylesheetLink: options.styling?.stylesheetLink ?? 'component',
       loadPaths: options.styling?.loadPaths ?? [],
+      layer: options.styling?.layer,
     },
     scripting: {
       language: options.scripting?.language ?? 'javascript',
@@ -77,6 +79,7 @@ export function process(
   const styling = applyStylingExtensions(component, resolved.extensions);
 
   const framework = frameworks[0];
+  assertStylesheetLinkSupport(resolved);
   assertLanguageSupport(framework, resolved);
   assertScriptLanguageSupport(framework, resolved);
   let result: ProcessResult;
@@ -151,6 +154,26 @@ function styleUsesDollarInclude(
     }
   }
   return false;
+}
+
+/**
+ * Enforces the `stylesheetLink` reach: leaving the emitted stylesheet
+ * unlinked is meaningful only under the `separate-file` strategy, the one
+ * that emits a stylesheet of its own. Under `in-file` and `inline` there is
+ * no separate file to leave unlinked, so `'none'` is a processing error
+ * rather than a silently ignored option.
+ */
+function assertStylesheetLinkSupport(options: ResolvedProcessingOptions): void {
+  if (options.styling.stylesheetLink !== 'none') {
+    return;
+  }
+  if (options.styling.outputStrategy === 'separate-file') {
+    return;
+  }
+  throw new TemplateError(
+    `The 'none' stylesheet link requires the 'separate-file' styling strategy - ` +
+      `there is no separate stylesheet to leave unlinked under '${options.styling.outputStrategy}'`
+  );
 }
 
 /**

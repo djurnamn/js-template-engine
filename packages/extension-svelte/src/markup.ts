@@ -1,5 +1,6 @@
 import {
   classExpressions,
+  formatBemCall,
   GENERATED_NODE_ATTRIBUTE,
   hasNestedSelectors,
   hasPlainProperties,
@@ -9,11 +10,15 @@ import {
   normalizeClassList,
   normalizeExposes,
   normalizeNamedSlots,
+  parenthesizeClassExpression,
+  rewriteSlotReferences,
   serializeInlineStyle,
-  slotConditionTarget,
+  TemplateError,
   toKebabCaseProperty,
   wholeStyleExpression,
   type BemRuntimeCall,
+  type NormalizedExposedBinding,
+  type NormalizedNamedSlot,
   type TargetPlan,
 } from '@js-template-engine/core';
 import type {
@@ -30,7 +35,7 @@ import type {
   Warning,
 } from '@js-template-engine/types';
 
-import { eventAttribute } from './events';
+import { eventAttribute, runesEventAttributes } from './events';
 import {
   escapeAttributeValue,
   escapeText,
@@ -38,14 +43,26 @@ import {
   quoteSingle,
 } from './literals';
 import type { SvelteNodeOverrides } from './overrides';
+import { normalizeSlotName, REST_PROPERTIES_NAME } from './runes-props';
+import type { SvelteMode } from './svelte-extension';
 
 /** Everything the markup renderer needs besides the nodes themselves. */
 export interface SvelteContext {
   plan: TargetPlan;
+  /** The emission dialect: legacy Svelte or Svelte 5 runes. */
+  mode: SvelteMode;
   /** True when the styling output strategy is `inline`. */
   stylingInline: boolean;
   /** The declared named-slot names, for slot-presence conditions. */
   namedSlots: ReadonlySet<string>;
+  /**
+   * Runes only: the slot props whose local binding is aliased away from the
+   * prop name (prop name -> local binding), because a projected snippet
+   * declaration of the same name would lexically shadow the prop. Slot
+   * renders and slot-presence checks read the prop through this map; an
+   * absent entry means the prop name is the binding.
+   */
+  slotPropAliases: ReadonlyMap<string, string>;
   /**
    * Set when a whole-object style expression was rendered; the component
    * builder then emits the generated style serializer into `<script>`.
@@ -57,6 +74,12 @@ export interface SvelteContext {
    * and `bind:this={element}` exposes the DOM handle.
    */
   passthroughNode?: ElementNode;
+  /**
+   * The expression of a component-valued dynamic root tag, if the component
+   * has one. The script builder hoists it to the `RootTag` binding (`$:` in
+   * legacy, `$derived` in runes) that the markup's `typeof` branch resolves.
+   */
+  componentValuedRootExpression?: string;
   /**
    * The branch surface elements of a discriminated surface root. Each carries
    * the surface contract (`{...$$restProps}`, `class`/`style` merge,
@@ -70,11 +93,36 @@ export interface SvelteContext {
    * instead of the literal classes.
    */
   bemRuntimeCalls?: ReadonlyMap<ElementNode, BemRuntimeCall>;
+  /**
+   * Set when a runes event binding applied the `once(...)` helper; the
+   * component builder then declares the helper in `<script>`.
+   */
+  usesOnceHelper: boolean;
+  /**
+   * Set when a runes event binding rendered as a passive `{@attach}`
+   * listener; the component builder then imports `on` from `svelte/events`.
+   */
+  usesPassiveAttachment: boolean;
+  /**
+   * Set when a runes event binding on a passthrough surface root composed
+   * with the consumer spread's handler; the component builder then declares
+   * the `composeEventHandlers(...)` helper in `<script>`.
+   */
+  usesComposeHelper: boolean;
   warnings: Warning[];
 }
 
 /** The name of the generated whole-object style serializer helper. */
 export const STYLE_SERIALIZER_NAME = 'serializeStyleObject';
+
+/**
+ * The hoisted binding a component-valued dynamic root tag resolves to - the
+ * `typeof` branch in the markup and the `$:`/`$derived` declaration in the
+ * script both reference it. Capitalized so the runes component arm can render
+ * the bare `<RootTag>` form (a lowercase name would parse as an intrinsic
+ * tag). Mirrors the React extension's `RootTag` local.
+ */
+export const DYNAMIC_ROOT_BINDING = 'RootTag';
 
 const INDENTATION = '  ';
 const MAX_WIDTH = 80;
@@ -172,21 +220,78 @@ function renderConditional(
   return lines;
 }
 
+/** Svelte's legacy slot-presence form for a named slot. */
+function sveltePresence(slotName: string): string {
+  return `$$slots.${slotName}`;
+}
+
 /**
- * The expression a branch condition emits. A bare identifier naming a declared
- * named slot becomes that slot's Svelte presence check (`$$slots.<name>`),
- * since the bare slot name is not an `export let` prop; every other condition
- * is emitted verbatim through {@link expression}.
+ * The local binding a runes slot prop reads through: the prop name itself,
+ * or its alias when a same-named projected snippet declaration would shadow
+ * the prop (see {@link SvelteContext.slotPropAliases}).
+ */
+function slotPropBinding(propName: string, context: SvelteContext): string {
+  return context.slotPropAliases.get(propName) ?? propName;
+}
+
+/**
+ * Rewrites the declared-named-slot references in a condition or attribute
+ * expression to the mode's presence form: legacy `$$slots.<name>`, runes
+ * `<propName> !== undefined` against the snippet prop. Inside a compound
+ * runes expression the comparison is parenthesized so it stays a single
+ * operand next to `!`, `&&`, and the other operators; an expression that is
+ * exactly the bare slot name keeps the unparenthesized form.
+ */
+function slotPresenceExpression(
+  source: string | undefined,
+  context: SvelteContext
+): string | undefined {
+  if (context.mode !== 'runes') {
+    return rewriteSlotReferences(source, context.namedSlots, sveltePresence);
+  }
+  if (source !== undefined && context.namedSlots.has(source.trim())) {
+    return `${slotPropBinding(normalizeSlotName(source.trim()), context)} !== undefined`;
+  }
+  return rewriteSlotReferences(
+    source,
+    context.namedSlots,
+    (slotName) =>
+      `(${slotPropBinding(normalizeSlotName(slotName), context)} !== undefined)`
+  );
+}
+
+/**
+ * The expression a branch condition emits. A reference to a declared named
+ * slot becomes that slot's Svelte presence check (legacy `$$slots.<name>`,
+ * runes `<propName> !== undefined`), since the bare slot name is not a
+ * declared prop; the rest of the condition is emitted verbatim through
+ * {@link expression}.
  */
 function conditionExpression(
   branch: ConditionalNode['conditions'][number],
   context: SvelteContext
 ): string {
-  const slotName = slotConditionTarget(branch.condition, context.namedSlots);
-  if (slotName !== undefined) {
-    return `$$slots.${slotName}`;
-  }
-  return expression(String(branch.condition));
+  return expression(String(slotPresenceExpression(branch.condition, context)));
+}
+
+/**
+ * The runtime `bem(...)` call for a node, with named-slot references in its
+ * conditional modifiers resolved to the mode's slot-presence form - the same
+ * resolution the conditional nodes apply, so a modifier gated on a slot
+ * tracks the same presence as a wrapper gated on it.
+ */
+function bemCallExpression(
+  runtimeCall: BemRuntimeCall,
+  context: SvelteContext
+): string {
+  return formatBemCall(
+    runtimeCall.elementName,
+    runtimeCall.staticModifiers,
+    runtimeCall.conditionalModifiers.map((modifier) => ({
+      modifier: modifier.modifier,
+      condition: slotPresenceExpression(modifier.condition, context)!,
+    }))
+  );
 }
 
 /**
@@ -223,12 +328,67 @@ function renderIteration(
   ];
 }
 
+/**
+ * The scope object literal a scoped slot passes to its snippet: `{ api }`
+ * when an exposed binding's value expression is exactly its name
+ * (shorthand), `{ api: dialog.api }` otherwise.
+ */
+function scopeObjectLiteral(exposes: NormalizedExposedBinding[]): string {
+  const parts = exposes.map((binding) =>
+    binding.value.trim() === binding.name
+      ? binding.name
+      : `${binding.name}: ${binding.value.trim()}`
+  );
+  return `{ ${parts.join(', ')} }`;
+}
+
+/**
+ * Renders a slot in runes form: the snippet prop rendered through
+ * `{@render}`. Without a fallback the call is optional-chained
+ * (`{@render children?.()}`); with one, an `{#if}` guard renders the snippet
+ * when supplied and the fallback otherwise. A scoped slot bundles its
+ * exposed bindings into the snippet's one object argument.
+ */
+function renderSlotRunes(
+  node: SlotNode,
+  path: string,
+  indent: number,
+  context: SvelteContext
+): string[] {
+  const padding = pad(indent);
+  const propName =
+    node.name === undefined ? 'children' : normalizeSlotName(node.name);
+  // The prop is read through its local binding - aliased when a same-named
+  // projected snippet declaration would shadow it (a slot rendered inside
+  // that snippet's body would otherwise guard on and render the snippet
+  // itself, recursing forever).
+  const binding = slotPropBinding(propName, context);
+  const exposes = normalizeExposes(node.exposes);
+  const argument = exposes.length > 0 ? scopeObjectLiteral(exposes) : '';
+  const fallback = node.fallback ?? [];
+
+  if (fallback.length === 0) {
+    return [`${padding}{@render ${binding}?.(${argument})}`];
+  }
+
+  return [
+    `${padding}{#if ${binding}}`,
+    `${padding}${INDENTATION}{@render ${binding}(${argument})}`,
+    `${padding}{:else}`,
+    ...renderNodes(fallback, `${path}.fallback`, indent + 1, context),
+    `${padding}{/if}`,
+  ];
+}
+
 function renderSlot(
   node: SlotNode,
   path: string,
   indent: number,
   context: SvelteContext
 ): string[] {
+  if (context.mode === 'runes') {
+    return renderSlotRunes(node, path, indent, context);
+  }
   const padding = pad(indent);
   const slotAttributes: string[] = [];
   if (node.name !== undefined) {
@@ -277,13 +437,43 @@ function renderSlot(
   ];
 }
 
+/**
+ * Rewrites an element's attribute parts for a component-valued root's
+ * **component arm**, where Svelte's element-only directives are invalid. A CSS
+ * custom-property style directive (`style:--foo={v}`) becomes the component
+ * CSS-var-prop form (`--foo={v}`), which a forwarding component applies to its
+ * subtree exactly as the element arm's directive would. Any other element-only
+ * directive (a non-custom `style:`, or `class:`/`use:`/`transition:`/`in:`/
+ * `out:`/`animate:`) has no component-valid form, so it is a build-time error
+ * here rather than Svelte output that fails to compile on the component arm.
+ * The string arm keeps the directives unchanged - they are valid on
+ * `<svelte:element>`.
+ */
+function componentArmParts(parts: string[], path: string): string[] {
+  return parts.map((part) => {
+    const customProperty = part.match(/^style:(--[\w-]+)=([\s\S]+)$/);
+    if (customProperty) {
+      return `${customProperty[1]}=${customProperty[2]}`;
+    }
+    if (/^(style|class|use|transition|in|out|animate):/.test(part)) {
+      const directive = part.split('=')[0];
+      throw new TemplateError(
+        `A component-valued dynamic root cannot carry the element-only Svelte ` +
+          `directive '${directive}' - it is invalid on the component arm. Move ` +
+          `it to a string 'class'/'style' attribute, or drop 'componentValued'.`,
+        path
+      );
+    }
+    return part;
+  });
+}
+
 function renderElement(
   node: ElementNode,
   path: string,
   indent: number,
   context: SvelteContext
 ): string[] {
-  const padding = pad(indent);
   // A per-target `tag` override replaces the element wholesale (a capitalized
   // value renders as a component reference) and suppresses the dynamic-tag
   // path. Otherwise a dynamic tag renders as `<svelte:element this={...}>`; the
@@ -292,78 +482,226 @@ function renderElement(
     ?.tag;
   const dynamic =
     tagOverride === undefined && isDynamicTag(node.tag) ? node.tag : undefined;
-  const tag = tagOverride ?? (dynamic ? 'svelte:element' : node.tag);
-  const thisBinding = dynamic ? [`this={${dynamic.$expression}}`] : [];
+  const runes = context.mode === 'runes';
+  // A component-valued dynamic root may resolve to a component *or* a string
+  // fallback, which Svelte cannot express with one construct (`<svelte:element>`
+  // renders string tags only; the component forms render components only). So
+  // it emits a `typeof` branch over the hoisted `RootTag` binding - a
+  // `<svelte:element>` string arm and a component arm (`<svelte:component>` in
+  // legacy, a bare `<RootTag>` in runes) - each rendering the same element. The
+  // arm body sits one indent deeper inside the `{#if}`.
+  const componentValued = dynamic?.componentValued === true;
+  const bodyIndent = componentValued ? indent + 1 : indent;
   // A component-reference node with `slotScope` receives the composed
-  // component's default scoped slot via `let:`, scoping its children.
-  const letBindings =
+  // component's default scoped slot. In legacy form the scope binds via
+  // `let:` on the tag; in runes form the children render inside an explicit
+  // `{#snippet children(...)}` block instead (implicit children cannot take
+  // parameters), so no tag-level binding is emitted.
+  const slotScope =
     node.slotScope !== undefined && node.slotScope.length > 0
-      ? node.slotScope.map((name) => `let:${name}`)
+      ? node.slotScope
+      : undefined;
+  const letBindings =
+    slotScope !== undefined && !runes
+      ? slotScope.map((name) => `let:${name}`)
       : [];
-  const parts = [
-    ...thisBinding,
-    ...letBindings,
-    ...buildAttributeParts(node, path, context),
-  ];
   const children = node.children ?? [];
-  const joined = parts.length > 0 ? ` ${parts.join(' ')}` : '';
+  const snippetChildren = runes && slotScope !== undefined;
+
+  // The side-effecting renders (warnings, helper flags) run once; both branch
+  // arms reuse the results, so a component-valued root never double-emits a
+  // warning or a duplicated child subtree render.
+  const attributeParts = buildAttributeParts(node, path, context);
   // A component-reference node with `slots` projects content into the composed
-  // component's named slots, each rendered as a `<svelte:fragment slot="name">`
-  // child; a scoped named slot receives its scope through `let:` on the
-  // fragment. The default children stay bare (Svelte distinguishes by the
-  // `slot` attribute), and a default `slotScope` stays as the tag-level `let:`.
+  // component's named slots: in legacy form a `<svelte:fragment slot="name">`
+  // child (a scoped named slot receives its scope through `let:` on the
+  // fragment), in runes form a `{#snippet name(...)}` declaration inside the
+  // component tag. The default children stay bare in both forms.
   const namedSlots = normalizeNamedSlots(node.slots);
-  const slotFragments = namedSlots.flatMap((named) => {
-    const lets = named.slotScope.map((name) => `let:${name}`);
-    const attributes = [`slot="${named.name}"`, ...lets].join(' ');
-    return [
-      `${pad(indent + 1)}<svelte:fragment ${attributes}>`,
-      ...renderNodes(
-        named.content,
-        `${path}.slots.${named.name}.content`,
-        indent + 2,
-        context
-      ),
-      `${pad(indent + 1)}</svelte:fragment>`,
-    ];
-  });
+  const slotFragments = namedSlots.flatMap((named) =>
+    runes
+      ? snippetProjection(named, path, bodyIndent, context)
+      : fragmentProjection(named, path, bodyIndent, context)
+  );
   const hasNamedSlots = slotFragments.length > 0;
+  const childLines = snippetChildren
+    ? [
+        `${pad(bodyIndent + 1)}{#snippet children({ ${slotScope!.join(', ')} })}`,
+        ...renderNodes(children, `${path}.children`, bodyIndent + 2, context),
+        `${pad(bodyIndent + 1)}{/snippet}`,
+      ]
+    : renderNodes(children, `${path}.children`, bodyIndent + 1, context);
 
-  const multilineOpen = (closer: string): string[] => [
-    `${padding}<${tag}`,
-    ...parts.map((part) => `${padding}${INDENTATION}${part}`),
-    `${padding}${closer}`,
-  ];
+  // Pure assembly of one element rendering: no side effects, so it is safe to
+  // call once (the normal path) or twice (a component-valued root's two arms).
+  const assemble = (
+    tag: ElementNode['tag'],
+    thisBinding: string[],
+    isDynamicElement: boolean,
+    componentArm = false
+  ): string[] => {
+    const padding = pad(bodyIndent);
+    // The component arm rewrites element-only directives (custom-property
+    // styles become CSS-var-props; others error) so `<svelte:component>` /
+    // `<RootTag>` never receives a directive Svelte rejects.
+    const effectiveAttributeParts = componentArm
+      ? componentArmParts(attributeParts, path)
+      : attributeParts;
+    const parts = [...thisBinding, ...letBindings, ...effectiveAttributeParts];
+    const joined = parts.length > 0 ? ` ${parts.join(' ')}` : '';
 
-  if (children.length === 0 && !hasNamedSlots) {
-    const single = `${padding}<${tag}${joined} />`;
-    return fits(single) ? [single] : multilineOpen('/>');
-  }
+    const multilineOpen = (closer: string): string[] => [
+      `${padding}<${tag}`,
+      ...parts.map((part) => `${padding}${INDENTATION}${part}`),
+      `${padding}${closer}`,
+    ];
 
-  const open = `<${tag}${joined}>`;
-  const close = `</${tag}>`;
-
-  if (!hasNamedSlots && children.every((child) => child.type === 'text')) {
-    const text = children.map((child) => textPiece(child as TextNode)).join('');
-    const single = `${padding}${open}${text}${close}`;
-    if (fits(single)) {
-      return [single];
+    if (children.length === 0 && !hasNamedSlots) {
+      // Svelte 5 expects explicit closing tags on non-void elements, so the
+      // runes form never self-closes an intrinsic non-void tag.
+      if (runes && requiresExplicitClosingTag(tag, isDynamicElement)) {
+        const single = `${padding}<${tag}${joined}></${tag}>`;
+        return fits(single) ? [single] : multilineOpen(`></${tag}>`);
+      }
+      const single = `${padding}<${tag}${joined} />`;
+      return fits(single) ? [single] : multilineOpen('/>');
     }
+
+    const open = `<${tag}${joined}>`;
+    const close = `</${tag}>`;
+
+    if (
+      !hasNamedSlots &&
+      !snippetChildren &&
+      children.every((child) => child.type === 'text')
+    ) {
+      const text = children
+        .map((child) => textPiece(child as TextNode))
+        .join('');
+      const single = `${padding}${open}${text}${close}`;
+      if (fits(single)) {
+        return [single];
+      }
+      const openLines = fits(`${padding}${open}`)
+        ? [`${padding}${open}`]
+        : multilineOpen('>');
+      return [
+        ...openLines,
+        `${padding}${INDENTATION}${text}`,
+        `${padding}${close}`,
+      ];
+    }
+
     const openLines = fits(`${padding}${open}`)
       ? [`${padding}${open}`]
       : multilineOpen('>');
-    return [...openLines, `${padding}${INDENTATION}${text}`, `${padding}${close}`];
+    return [...openLines, ...childLines, ...slotFragments, `${padding}${close}`];
+  };
+
+  if (componentValued) {
+    const padding = pad(indent);
+    const binding = DYNAMIC_ROOT_BINDING;
+    const componentTag = runes ? binding : 'svelte:component';
+    const componentThis = runes ? [] : [`this={${binding}}`];
+    return [
+      `${padding}{#if typeof ${binding} === 'string'}`,
+      ...assemble('svelte:element', [`this={${binding}}`], true),
+      `${padding}{:else}`,
+      ...assemble(componentTag, componentThis, true, true),
+      `${padding}{/if}`,
+    ];
   }
 
-  const openLines = fits(`${padding}${open}`)
-    ? [`${padding}${open}`]
-    : multilineOpen('>');
+  const tag = tagOverride ?? (dynamic ? 'svelte:element' : node.tag);
+  const thisBinding = dynamic ? [`this={${dynamic.$expression}}`] : [];
+  return assemble(tag, thisBinding, dynamic !== undefined);
+}
+
+/**
+ * Renders one legacy named-slot projection: a
+ * `<svelte:fragment slot="name">` child, with the received scope bound
+ * through `let:` on the fragment.
+ */
+function fragmentProjection(
+  named: NormalizedNamedSlot,
+  path: string,
+  indent: number,
+  context: SvelteContext
+): string[] {
+  const lets = named.slotScope.map((name) => `let:${name}`);
+  const attributes = [`slot="${named.name}"`, ...lets].join(' ');
   return [
-    ...openLines,
-    ...renderNodes(children, `${path}.children`, indent + 1, context),
-    ...slotFragments,
-    `${padding}${close}`,
+    `${pad(indent + 1)}<svelte:fragment ${attributes}>`,
+    ...renderNodes(
+      named.content,
+      `${path}.slots.${named.name}.content`,
+      indent + 2,
+      context
+    ),
+    `${pad(indent + 1)}</svelte:fragment>`,
   ];
+}
+
+/**
+ * Renders one runes named-slot projection: a `{#snippet name(...)}`
+ * declaration inside the component tag, its parameter destructuring the
+ * received scope names for a scoped named slot.
+ */
+function snippetProjection(
+  named: NormalizedNamedSlot,
+  path: string,
+  indent: number,
+  context: SvelteContext
+): string[] {
+  const parameters =
+    named.slotScope.length > 0 ? `{ ${named.slotScope.join(', ')} }` : '';
+  return [
+    `${pad(indent + 1)}{#snippet ${normalizeSlotName(named.name)}(${parameters})}`,
+    ...renderNodes(
+      named.content,
+      `${path}.slots.${named.name}.content`,
+      indent + 2,
+      context
+    ),
+    `${pad(indent + 1)}{/snippet}`,
+  ];
+}
+
+/** The HTML void elements, which keep the self-closing form in runes mode. */
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+/**
+ * Whether a childless element must render an explicit closing tag in runes
+ * form: intrinsic non-void elements only. Void elements, component
+ * references, and `<svelte:element>` (whose runtime tag is unknowable) keep
+ * the self-closing form.
+ */
+function requiresExplicitClosingTag(
+  tag: ElementNode['tag'],
+  dynamic: boolean
+): boolean {
+  if (dynamic || typeof tag !== 'string') {
+    return false;
+  }
+  if (!/^[a-z]/.test(tag) || tag.includes(':')) {
+    return false;
+  }
+  return !VOID_ELEMENTS.has(tag);
 }
 
 function buildAttributeParts(
@@ -374,7 +712,13 @@ function buildAttributeParts(
   const override = node.extensions?.svelte as SvelteNodeOverrides | undefined;
   const attributes = { ...node.attributes, ...override?.attributes };
   const events = override?.events ?? node.events ?? [];
-  const conditionals = node.conditionalAttributes ?? [];
+  // Named-slot references in each condition resolve to the mode's
+  // slot-presence form here, so attribute/class expressions match the
+  // conditional nodes that gate on the same slot.
+  const conditionals = (node.conditionalAttributes ?? []).map((conditional) => ({
+    ...conditional,
+    condition: slotPresenceExpression(conditional.condition, context)!,
+  }));
   const isPassthrough =
     node === context.passthroughNode ||
     context.surfaceElements?.has(node) === true;
@@ -386,6 +730,10 @@ function buildAttributeParts(
   // call: the contributed literals are suppressed from the static class list
   // and the folded conditional classes from the conditional rendering.
   const runtimeCall = context.bemRuntimeCalls?.get(node);
+  const runtimeCallExpression =
+    runtimeCall === undefined
+      ? undefined
+      : bemCallExpression(runtimeCall, context);
   const contributedClasses = new Set(runtimeCall?.contributedClasses ?? []);
   const foldedClasses = new Set(runtimeCall?.foldedConditionalClasses ?? []);
   const classConditionals =
@@ -423,7 +771,7 @@ function buildAttributeParts(
           staticClasses,
           classConditionals,
           [...classExpressions(classValue), ...consumerClasses],
-          runtimeCall?.expression
+          runtimeCallExpression
         )
       );
       classRendered = true;
@@ -451,7 +799,7 @@ function buildAttributeParts(
 
   if (!classRendered) {
     parts.push(
-      ...classParts([], classConditionals, consumerClasses, runtimeCall?.expression)
+      ...classParts([], classConditionals, consumerClasses, runtimeCallExpression)
     );
   }
 
@@ -472,15 +820,41 @@ function buildAttributeParts(
     parts.push(`${GENERATED_NODE_ATTRIBUTE}="${target.generatedNodeIndex}"`);
   }
 
-  for (const event of events) {
-    parts.push(eventAttribute(event));
+  if (context.mode === 'runes') {
+    // On a surface root the event attributes share one attribute object with
+    // `{...restProperties}`, so each composes with the handler the spread
+    // carries for the same attribute rather than overwriting it. Legacy `on:`
+    // directives attach as their own listeners and need no such composition.
+    for (const emission of runesEventAttributes(
+      events,
+      isPassthrough ? REST_PROPERTIES_NAME : undefined
+    )) {
+      parts.push(emission.part);
+      if (emission.usesOnceHelper) {
+        context.usesOnceHelper = true;
+      }
+      if (emission.usesPassiveAttachment) {
+        context.usesPassiveAttachment = true;
+      }
+      if (emission.usesComposeHelper) {
+        context.usesComposeHelper = true;
+      }
+    }
+  } else {
+    for (const event of events) {
+      parts.push(eventAttribute(event));
+    }
   }
 
   if (isPassthrough) {
     // Spread the consumer's undeclared attributes first so the authored
     // attributes above win per key; forward a consumer `style` not already
     // merged into an authored one; bind the DOM handle.
-    parts.unshift('{...$$restProps}');
+    parts.unshift(
+      context.mode === 'runes'
+        ? `{...${REST_PROPERTIES_NAME}}`
+        : '{...$$restProps}'
+    );
     if (!styleRendered) {
       parts.push('style={style}');
     }
@@ -515,11 +889,16 @@ function classParts(
           ? escapeAttributeValue(staticClasses.join(' '))
           : '';
       expressionClasses.forEach((classExpression, index) => {
-        const guarded = expression(classExpression);
-        attributeValue +=
-          attributeValue === '' && index === 0
-            ? `{${guarded} || ''}`
-            : `{${guarded} ? ' ' + ${guarded} : ''}`;
+        if (attributeValue === '' && index === 0) {
+          // As the leading operand the expression is coerced by `|| ''`,
+          // whose looser binding leaves every operator correctly grouped.
+          attributeValue += `{${expression(classExpression)} || ''}`;
+        } else {
+          // In the `' ' + <expression>` concatenation the expression must be
+          // a single operand, so a compound one is parenthesized.
+          const guarded = parenthesizeClassExpression(classExpression);
+          attributeValue += `{${guarded} ? ' ' + ${guarded} : ''}`;
+        }
       });
       parts.push(`class="${attributeValue}"`);
     }
@@ -534,7 +913,7 @@ function classParts(
         : '';
     attributeValue += `{${expression(runtimeCall)}}`;
     expressionClasses.forEach((classExpression) => {
-      const guarded = expression(classExpression);
+      const guarded = parenthesizeClassExpression(classExpression);
       attributeValue += `{${guarded} ? ' ' + ${guarded} : ''}`;
     });
     parts.push(`class="${attributeValue}"`);

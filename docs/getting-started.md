@@ -399,6 +399,51 @@ Framework component files keep scripts in-file; strategy combinations a
 target cannot express fail with a processing error rather than silently
 falling back.
 
+Under `separate-file` the component links the stylesheet it owns - an
+`import` on react and svelte, a `<style src>` block on a Vue SFC, a `<link>`
+in HTML mode. `--stylesheet-link none` emits the stylesheet and links it from
+none of them, so a consumer decides how the styles are loaded: one aggregate
+stylesheet, per-component imports, or a build of its own.
+
+```bash
+npx js-template-engine render button.ts --framework react \
+  --styling-strategy separate-file --stylesheet-link none
+# wrote output/Button.tsx (no import), output/Button.css
+```
+
+Programmatically: `process(template, { styling: { outputStrategy: 'separate-file', stylesheetLink: 'none' } })`.
+It needs a stylesheet to leave unlinked, so pairing it with `in-file` or
+`inline` is a processing error.
+
+### Cascade layers
+
+`styling.layer` wraps the emitted rules in a cascade layer, so a component
+holds one position in the cascade however its styles are taken - from an
+aggregate stylesheet or from the per-component one beside it:
+
+```bash
+npx js-template-engine render button.ts --styling-layer kit.components \
+  --styling-layer-order kit.reset,kit.base,kit.components
+```
+
+```css
+@layer kit.reset, kit.base, kit.components;
+
+@layer kit.components {
+  .button { ... }
+}
+```
+
+The order statement is emitted in every stylesheet, because cascade-layer
+order is fixed by first declaration and a per-component stylesheet may be the
+first thing a consumer loads; repeating an identical order costs nothing.
+Omit `--styling-layer-order` when something the page already loads declares
+it. The layer applies under every output strategy wherever rules reach a
+stylesheet - inline `style="..."` declarations carry none - and under `scss`
+the preamble's `@use` and `@forward` loads stay above the layer block, where
+sass requires them. Programmatically:
+`process(template, { styling: { layer: { name: 'kit.components', order: [...] } } })`.
+
 ### CSS or SCSS output
 
 The stylesheet language is a separate choice - `styling.language`, `'css'`

@@ -10,6 +10,32 @@
 export type OutputStrategy = 'inline' | 'in-file' | 'separate-file';
 
 /**
+ * Whether the component links the stylesheet the `separate-file` strategy
+ * emits: `'component'` (default) links it from the component that owns it,
+ * `'none'` emits the file and links it nowhere.
+ */
+export type StylesheetLink = 'component' | 'none';
+
+/**
+ * The cascade layer emitted stylesheet rules are wrapped in.
+ *
+ * `name` is the layer the rules land in (`@layer <name> { ... }`); `order`
+ * is the full layer order the output declares (`@layer a, b, c;`) ahead of
+ * the wrapper, since cascade-layer order is fixed by first declaration and
+ * a per-component stylesheet has nowhere else to state it.
+ */
+export interface StyleLayer {
+  /** The layer the rules are wrapped in, e.g. `'kit.components'`. */
+  name: string;
+  /**
+   * The full layer order, declared ahead of the wrapper. Omitted emits no
+   * order statement - correct when something else the output loads declares
+   * it first.
+   */
+  order?: string[];
+}
+
+/**
  * The format-level extension contract.
  *
  * `key` is the extension's declared name (`'react'`, `'bem'`, ...) used to
@@ -35,6 +61,16 @@ export interface StylingOptions {
   /** Defaults to `'in-file'`. */
   outputStrategy?: OutputStrategy;
   /**
+   * Whether the component links the stylesheet the `separate-file` strategy
+   * emits; defaults to `'component'`. `'none'` emits `<Name>.css` exactly as
+   * before and links it from nowhere - no `import` on react and svelte, no
+   * `<style src>` block on vue, no `<link>` on HTML mode - leaving how the
+   * styles are loaded to whoever consumes the output. It applies only to the
+   * `separate-file` strategy: pairing it with `in-file` or `inline`, where
+   * there is no separate file to leave unlinked, is a processing error.
+   */
+  stylesheetLink?: StylesheetLink;
+  /**
    * Directories sass resolves `@use`/`@import`/`@include` against, matching
    * sass's own load-path model. Under `'scss'` output they pass through for
    * the consumer's own sass build; under `'css'` output (or the `inline`
@@ -43,6 +79,15 @@ export interface StylingOptions {
    * path (only sass built-in modules resolve).
    */
   loadPaths?: string[];
+  /**
+   * The cascade layer emitted stylesheet rules are wrapped in; omitted emits
+   * them unlayered. It applies wherever collected rules reach a stylesheet -
+   * a `separate-file` sheet, an in-file `<style>` or SFC style block, and the
+   * rules the `inline` strategy routes to a block - so a component holds the
+   * same cascade position under every strategy. Inline `style="..."`
+   * declarations carry no layer.
+   */
+  layer?: StyleLayer;
 }
 
 /** Script output configuration. */

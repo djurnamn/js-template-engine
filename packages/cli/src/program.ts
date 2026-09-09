@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { svelteModes } from '@js-template-engine/extension-svelte';
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { renderCommand } from './commands/render';
@@ -8,6 +9,7 @@ import { validateCommand } from './commands/validate';
 import { frameworkNames, stylingNames, type StylingName } from './extensions';
 
 const outputStrategies = ['inline', 'in-file', 'separate-file'];
+const stylesheetLinks = ['component', 'none'];
 
 /**
  * Parses the `--styling` value: a comma-separated list of styling
@@ -30,6 +32,20 @@ export function parseStylingList(value: string): StylingName[] {
     }
   }
   return names as StylingName[];
+}
+
+/**
+ * Parses the `--styling-layer-order` value: a comma-separated list of
+ * cascade-layer names, kept in the order given.
+ *
+ * @param value - The raw flag value, e.g. `'kit.reset,kit.components'`.
+ * @returns The layer names.
+ */
+export function parseLayerOrder(value: string): string[] {
+  return value
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
 }
 
 /**
@@ -99,6 +115,24 @@ export function createProgram(): Command {
         .choices(['css', 'scss'])
         .default('css')
     )
+    .addOption(
+      new Option(
+        '--stylesheet-link <mode>',
+        "whether the component links the stylesheet emitted by --styling-strategy separate-file; 'none' emits it unlinked"
+      )
+        .choices(stylesheetLinks)
+        .default('component')
+    )
+    .option(
+      '--styling-layer <name>',
+      'cascade layer emitted stylesheet rules are wrapped in; omitted emits them unlayered'
+    )
+    .option(
+      '--styling-layer-order <names>',
+      'comma-separated cascade layer order declared ahead of the wrapper, e.g. kit.reset,kit.components',
+      parseLayerOrder,
+      [] as string[]
+    )
     .option(
       '--load-path <path>',
       'sass load-path directory for resolving @use/@include under styling-language css (repeatable)',
@@ -142,6 +176,12 @@ export function createProgram(): Command {
     .option(
       '--tailwind-convert-styles',
       "convert each element's authored style into Tailwind utility classes"
+    )
+    .addOption(
+      new Option(
+        '--svelte-mode <mode>',
+        "how the Svelte target emits: classic component syntax, or Svelte 5 runes components with $props() and snippets (default 'legacy')"
+      ).choices(svelteModes)
     )
     .action(renderCommand);
 

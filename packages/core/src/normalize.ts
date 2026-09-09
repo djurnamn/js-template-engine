@@ -7,6 +7,7 @@ import type {
   TemplateNode,
 } from '@js-template-engine/types';
 
+import type { BemConditionalModifier } from './bem-call';
 import { isExpressionBinding } from './expression-binding';
 
 /**
@@ -56,10 +57,22 @@ export interface BemRuntimeCall {
   /** Whether this element declares the block (vs. inheriting it). */
   declaresBlock: boolean;
   /**
-   * The call expression text, identical across framework targets, e.g.
-   * `"bem('icon', { large: true, solid: isSolid })"`.
+   * The BEM element name passed as the call's first argument, or `undefined`
+   * for a block-level call.
    */
-  expression: string;
+  elementName?: string;
+  /** Unconditional modifier names for the call's record/array argument. */
+  staticModifiers: readonly string[];
+  /**
+   * Condition-gated modifiers folded into the call's record argument. The
+   * conditions are authored expression text: a framework renderer rewrites
+   * any named-slot reference inside each one to its own presence form
+   * (`!icon` -> `!$$slots.icon`) before formatting the call with
+   * {@link formatBemCall}. Building the call in the framework layer - rather
+   * than baking a single cross-target string here - is what lets each target
+   * resolve slot references differently.
+   */
+  conditionalModifiers: readonly BemConditionalModifier[];
   /**
    * The literal BEM classes this call replaces - a framework renderer drops
    * these from its static class output (they remain on `class` for HTML and
@@ -67,7 +80,7 @@ export interface BemRuntimeCall {
    */
   contributedClasses: readonly string[];
   /**
-   * `conditionalAttributes` classes folded into the call's record argument - 
+   * `conditionalAttributes` classes folded into the call's record argument -
    * a framework renderer omits these from its conditional class output.
    */
   foldedConditionalClasses: readonly string[];

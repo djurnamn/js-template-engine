@@ -75,7 +75,12 @@ a handle to its DOM node - React forwards `{...rest}` and a ref, Vue falls
 through `$attrs` and exposes `$el`, Svelte spreads `{...$$restProps}` and binds
 the element. The root tag itself can be chosen at runtime with
 `tag: { $expression: 'props.as', default: 'button' }`, typed against the
-`default` tag. In the HTML rendering the contract is inert preview markup.
+`default` tag. When that expression may resolve to a component rather than
+only a tag name (the polymorphic `as={Link}` pattern), add
+`componentValued: true`: React and Vue accept both values as they are, and
+Svelte, whose `<svelte:element>` renders tag names only, emits a `typeof`
+branch with a string arm and a component arm. In the HTML rendering the
+contract is inert preview markup.
 
 ### Discriminated surface root
 

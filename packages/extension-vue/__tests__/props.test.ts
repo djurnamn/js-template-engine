@@ -71,10 +71,78 @@ describe('definePropsStatement', () => {
     ).toBe('defineProps<LabelProps>();');
   });
 
-  it('does not match a boolean unioned with another member', () => {
+  it('gives a boolean-containing union prop an explicit undefined default', () => {
+    // Vue resolves `boolean | string` to runtime types [Boolean, String], which
+    // sets the Boolean-cast flag - the absent prop is cast to `false` exactly
+    // as for a pure boolean, so it needs the same parity default.
+    expect(
+      definePropsStatement('Stepper', {
+        radius: { type: 'boolean | string' },
+      })
+    ).toBe(
+      `withDefaults(defineProps<StepperProps>(), {\n  radius: undefined,\n});`
+    );
+  });
+
+  it('matches boolean unioned with a literal member', () => {
     expect(
       definePropsStatement('Toggle', {
         state: { type: "boolean | 'auto'" },
+      })
+    ).toBe(
+      `withDefaults(defineProps<ToggleProps>(), {\n  state: undefined,\n});`
+    );
+  });
+
+  it('gives a literal-false union prop an explicit undefined default', () => {
+    // A literal `false` member sets the same Boolean-cast flag as the
+    // `boolean` keyword: Vue resolves `false | 'default'` to [Boolean, String].
+    expect(
+      definePropsStatement('Surface', {
+        elevation: { type: "false | 'default' | 'overlay' | 'heavy'" },
+      })
+    ).toBe(
+      `withDefaults(defineProps<SurfaceProps>(), {\n  elevation: undefined,\n});`
+    );
+  });
+
+  it('gives a literal-true union prop an explicit undefined default', () => {
+    expect(
+      definePropsStatement('Toggle', {
+        state: { type: "true | 'auto'" },
+      })
+    ).toBe(
+      `withDefaults(defineProps<ToggleProps>(), {\n  state: undefined,\n});`
+    );
+  });
+
+  it('does not match a quoted true/false string enum', () => {
+    // `'true' | 'false'` is strings only - Vue resolves it to String, no
+    // Boolean cast, so no parity default is wanted. The quotes are the
+    // distinction; do not "simplify" them away in the matcher.
+    expect(
+      definePropsStatement('Chip', {
+        outline: { type: "'true' | 'false'" },
+      })
+    ).toBe('defineProps<ChipProps>();');
+  });
+
+  it('does not match a boolean nested inside a generic type', () => {
+    // `Array<boolean | string>` resolves to the Array runtime type on Vue -
+    // no Boolean-cast flag, so no parity default is needed.
+    expect(
+      definePropsStatement('Matrix', {
+        flags: { type: 'Array<boolean | string>' },
+      })
+    ).toBe('defineProps<MatrixProps>();');
+  });
+
+  it('does not match a named type alias', () => {
+    // The engine sees only the type string; an alias expanding to a
+    // boolean-containing union declares its undefined default explicitly.
+    expect(
+      definePropsStatement('Toggle', {
+        state: { type: 'ToggleState' },
       })
     ).toBe('defineProps<ToggleProps>();');
   });

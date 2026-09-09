@@ -1,13 +1,29 @@
 import {
   applyStylingExtensions,
+  formatBemCall,
   normalizeTemplate,
   process,
+  type BemRuntimeCall,
   type StylingContext,
 } from '@js-template-engine/core';
 import type { ElementNode, Template } from '@js-template-engine/types';
 import { describe, expect, it } from 'vitest';
 
 import { bem } from '../src/bem-extension';
+
+/**
+ * Formats a runtime call from its structured parts the way a framework
+ * extension does (without slot-reference rewriting, which is the framework
+ * layer's concern). The BEM extension produces the parts; this asserts on the
+ * call they format to.
+ */
+function callExpression(call: BemRuntimeCall): string {
+  return formatBemCall(
+    call.elementName,
+    call.staticModifiers,
+    call.conditionalModifiers
+  );
+}
 
 function element(
   overrides: NonNullable<ElementNode['extensions']>['bem'],
@@ -199,7 +215,7 @@ describe('bem runtime mode', () => {
 
   it('emits a block-only call', () => {
     const call = runtime.call(element({ block: 'Badge' }), context())!;
-    expect(call.expression).toBe('bem()');
+    expect(callExpression(call)).toBe('bem()');
     expect(call.block).toBe('Badge');
     expect(call.declaresBlock).toBe(true);
     expect(call.contributedClasses).toEqual(['Badge']);
@@ -210,7 +226,7 @@ describe('bem runtime mode', () => {
       element({ element: 'icon' }),
       context([element({ block: 'Badge' })])
     )!;
-    expect(call.expression).toBe("bem('icon')");
+    expect(callExpression(call)).toBe("bem('icon')");
     expect(call.declaresBlock).toBe(false);
     expect(call.contributedClasses).toEqual(['Badge__icon']);
   });
@@ -220,7 +236,7 @@ describe('bem runtime mode', () => {
       element({ block: 'Badge', element: 'icon', modifiers: ['large'] }),
       context()
     )!;
-    expect(call.expression).toBe("bem('icon', 'large')");
+    expect(callExpression(call)).toBe("bem('icon', 'large')");
     expect(call.contributedClasses).toEqual([
       'Badge__icon',
       'Badge__icon--large',
@@ -232,7 +248,7 @@ describe('bem runtime mode', () => {
       element({ block: 'Badge', modifiers: ['solid', 'large'] }),
       context()
     )!;
-    expect(call.expression).toBe("bem(undefined, ['solid', 'large'])");
+    expect(callExpression(call)).toBe("bem(undefined, ['solid', 'large'])");
   });
 
   it('folds an in-vocabulary conditional class into a record argument', () => {
@@ -245,7 +261,7 @@ describe('bem runtime mode', () => {
       ],
     };
     const call = runtime.call(node, context())!;
-    expect(call.expression).toBe('bem(undefined, { solid: isSolid })');
+    expect(callExpression(call)).toBe('bem(undefined, { solid: isSolid })');
     expect(call.foldedConditionalClasses).toEqual(['Badge--solid']);
   });
 
@@ -259,7 +275,7 @@ describe('bem runtime mode', () => {
       ],
     };
     const call = runtime.call(node, context())!;
-    expect(call.expression).toBe(
+    expect(callExpression(call)).toBe(
       "bem('icon', { large: true, active: isActive })"
     );
   });
@@ -274,7 +290,7 @@ describe('bem runtime mode', () => {
       ],
     };
     const call = runtime.call(node, context())!;
-    expect(call.expression).toBe("bem(undefined, { 'is-on': on })");
+    expect(callExpression(call)).toBe("bem(undefined, { 'is-on': on })");
   });
 
   it('leaves an out-of-vocabulary conditional class unfolded', () => {
@@ -287,7 +303,7 @@ describe('bem runtime mode', () => {
       ],
     };
     const call = runtime.call(node, context())!;
-    expect(call.expression).toBe('bem()');
+    expect(callExpression(call)).toBe('bem()');
     expect(call.foldedConditionalClasses).toEqual([]);
   });
 

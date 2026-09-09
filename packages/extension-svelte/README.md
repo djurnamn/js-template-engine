@@ -44,6 +44,9 @@ A template renders as one `<Name>.svelte` component containing, in order:
 Components with no props, imports, or script omit the `<script>` block;
 components with no styles omit the `<style>` block.
 
+The shape above is the default dialect. The `mode` option also emits Svelte 5
+runes components from the same template - see [Runes mode](#runes-mode).
+
 ## Concept translation
 
 | Concept | Svelte output |
@@ -93,6 +96,88 @@ pipe modifiers:
 ```svelte
 on:keyup={(event) => { if (event.key !== 'Enter') return; submitSearch(event); }}
 ```
+
+## Runes mode
+
+The `mode` option selects the emitted dialect. The default, `svelte()` (or
+explicitly `svelte({ mode: 'legacy' })`), emits the classic component shape
+shown above - `export let` props, `<slot>` elements, and `on:event` bindings. `svelte({ mode: 'runes' })` emits Svelte 5
+runes components from the same template: a typed `Props` interface destructured
+from `$props()`, snippet props rendered with `{@render}`, and `onevent`
+attribute bindings.
+
+The same template drives both. A button with a prop and a click handler:
+
+```ts
+const template = defineTemplate({
+  type: 'component',
+  name: 'Button',
+  props: { label: { type: 'string', required: true } },
+  children: [
+    {
+      type: 'element',
+      tag: 'button',
+      attributes: { class: ['button'], type: 'button' },
+      events: [{ name: 'click', handler: 'handleClick' }],
+      children: [{ type: 'text', expression: 'label' }],
+    },
+  ],
+});
+```
+
+renders as a classic component by default:
+
+```svelte
+<script lang="ts">
+export let label: string;
+</script>
+
+<button class="button" type="button" on:click={handleClick}>{label}</button>
+```
+
+and as a runes component under `svelte({ mode: 'runes' })`:
+
+```svelte
+<script lang="ts">
+interface Props {
+  label: string;
+}
+
+let { label }: Props = $props();
+</script>
+
+<button class="button" type="button" onclick={handleClick}>{label}</button>
+```
+
+Across the rest of the template, runes mode maps each construct to its Svelte 5
+form:
+
+- **Props** become a typed `Props` interface destructured from `$props()`,
+  each declared default carried into the destructure.
+- **Slots** become snippet props (`children`, and one per named slot),
+  rendered through `{@render}`; a scoped slot's exposed values arrive as one
+  object parameter. A snippet prop that shares its name with a projected
+  snippet the component declares (its own `icon` slot forwarded into a
+  composed child's `icon` slot) destructures under a `<propName>Slot` alias
+  and is referenced through it, since the snippet declaration would otherwise
+  shadow the prop inside its own body and render itself. A passthrough root
+  gathers the consumer's undeclared attributes into `...restProperties` and
+  exposes its DOM node through `element = $bindable(undefined)`.
+- **Events** become `onevent` attributes. An event attribute takes no modifier
+  syntax, so a modifier renders as generated handler code: a guard wrapper for
+  `prevent`, `stop`, `self`, and key filters; the capture attribute for
+  `capture`; a generated one-shot helper for `once`; and a passive listener
+  attachment for `passive`.
+- **Events on a passthrough root** share one attribute object with
+  `{...restProperties}`, so each binding renders through a generated
+  `composeEventHandlers(...)` helper: the component's own handler runs first,
+  then any handler the consumer spread onto the root for the same event.
+  Neither erases the other, and an element with no handler on either side gets
+  no listener.
+
+A component whose script would carry no rune (an event-only component, say) gets
+a `<svelte:options runes={true} />` tag so it always compiles as a runes
+component.
 
 ## Output strategies
 

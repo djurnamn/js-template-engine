@@ -37,8 +37,11 @@ order:
 - a `<script setup lang="ts">` block with the component `imports`, a
   `<Name>Props` interface generated from the declared props, a
   `defineProps<NameProps>()` call (wrapped in `withDefaults` when any prop
-  declares a default), and the component `script` content where the
-  template's `@event` handlers resolve
+  declares or needs a default - an optional prop whose type is `boolean` or
+  carries a `boolean` or literal `false`/`true` union member receives an
+  explicit `undefined` default, so an absent prop is `undefined` as on the
+  other framework targets rather than Boolean-cast to `false`), and the
+  component `script` content where the template's `@event` handlers resolve
 - a `<template>` block with the template's concepts translated to idiomatic
   Vue (below)
 - a `<style>` block with the collected CSS

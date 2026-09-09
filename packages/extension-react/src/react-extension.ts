@@ -15,6 +15,7 @@ import {
 import type {
   OutputFile,
   ProcessResult,
+  StylesheetLink,
   TemplateNode,
   Warning,
 } from '@js-template-engine/types';
@@ -96,7 +97,13 @@ function renderReactComponent(
     'inline',
     resolved.selectorClasses
   );
-  const css = collectCss(resolved, plan, stylingStrategy, options.styling.language);
+  const css = collectCss(
+    resolved,
+    plan,
+    stylingStrategy,
+    options.styling.language,
+    options.styling.layer
+  );
   const slotProps = collectSlotProps(resolved.children, resolved.props);
   const surface = discriminatedSurfaceOf(resolved.children);
   const passthroughNode = passthroughNodeOf(resolved.children);
@@ -179,6 +186,7 @@ function renderReactComponent(
     resolved,
     css,
     stylingStrategy,
+    options.styling.stylesheetLink,
     styleExtension,
     context,
     slotProps.length > 0,
@@ -420,6 +428,7 @@ function buildImports(
   component: NormalizedComponent,
   css: string,
   stylingStrategy: string,
+  stylesheetLink: StylesheetLink,
   styleExtension: string,
   context: JsxContext,
   hasSlotProps: boolean,
@@ -462,7 +471,13 @@ function buildImports(
 
   lines.push(...component.imports);
 
-  if (css !== '' && stylingStrategy === 'separate-file') {
+  // Under `stylesheetLink: 'none'` the stylesheet is still emitted; the
+  // component just does not import it, leaving that to the consumer.
+  if (
+    css !== '' &&
+    stylingStrategy === 'separate-file' &&
+    stylesheetLink === 'component'
+  ) {
     lines.push(`import './${component.name}.${styleExtension}';`);
   }
 

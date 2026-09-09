@@ -53,6 +53,26 @@ describe('react()', () => {
     expect(result.files[0].content).toContain("import './Component.scss';");
   });
 
+  it('emits the stylesheet without an import under stylesheetLink none', () => {
+    const template: Template = [
+      {
+        type: 'element',
+        tag: 'div',
+        attributes: { class: ['card'], style: { color: 'red' } },
+        children: [{ type: 'text', content: 'Hi' }],
+      },
+    ];
+    const result = processWithReact(template, {
+      styling: { outputStrategy: 'separate-file', stylesheetLink: 'none' },
+    });
+    expect(result.files.map((file) => file.path)).toEqual([
+      'Component.tsx',
+      'Component.css',
+    ]);
+    expect(result.files[0].content).not.toContain('import');
+    expect(result.files[1].content).toContain('.card {');
+  });
+
   it('names the output file after the component', () => {
     const result = processWithReact({
       type: 'component',
@@ -303,7 +323,7 @@ describe('react()', () => {
   });
 
   describe('slot-presence conditions', () => {
-    it('resolves a condition naming a slot to its prop across branches, leaving prop and compound conditions bare', () => {
+    it('resolves slot references to their prop across branches and inside a compound condition, leaving non-slot identifiers bare', () => {
       const content = fileContent({
         type: 'component',
         name: 'Field',
@@ -353,7 +373,7 @@ describe('react()', () => {
       expect(content).toContain('props.icon ?');
       expect(content).toContain(') : props.prefix ?');
       expect(content).toContain('{pressed &&');
-      expect(content).toContain('{icon && pressed &&');
+      expect(content).toContain('{props.icon && pressed &&');
     });
   });
 });

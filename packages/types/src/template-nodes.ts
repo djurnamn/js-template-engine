@@ -28,6 +28,16 @@ export interface DynamicTag {
   $expression: string;
   /** The static fallback tag - preview, validation, and typing basis. */
   default: string;
+  /**
+   * Set when the expression may resolve to a **component** value (rather than
+   * only an intrinsic tag string). A value-domain declaration for the
+   * emitters: React (`ElementType`) and Vue (`:is`) already accept both, but
+   * Svelte needs it - `<svelte:element>` renders string tags only, so a
+   * component-valued root emits a `typeof` branch (a `<svelte:element>` string
+   * arm and a component arm) instead. Absent, the root is treated as
+   * string-tag-valued.
+   */
+  componentValued?: boolean;
 }
 
 export interface ElementNode {

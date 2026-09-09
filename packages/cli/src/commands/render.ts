@@ -1,7 +1,7 @@
 import { relative, resolve } from 'node:path';
 
 import { process as processTemplate } from '@js-template-engine/core';
-import type { OutputStrategy } from '@js-template-engine/types';
+import type { OutputStrategy, StylesheetLink } from '@js-template-engine/types';
 
 import { componentNameFromFilePath } from '../component-name';
 import {
@@ -21,6 +21,9 @@ export interface RenderCommandOptions {
   componentName?: string;
   stylingStrategy: OutputStrategy;
   stylingLanguage: 'css' | 'scss';
+  stylesheetLink: StylesheetLink;
+  stylingLayer?: string;
+  stylingLayerOrder: string[];
   loadPath: string[];
   scriptingStrategy: OutputStrategy;
   scriptingLanguage: 'javascript' | 'typescript';
@@ -30,6 +33,7 @@ export interface RenderCommandOptions {
   bemImportSource?: string;
   tailwindOutput?: 'classes' | 'styles';
   tailwindConvertStyles?: boolean;
+  svelteMode?: 'legacy' | 'runes';
 }
 
 /**
@@ -76,12 +80,26 @@ export async function renderCommand(
           {
             output: options.tailwindOutput,
             convertStyles: options.tailwindConvertStyles,
+          },
+          {
+            mode: options.svelteMode,
           }
         ),
         styling: {
           outputStrategy: options.stylingStrategy,
           language: options.stylingLanguage,
+          stylesheetLink: options.stylesheetLink,
           loadPaths: options.loadPath.map((path) => resolve(path)),
+          layer:
+            options.stylingLayer === undefined
+              ? undefined
+              : {
+                  name: options.stylingLayer,
+                  order:
+                    options.stylingLayerOrder.length > 0
+                      ? options.stylingLayerOrder
+                      : undefined,
+                },
         },
         scripting: {
           outputStrategy: options.scriptingStrategy,

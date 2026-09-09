@@ -43,6 +43,9 @@ js-template-engine render src/components --framework svelte --output-directory d
 | `-n, --component-name <name>` | filename | component name for templates that declare none |
 | `--styling-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
 | `--styling-language <language>` | `css` | `css`, or `scss` for nested output; react and HTML require `--styling-strategy separate-file` under `scss` |
+| `--stylesheet-link <mode>` | `component` | `component`, or `none` to emit the `separate-file` stylesheet and link it from nowhere - no import, no `<style src>` block, no `<link>`; requires `--styling-strategy separate-file` |
+| `--styling-layer <name>` | - | cascade layer emitted stylesheet rules are wrapped in; omitted emits them unlayered |
+| `--styling-layer-order <names>` | - | comma-separated layer order declared ahead of the wrapper, e.g. `kit.reset,kit.components` |
 | `--load-path <path>` | - | sass load-path directory for resolving `@use`/`@include` in component styles under `--styling-language css`; repeatable |
 | `--scripting-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
 | `--scripting-language <language>` | `javascript` | `javascript`, or `typescript` to type the generated prop consts; affects HTML mode only and requires `--scripting-strategy separate-file` (writing `<Name>.ts`) |
@@ -52,6 +55,7 @@ js-template-engine render src/components --framework svelte --output-directory d
 | `--bem-import-source <package>` | `use-bem` | package the `use-bem` helper is imported from under `--bem-mode runtime` |
 | `--tailwind-output <output>` | `classes` | `classes` passes utilities through for Tailwind's build; `styles` converts them into the generated CSS |
 | `--tailwind-convert-styles` | off | convert each element's authored `style` into Tailwind utility classes |
+| `--svelte-mode <mode>` | `legacy` | `legacy` emits classic Svelte components; `runes` emits Svelte 5 runes components (`$props()`, snippets, event attributes) |
 
 Warnings are printed to stderr; written files are listed on stdout. When a
 template in a directory fails, the remaining templates still render and the

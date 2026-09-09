@@ -2,6 +2,8 @@ import type {
   Extension,
   OutputStrategy,
   ProcessResult,
+  StyleLayer,
+  StylesheetLink,
 } from '@js-template-engine/types';
 
 import type { NormalizedComponent } from './normalize';
@@ -10,8 +12,18 @@ import type { NormalizedComponent } from './normalize';
 export interface ResolvedStylingOptions {
   language: 'css' | 'scss';
   outputStrategy: OutputStrategy;
+  /**
+   * Whether the component links the stylesheet the `separate-file` strategy
+   * emits; `'component'` when none was configured.
+   */
+  stylesheetLink: StylesheetLink;
   /** Sass load-path directories; empty when none were configured. */
   loadPaths: string[];
+  /**
+   * The cascade layer emitted stylesheet rules are wrapped in; `undefined`
+   * when none was configured (rules emit unlayered).
+   */
+  layer: StyleLayer | undefined;
 }
 
 /** Scripting options with defaults applied. */

@@ -32,6 +32,8 @@ export type {
   ProcessingOptions,
   ProcessResult,
   ScriptingOptions,
+  StyleLayer,
+  StylesheetLink,
   StylingOptions,
   Warning,
 } from './processing';

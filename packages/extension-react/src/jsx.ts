@@ -1,5 +1,6 @@
 import {
   classExpressions,
+  formatBemCall,
   GENERATED_NODE_ATTRIBUTE,
   hasNestedSelectors,
   hasPlainProperties,
@@ -8,7 +9,8 @@ import {
   nodeSpreads,
   normalizeClassList,
   normalizeNamedSlots,
-  slotConditionTarget,
+  parenthesizeClassExpression,
+  rewriteSlotReferences,
   wholeStyleExpression,
   type BemRuntimeCall,
   type NormalizedExposedBinding,
@@ -399,21 +401,50 @@ function renderConditional(
   return lines;
 }
 
+/** React's slot-presence form for a named slot: its destructured prop. */
+function reactPresence(context: JsxContext): (slotName: string) => string {
+  return (slotName) => `props.${context.slotPropNames.get(slotName)}`;
+}
+
 /**
- * The JavaScript a branch condition emits. A bare identifier naming a declared
- * named slot becomes that slot's React prop (`props.<propName>`) - its
- * presence check - since the bare slot name is not otherwise in scope; every
- * other condition is emitted verbatim.
+ * The JavaScript a branch condition emits. A reference to a declared named
+ * slot becomes that slot's React prop (`props.<propName>`) - its presence
+ * check, emitted deterministically rather than relying on the slot name being
+ * destructured into scope; the rest of the condition is emitted verbatim.
  */
 function conditionExpression(
   branch: ConditionalNode['conditions'][number],
   context: JsxContext
 ): string | undefined {
-  const slotName = slotConditionTarget(branch.condition, context.namedSlots);
-  if (slotName !== undefined) {
-    return `props.${context.slotPropNames.get(slotName)}`;
-  }
-  return branch.condition;
+  return rewriteSlotReferences(
+    branch.condition,
+    context.namedSlots,
+    reactPresence(context)
+  );
+}
+
+/**
+ * The runtime `bem(...)` call for a node, with named-slot references in its
+ * conditional modifiers resolved to each slot's React prop - the same
+ * resolution the conditional nodes apply.
+ */
+function bemCallExpression(
+  runtimeCall: BemRuntimeCall,
+  context: JsxContext
+): string {
+  const toPresence = reactPresence(context);
+  return formatBemCall(
+    runtimeCall.elementName,
+    runtimeCall.staticModifiers,
+    runtimeCall.conditionalModifiers.map((modifier) => ({
+      modifier: modifier.modifier,
+      condition: rewriteSlotReferences(
+        modifier.condition,
+        context.namedSlots,
+        toPresence
+      )!,
+    }))
+  );
 }
 
 /**
@@ -728,7 +759,17 @@ function buildAttributeParts(
   const override = node.extensions?.react as ReactNodeOverrides | undefined;
   const attributes = { ...node.attributes, ...override?.attributes };
   const events = override?.events ?? node.events ?? [];
-  const conditionals = node.conditionalAttributes ?? [];
+  // Named-slot references in each condition resolve to the slot's React prop
+  // here, so attribute/class expressions match the conditional nodes that gate
+  // on the same slot.
+  const conditionals = (node.conditionalAttributes ?? []).map((conditional) => ({
+    ...conditional,
+    condition: rewriteSlotReferences(
+      conditional.condition,
+      context.namedSlots,
+      reactPresence(context)
+    )!,
+  }));
   const isPassthrough = node === context.passthroughNode;
   // The consumer `className` (destructured from props) is appended last,
   // after the authored expression classes.
@@ -738,6 +779,10 @@ function buildAttributeParts(
   // call: the contributed literals are suppressed from the static class list
   // and the folded conditional classes from the conditional rendering.
   const runtimeCall = context.bemRuntimeCalls?.get(node);
+  const runtimeCallExpression =
+    runtimeCall === undefined
+      ? undefined
+      : bemCallExpression(runtimeCall, context);
   const contributedClasses = new Set(runtimeCall?.contributedClasses ?? []);
   const foldedClasses = new Set(runtimeCall?.foldedConditionalClasses ?? []);
   const classConditionals =
@@ -775,7 +820,7 @@ function buildAttributeParts(
         staticClasses,
         classConditionals,
         [...classExpressions(classValue), ...consumerClasses],
-        runtimeCall?.expression
+        runtimeCallExpression
       );
       if (part !== undefined) {
         parts.push(part);
@@ -812,7 +857,7 @@ function buildAttributeParts(
       [],
       classConditionals,
       consumerClasses,
-      runtimeCall?.expression
+      runtimeCallExpression
     );
     if (part !== undefined) {
       parts.push(part);
@@ -933,11 +978,17 @@ function classNamePart(
     );
   }
   for (const expression of expressionClasses) {
-    terms.push(
-      terms.length === 0
-        ? `(${expression} || '')`
-        : `(${expression} ? ' ' + ${expression} : '')`
-    );
+    if (terms.length === 0) {
+      // As the sole/leading operand the expression is coerced by `|| ''`,
+      // whose looser binding leaves every operator correctly grouped.
+      terms.push(`(${expression} || '')`);
+    } else {
+      // In the `' ' + <expression>` concatenation the expression must be a
+      // single operand, so a compound one is parenthesized (see
+      // `parenthesizeClassExpression`).
+      const guarded = parenthesizeClassExpression(expression);
+      terms.push(`(${guarded} ? ' ' + ${guarded} : '')`);
+    }
   }
   return `className={${terms.join(' + ')}}`;
 }
