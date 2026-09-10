@@ -481,10 +481,12 @@ export function serializeInlineStyle(style: NestedStyleObject): string {
 }
 
 /**
- * Converts a camelCase CSS property name to its kebab-case form. CSS custom
- * properties (`--badge-size`) contain no uppercase letters and pass through
- * unchanged.
+ * Converts a camelCase CSS property name to its kebab-case form. A CSS custom
+ * property (`--badge-size`, `--kit-component--Badge--size`) passes through
+ * untouched: custom property names are case-sensitive, and a capital in one
+ * is part of the name, not a word boundary.
  */
 export function toKebabCaseProperty(propertyName: string): string {
+  if (propertyName.startsWith('--')) return propertyName;
   return propertyName.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }

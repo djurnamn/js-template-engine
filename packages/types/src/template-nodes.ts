@@ -83,8 +83,8 @@ export interface ElementNode {
    * render prop `closeButton={({ row }) => ...}` when scoped); Vue emits
    * `<template #closeButton>` (`#closeButton="{ row }"` when scoped); Svelte
    * emits `<svelte:fragment slot="closeButton">` (`let:row` when scoped). HTML
-   * mode ignores it (a static preview has no slot consumer). The provider seam
-   * is {@link SlotNode} (a named, optionally scoped, slot).
+   * mode ignores it (a static preview has no slot consumer). The slot that
+   * receives it is a {@link SlotNode} (a named, optionally scoped, slot).
    */
   slots?: Record<string, NamedSlotContent>;
   /**

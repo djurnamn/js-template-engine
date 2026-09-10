@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { mergeStyleObjects } from '../src/merge-styles';
+import { toKebabCaseProperty } from '../src/html/styles';
 
 describe('mergeStyleObjects', () => {
   it('keeps base order and appends override-only keys', () => {
@@ -67,5 +68,18 @@ describe('mergeStyleObjects', () => {
       '.button--large &': { fontSize: '2rem' },
       '.button--small &': { fontSize: '1rem' },
     });
+  });
+});
+
+describe('toKebabCaseProperty', () => {
+  it('kebab-cases a camelCase property', () => {
+    expect(toKebabCaseProperty('borderRadius')).toBe('border-radius');
+  });
+
+  it('leaves a custom property untouched, capitals included', () => {
+    // Custom property names are case-sensitive: a capital is part of the name,
+    // not a word boundary, so `--kit-component--Badge--size` must survive.
+    expect(toKebabCaseProperty('--badge-size')).toBe('--badge-size');
+    expect(toKebabCaseProperty('--kit-component--Badge--size')).toBe('--kit-component--Badge--size');
   });
 });

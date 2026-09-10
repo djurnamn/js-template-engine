@@ -270,6 +270,8 @@ describe('svelte()', () => {
     expect(serialize({ '--justify': undefined })).toBe('');
     expect(serialize({ '--justify': null, '--align': 'stretch' })).toBe('--align: stretch');
     expect(serialize({ marginTop: 0, opacity: 0 })).toBe('margin-top: 0; opacity: 0');
+    // A custom property name is case-sensitive; a capital in it is not a word boundary.
+    expect(serialize({ '--kit-component--Badge--size': '1rem' })).toBe('--kit-component--Badge--size: 1rem');
   });
 
   it('keeps nested-selector styles in the style block under inline styling', () => {

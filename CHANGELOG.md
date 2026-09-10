@@ -5,6 +5,21 @@ All notable changes to JS Template Engine are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-09-10
+
+A patch release. Every existing output is byte-identical except where the fix
+below names it.
+
+### Fixed
+
+- **A custom property name keeps its capital letters.** The style serializers
+  (the extracted stylesheet, the Svelte `style:` directives and generated
+  `serializeStyleObject` helper, the HTML `style` attribute) converted every
+  capital in a property name to its kebab-case form, so a custom property such
+  as `--kit-component--Badge--size` came out as `--kit-component---badge--size`.
+  Custom property names are case-sensitive, so a name starting with `--` now
+  passes through untouched; a camelCase property still converts.
+
 ## [2.2.0] - 2026-09-09
 
 A minor release. Every change is additive and backward compatible with 2.1.0 -
