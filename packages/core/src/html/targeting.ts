@@ -11,21 +11,53 @@ import { visitElements } from '../traverse';
 /** The attribute marking elements that need a selector but have no static class. */
 export const GENERATED_NODE_ATTRIBUTE = 'data-jte-node';
 
-/** How stylesheet rules and script selectors address one element. */
+/** How stylesheet rules address one element. */
 export interface ElementTarget {
   /**
-   * The selector used in generated CSS and `querySelector` calls:
-   * `'.button'`, or `'[data-jte-node="0"]'` for marked elements.
+   * The selector used in generated CSS: `'.button'`, or
+   * `'[data-jte-node="Button-0"]'` for marked elements.
    */
   selector: string;
   /**
    * Set when the engine marked the element because it needed a selector but
-   * had no static class; the markup renderer emits the attribute. The index
-   * is a zero-based counter over marked elements in document order - it
-   * links markup, stylesheet, and script within one generated output and
-   * carries no meaning beyond it.
+   * had no static class: a zero-based counter over the component's marked
+   * elements in document order.
    */
   generatedNodeIndex?: number;
+  /**
+   * The marker attribute's value, set together with `generatedNodeIndex`:
+   * the component's name and the counter, `'Button-0'`. The markup renderer
+   * emits it verbatim and the selector matches it, so components sharing a
+   * page never match each other's elements.
+   */
+  generatedNodeValue?: string;
+}
+
+/**
+ * Returns the `data-jte-node` value for a component's marked element: the
+ * component's name, a hyphen and the element's zero-based counter. Any
+ * character in the name other than an ASCII letter, digit, `_` or `-` is
+ * written as its code point in hexadecimal between underscores (a space
+ * reads `_20_`), so the value is safe both as an attribute value and inside
+ * a quoted attribute selector, and distinct names stay distinct; an empty
+ * name reads `Component`.
+ *
+ * @param componentName - The component's name: `'StatGrid'`.
+ * @param index - The zero-based counter over the component's marked elements.
+ * @returns The marker value: `'StatGrid-0'`.
+ *
+ * @example
+ * generatedNodeValue('StatGrid', 0); // 'StatGrid-0'
+ */
+export function generatedNodeValue(
+  componentName: string,
+  index: number
+): string {
+  const name = componentName.replace(
+    /[^A-Za-z0-9_-]/gu,
+    (character) => `_${(character.codePointAt(0) ?? 0).toString(16)}_`
+  );
+  return `${name === '' ? 'Component' : name}-${index}`;
 }
 
 /** Selector targets per element, keyed by node identity. */
@@ -61,7 +93,7 @@ export function hasPlainProperties(style: NestedStyleObject): boolean {
  * `$include` key or an `@include ...` at-rule key. Like a nested selector it
  * must reach a stylesheet - an `@include` cannot live in an inline `style`
  * attribute - so its presence binds the node to a stylesheet even under the
- * `inline` strategy. (Under `'css'` output, includes resolve before targeting
+ * `inline` placement. (Under `'css'` output, includes resolve before targeting
  * runs; this binding matters for `'scss'` pass-through.)
  */
 export function hasIncludes(style: NestedStyleObject): boolean {
@@ -84,28 +116,43 @@ export function hasExpressionProperties(style: NestedStyleObject): boolean {
  * Assigns a selector class to every element that needs one.
  *
  * An element needs a selector when its styles go to a stylesheet (always
- * under the `in-file` and `separate-file` styling strategies; only styles
- * with nested selectors under `inline`), or when its events are wired
- * through `addEventListener` (the `in-file` and `separate-file` scripting
- * strategies). The selector prefers the element's first selector-eligible
+ * under the `in-file` and `separate-file` stylesheet placements; only styles
+ * with nested selectors or includes under `inline`). The selector prefers the element's first selector-eligible
  * class - its first static class, or with styling extensions applied the
  * first entry in `selectorClasses` (static classes followed by
  * semantic-extension classes; utility classes are never selectors). Only
- * elements without one are marked with a `data-jte-node="<n>"` attribute
- * and addressed through an attribute selector - the authored class list is
- * never extended.
+ * elements without one are marked with a `data-jte-node="<Name>-<n>"`
+ * attribute (see {@link generatedNodeValue}) and addressed through an
+ * attribute selector - the authored class list is never extended. The
+ * component's name in the value keeps markers unique across components
+ * whose stylesheets share a page, so a caller rendering more than one
+ * component onto a page must pass each one's `componentName`; left out, every
+ * component marks as `Component` and their selectors collide.
+ *
+ * `scriptingStrategy` is deprecated and ignored - no output wires events
+ * through selectors - and is removed in 3.0.0.
+ *
+ * @param children - The component's nodes.
+ * @param placement - The stylesheet placement.
+ * @param scriptingStrategy - Deprecated and ignored.
+ * @param selectorClasses - Per-element selector-eligible classes, once
+ * styling extensions have been applied.
+ * @param componentName - The component's name, which namespaces its
+ * markers. Defaults to `'Component'`.
+ * @returns The selector target of every element that needs one.
  */
 export function planTargets(
   children: TemplateNode[],
-  stylingStrategy: string,
-  scriptingStrategy: string,
-  selectorClasses?: ReadonlyMap<ElementNode, readonly string[]>
+  placement: string,
+  scriptingStrategy?: string,
+  selectorClasses?: ReadonlyMap<ElementNode, readonly string[]>,
+  componentName = 'Component'
 ): TargetPlan {
   const plan: TargetPlan = new Map();
   let markedCount = 0;
 
   visitElements(children, (element) => {
-    if (!needsSelector(element, stylingStrategy, scriptingStrategy)) {
+    if (!needsSelector(element, placement)) {
       return;
     }
     const eligibleClasses =
@@ -116,9 +163,11 @@ export function planTargets(
     } else {
       const generatedNodeIndex = markedCount;
       markedCount += 1;
+      const value = generatedNodeValue(componentName, generatedNodeIndex);
       plan.set(element, {
-        selector: `[${GENERATED_NODE_ATTRIBUTE}="${generatedNodeIndex}"]`,
+        selector: `[${GENERATED_NODE_ATTRIBUTE}="${value}"]`,
         generatedNodeIndex,
+        generatedNodeValue: value,
       });
     }
   });
@@ -126,24 +175,18 @@ export function planTargets(
   return plan;
 }
 
-function needsSelector(
-  element: ElementNode,
-  stylingStrategy: string,
-  scriptingStrategy: string
-): boolean {
+function needsSelector(element: ElementNode, placement: string): boolean {
   const style = element.attributes?.style;
   // A whole-object `$expression` does not preclude static / nested / include
   // keys on the same node; the predicates below ignore the `$expression` key,
   // so a mixed node is bound by its stylesheet-bound siblings and a pure
   // whole-object expression (no such siblings) is not.
-  if (style !== undefined) {
-    const stylesheetBound =
-      stylingStrategy === 'inline'
-        ? hasNestedSelectors(style) || hasIncludes(style)
-        : hasNestedSelectors(style) || hasPlainProperties(style) || hasIncludes(style);
-    if (stylesheetBound) {
-      return true;
-    }
+  if (style === undefined) {
+    return false;
   }
-  return (element.events?.length ?? 0) > 0 && scriptingStrategy !== 'inline';
+  return placement === 'inline'
+    ? hasNestedSelectors(style) || hasIncludes(style)
+    : hasNestedSelectors(style) ||
+        hasPlainProperties(style) ||
+        hasIncludes(style);
 }

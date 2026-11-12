@@ -1,8 +1,10 @@
 import type {
   Attributes,
   ComponentExtensionOverrides,
+  DeclaredId,
   ElementNode,
   PropDefinition,
+  RestDefinition,
   Template,
   TemplateNode,
 } from '@js-template-engine/types';
@@ -22,12 +24,22 @@ export interface CollapseVocabulary {
   baseClass: string;
   /** The BEM modifier separator, e.g. `'--'`. */
   modifierSeparator: string;
+  /**
+   * The node's BEM block, e.g. `'card'`, given with {@link elementSeparator}
+   * when the node can carry no class of another element of its block. A
+   * self-compound selector naming a modifier of another element of the
+   * block (`&.card__footer--wide` on the `card__body` node) can then never
+   * match the node, and the serializers drop it.
+   */
+  block?: string;
+  /** The BEM element separator, e.g. `'__'`, given with {@link block}. */
+  elementSeparator?: string;
 }
 
 /**
  * Component-level binding for BEM runtime mode, declared by a styling
  * extension (BEM) when it renders classes as `bem(...)` calls instead of
- * literal strings. Framework targets use it to emit the helper import and
+ * literal strings. Scripted targets use it to emit the helper import and
  * the single `const bem = createBem('block')` / `useBem('block')` setup line;
  * the per-element {@link BemRuntimeCall} entries supply the call expressions.
  * Absent when no component uses runtime mode. Never inferred by core - an
@@ -45,10 +57,10 @@ export interface BemRuntimeBinding {
 }
 
 /**
- * One element's BEM runtime call, for framework targets in runtime mode. The
+ * One element's BEM runtime call, for scripted targets in runtime mode. The
  * statically-determinable literal classes stay on the element's `class`
- * attribute (so HTML mode and stylesheet targeting are unaffected); a
- * framework renderer instead suppresses {@link contributedClasses} from its
+ * attribute (so the html target and stylesheet targeting are unaffected); a
+ * target renderer instead suppresses {@link contributedClasses} from its
  * static class output and emits {@link expression} in their place.
  */
 export interface BemRuntimeCall {
@@ -65,23 +77,23 @@ export interface BemRuntimeCall {
   staticModifiers: readonly string[];
   /**
    * Condition-gated modifiers folded into the call's record argument. The
-   * conditions are authored expression text: a framework renderer rewrites
+   * conditions are authored expression text: a target renderer rewrites
    * any named-slot reference inside each one to its own presence form
    * (`!icon` -> `!$$slots.icon`) before formatting the call with
-   * {@link formatBemCall}. Building the call in the framework layer - rather
+   * {@link formatBemCall}. Building the call in the target renderer - rather
    * than baking a single cross-target string here - is what lets each target
    * resolve slot references differently.
    */
   conditionalModifiers: readonly BemConditionalModifier[];
   /**
-   * The literal BEM classes this call replaces - a framework renderer drops
+   * The literal BEM classes this call replaces - a target renderer drops
    * these from its static class output (they remain on `class` for HTML and
    * stylesheet targeting).
    */
   contributedClasses: readonly string[];
   /**
    * `conditionalAttributes` classes folded into the call's record argument -
-   * a framework renderer omits these from its conditional class output.
+   * a target renderer omits these from its conditional class output.
    */
   foldedConditionalClasses: readonly string[];
 }
@@ -91,18 +103,124 @@ export interface BemRuntimeCall {
  * wrapper unwrapped (or synthesized from the component name option), ready
  * for rendering.
  */
+/** A type parameter in its object form. */
+export interface NormalizedTypeParameter {
+  name: string;
+  constraint?: string;
+  default?: string;
+}
+
+/**
+ * A component's type parameters as a TypeScript declaration list -
+ * `<Item extends object = Record<string, unknown>>` - or `''` when it has none.
+ *
+ * @param parameters - The normalized type parameters.
+ * @returns The declaration list, angle brackets included.
+ */
+export function typeParameterDeclarations(
+  parameters: readonly NormalizedTypeParameter[] = []
+): string {
+  if (parameters.length === 0) {
+    return '';
+  }
+  return `<${parameters.map(typeParameterDeclaration).join(', ')}>`;
+}
+
+/**
+ * The same list without angle brackets, as Vue's `generic` and Svelte's
+ * `generics` attributes take it.
+ *
+ * @param parameters - The normalized type parameters.
+ * @returns The comma-separated declarations, or `''`.
+ */
+export function typeParameterAttribute(
+  parameters: readonly NormalizedTypeParameter[] = []
+): string {
+  return parameters.map(typeParameterDeclaration).join(', ');
+}
+
+/**
+ * The type parameters as arguments - `<Item>` - to pass a generic type on,
+ * or `''` when there are none.
+ *
+ * @param parameters - The normalized type parameters.
+ * @returns The argument list, angle brackets included.
+ */
+export function typeParameterArguments(
+  parameters: readonly NormalizedTypeParameter[] = []
+): string {
+  if (parameters.length === 0) {
+    return '';
+  }
+  return `<${parameters.map((parameter) => parameter.name).join(', ')}>`;
+}
+
+/**
+ * The type parameters as an attribute of a script tag - ` generic="Item"` -
+ * quoted with single quotes when a constraint or default holds a double
+ * quote, or `''` when there are none.
+ *
+ * @param name - The attribute's name: Vue's `generic`, Svelte's `generics`.
+ * @param parameters - The normalized type parameters.
+ * @returns The attribute with its leading space, or `''`.
+ */
+export function typeParameterScriptAttribute(
+  name: string,
+  parameters: readonly NormalizedTypeParameter[] = []
+): string {
+  const value = typeParameterAttribute(parameters);
+  if (value === '') {
+    return '';
+  }
+  const quote = value.includes('"') ? "'" : '"';
+  return ` ${name}=${quote}${value}${quote}`;
+}
+
+function typeParameterDeclaration(parameter: NormalizedTypeParameter): string {
+  return [
+    parameter.name,
+    parameter.constraint === undefined
+      ? ''
+      : ` extends ${parameter.constraint}`,
+    parameter.default === undefined ? '' : ` = ${parameter.default}`,
+  ].join('');
+}
+
 export interface NormalizedComponent {
   name: string;
+  /** What the component is, written as its doc comment; markdown allowed. */
+  description?: string;
   props: Record<string, PropDefinition>;
   /** Verbatim import statements. */
   imports: string[];
   /** Framework-agnostic JavaScript (handlers, utilities). */
   script?: string;
+  /**
+   * The component's derived values, each name with its expression, in
+   * declaration order; absent when it declares none.
+   */
+  derived?: Record<string, string>;
+  /**
+   * The component's per-instance ids, each name with its prefix or
+   * `{ prefix, prop }`, in declaration order; absent when it declares none.
+   */
+  ids?: Record<string, string | DeclaredId>;
   /** Component-level CSS. */
   style?: string;
   children: TemplateNode[];
   /** Component-level per-extension overrides, keyed by extension name. */
   extensions: ComponentExtensionOverrides;
+  /** Where the consumer's leftover attributes land, when the component declares it. */
+  rest?: RestDefinition;
+  /** The component's type parameters, each in its object form, in order. */
+  typeParameters?: NormalizedTypeParameter[];
+  /**
+   * The names the build's extensions declare in every component
+   * (`Extension.reservedNames`), present once processing has set it. Prop
+   * aliases steer clear of them, so an alias never meets a name the output
+   * declares itself.
+   */
+  reservedNames?: ReadonlySet<string>;
   /**
    * Per-element selector-eligible classes, present once styling extensions
    * have been applied: the element's static classes followed by classes
@@ -118,15 +236,22 @@ export interface NormalizedComponent {
    */
   collapseVocabulary?: ReadonlyMap<ElementNode, readonly CollapseVocabulary[]>;
   /**
+   * CSS styling extensions add once to the component's stylesheet
+   * (`StylingExtension.contributeComponentCss`), present once styling
+   * extensions have been applied and one adds any. Emitted after the
+   * component's rules, outside its cascade layer.
+   */
+  contributedCss?: string;
+  /**
    * Component-level BEM runtime binding, present once styling extensions have
    * been applied and a styling extension is in runtime mode with at least one
-   * BEM-bearing element. Framework targets emit the helper import and setup
-   * line from it; HTML mode ignores it and renders the literal classes.
+   * BEM-bearing element. Scripted targets emit the helper import and setup
+   * line from it; the html target ignores it and renders the literal classes.
    */
   bemRuntime?: BemRuntimeBinding;
   /**
    * Per-element BEM runtime calls, present alongside {@link bemRuntime}. A
-   * framework renderer consults it to emit `bem(...)` calls; an element absent
+   * target renderer consults it to emit `bem(...)` calls; an element absent
    * from the map renders its classes literally.
    */
   bemRuntimeCalls?: ReadonlyMap<ElementNode, BemRuntimeCall>;
@@ -151,19 +276,37 @@ export function normalizeTemplate(
   }
   return {
     name: template.name,
+    ...(template.description !== undefined
+      ? { description: template.description }
+      : {}),
     props: template.props ?? {},
     imports: template.imports ?? [],
     script: template.script,
+    ...(template.derived !== undefined &&
+    Object.keys(template.derived).length > 0
+      ? { derived: template.derived }
+      : {}),
+    ...(template.ids !== undefined && Object.keys(template.ids).length > 0
+      ? { ids: template.ids }
+      : {}),
     style: template.style,
     children: template.children,
     extensions: template.extensions ?? {},
+    ...(template.rest !== undefined ? { rest: template.rest } : {}),
+    ...(template.typeParameters !== undefined
+      ? {
+          typeParameters: template.typeParameters.map((parameter) =>
+            typeof parameter === 'string' ? { name: parameter } : parameter
+          ),
+        }
+      : {}),
   };
 }
 
 /**
  * Normalizes a `class` attribute value to the canonical array of literal
  * class names, dropping duplicates (the first occurrence wins) and empty
- * entries. Expression entries are runtime values and are excluded - 
+ * entries. Expression entries are runtime values and are excluded -
  * codegen-time deduplication covers literals only; `classExpressions`
  * collects the expression entries.
  */

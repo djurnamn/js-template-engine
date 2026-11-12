@@ -11,4 +11,4 @@ export {
   type SvelteMode,
   type SvelteOptions,
 } from './svelte-extension';
-export type { SvelteNodeOverrides } from './overrides';
+export type { SvelteComponentOverride, SvelteNodeOverrides } from './overrides';

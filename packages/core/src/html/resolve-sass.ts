@@ -3,14 +3,18 @@ import * as sass from 'sass';
 import type {
   NestedSelectorBlock,
   NestedStyleObject,
+  Warning,
 } from '@js-template-engine/types';
 
 import type { ResolvedStylingOptions } from '../extension';
 import { isExpressionBinding } from '../expression-binding';
-import type { NormalizedComponent } from '../normalize';
+import { normalizeClassList, type NormalizedComponent } from '../normalize';
 import { TemplateError } from '../TemplateError';
-import { visitElements } from '../traverse';
+import { visitElements, visitNodes } from '../traverse';
 import { serializeRulesScss } from './styles';
+
+/** A selector extending `&` with a name, as `&--brand` or `&__title` do. */
+const SELECTOR_SUFFIX = /&[-_A-Za-z0-9]/;
 
 /**
  * The placeholder root each node's style is compiled under. Sass expands `&`
@@ -22,9 +26,96 @@ import { serializeRulesScss } from './styles';
  */
 const PLACEHOLDER = '.JTE_SASS_ROOT_PLACEHOLDER';
 
+/** What every compile of a component's Sass resolves loads against. */
+interface SassCompiler {
+  loadPaths: string[];
+  importers: sass.Options<'sync'>['importers'];
+}
+
+/**
+ * Warns about each selector still holding Sass interpolation (`#{&}--dense`)
+ * in a component whose styles no Sass compile reads: the selector reaches
+ * the stylesheet as written and matches nothing. Silent under
+ * `styling.language: 'scss'`, where the consumer's Sass build resolves it,
+ * and after {@link resolveSassStyles} has resolved it.
+ *
+ * @param component - The component, its Sass already resolved.
+ * @param language - The stylesheet language.
+ * @param rootPath - The path of the component's children.
+ * @returns One warning per selector, its path naming the node's style.
+ *
+ * @example
+ * // style: { '&:not(#{&}--dense)': { gap: '1rem' } }, language: 'css'
+ * collectUnresolvedSassWarnings(component, 'css', 'children');
+ */
+export function collectUnresolvedSassWarnings(
+  component: NormalizedComponent,
+  language: 'css' | 'scss',
+  rootPath: string
+): Warning[] {
+  if (language === 'scss') {
+    return [];
+  }
+  const warnings: Warning[] = [];
+  const visitStyle = (
+    style: unknown,
+    path: string,
+    hasClass: boolean
+  ): void => {
+    if (typeof style !== 'object' || style === null || Array.isArray(style)) {
+      return;
+    }
+    for (const [key, value] of Object.entries(style)) {
+      if (key.includes('#{')) {
+        warnings.push({
+          message:
+            `The selector '${key}' holds Sass interpolation, and these styles are not compiled through Sass, ` +
+            `so it is written to the stylesheet as it stands and matches nothing. ` +
+            (hasClass
+              ? `Set the styling language to 'scss', or write the selector without #{...}`
+              : `The element has no class for Sass to build on, so the 'scss' language would not help: ` +
+                `give the element a class, or write the selector without #{...}`),
+          nodePath: path,
+        });
+      } else if (!hasClass && SELECTOR_SUFFIX.test(key)) {
+        warnings.push({
+          message:
+            `The selector '${key}' adds a suffix to '&', but the element has no class, so it is addressed by an ` +
+            `attribute selector the suffix cannot extend: the rule is written as it stands and matches nothing. ` +
+            `Give the element a class, or write the selector as a pseudo-class or an attribute`,
+          nodePath: path,
+        });
+      }
+      visitStyle(value, path, hasClass);
+    }
+  };
+  visitNodes(component.children, rootPath, (node, path) => {
+    if (node.type !== 'element') {
+      return;
+    }
+    const hasClass =
+      (
+        component.selectorClasses?.get(node) ??
+        normalizeClassList(node.attributes?.class)
+      ).length > 0;
+    visitStyle(node.attributes?.style, `${path}.attributes.style`, hasClass);
+    (node.conditionalAttributes ?? []).forEach((conditional, index) => {
+      visitStyle(
+        conditional.attributes.style,
+        `${path}.conditionalAttributes[${index}].attributes.style`,
+        hasClass
+      );
+    });
+  });
+  return warnings;
+}
+
+/** A `@use`, `@forward` or `@import` of a `pkg:` URL in a preamble. */
+const PACKAGE_URL_LOAD = /@(?:use|forward|import)\s+["']pkg:/;
+
 /**
  * Resolves Sass source in a component's styles to flat CSS, for consumers
- * choosing `css` output or the `inline` strategy.
+ * choosing `css` output or the `inline` placement.
  *
  * Under `styling.language: 'scss'` the engine passes Sass source through
  * verbatim (the consumer's own sass build resolves it); under `'css'` there
@@ -35,7 +126,8 @@ const PLACEHOLDER = '.JTE_SASS_ROOT_PLACEHOLDER';
  * `inline` plain/nested split) run unchanged.
  *
  * A no-op when the language is `'scss'`, or when nothing requests resolution
- * (no load paths configured and no node carries a `$include`). Never mutates
+ * (no load paths configured, no node carries an include, and the preamble
+ * loads no `pkg:` URL). Never mutates
  * the input component - when resolution runs, it operates on a deep clone of
  * the children so a template shared across `process()` calls is untouched.
  *
@@ -50,21 +142,30 @@ export function resolveSassStyles(
   if (styling.language === 'scss') {
     return component;
   }
-  if (styling.loadPaths.length === 0 && !componentHasInclude(component)) {
+  const preamble = component.style?.trim() ?? '';
+  if (
+    styling.loadPaths.length === 0 &&
+    !componentHasInclude(component) &&
+    !PACKAGE_URL_LOAD.test(preamble)
+  ) {
     return component;
   }
 
-  const loadPaths = styling.loadPaths;
-  const preamble = component.style?.trim() ?? '';
+  const compiler: SassCompiler = {
+    loadPaths: styling.loadPaths,
+    importers: styling.sassImporters as sass.Options<'sync'>['importers'],
+  };
 
-  const children = structuredClone(component.children) as typeof component.children;
+  const children = structuredClone(
+    component.children
+  ) as typeof component.children;
   visitElements(children, (element) => {
     const style = element.attributes?.style;
     // `resolveStyleObject` splits off any `$expression` (whole-object and
     // per-property) before compiling and merges them back, so a mixed node
     // and a pure whole-object expression are both handled here.
     if (style !== undefined) {
-      element.attributes!.style = resolveStyleObject(style, preamble, loadPaths);
+      element.attributes!.style = resolveStyleObject(style, preamble, compiler);
     }
     for (const conditional of element.conditionalAttributes ?? []) {
       const conditionalStyle = conditional.attributes.style;
@@ -72,7 +173,7 @@ export function resolveSassStyles(
         conditional.attributes.style = resolveStyleObject(
           conditionalStyle,
           preamble,
-          loadPaths
+          compiler
         );
       }
     }
@@ -84,7 +185,7 @@ export function resolveSassStyles(
     // The component-level style is the Sass preamble (`@use`, `$variables`,
     // mixins); its definitions emit no CSS. Whatever it does emit on its own
     // (e.g. `@keyframes`) becomes the resolved component style.
-    style: emptyToUndefined(compilePreamble(preamble, loadPaths)),
+    style: emptyToUndefined(compilePreamble(preamble, compiler)),
   };
 }
 
@@ -100,7 +201,7 @@ export function resolveSassStyles(
 function resolveStyleObject(
   style: NestedStyleObject,
   preamble: string,
-  loadPaths: string[]
+  compiler: SassCompiler
 ): NestedStyleObject {
   const dynamic: NestedStyleObject = {};
   const staticStyle: NestedStyleObject = {};
@@ -123,24 +224,31 @@ function resolveStyleObject(
 
   const block = serializeRulesScss(PLACEHOLDER, staticStyle);
   const source = preamble === '' ? block : `${preamble}\n${block}`;
-  const css = compile(source, loadPaths);
+  const css = compile(source, compiler);
   const resolved = reconstruct(parseCss(css));
 
   return { ...resolved, ...dynamic };
 }
 
 /** Compiles the preamble alone, returning the CSS its own rules emit. */
-function compilePreamble(preamble: string, loadPaths: string[]): string {
+function compilePreamble(preamble: string, compiler: SassCompiler): string {
   if (preamble === '') {
     return '';
   }
-  return compile(preamble, loadPaths).trim();
+  return compile(preamble, compiler).trim();
 }
 
 /** Runs Dart Sass, wrapping a compile failure as a `TemplateError`. */
-function compile(source: string, loadPaths: string[]): string {
+function compile(
+  source: string,
+  { loadPaths, importers }: SassCompiler
+): string {
   try {
-    return sass.compileString(source, { loadPaths, style: 'expanded' }).css;
+    return sass.compileString(source, {
+      loadPaths,
+      importers,
+      style: 'expanded',
+    }).css;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new TemplateError(
@@ -152,7 +260,7 @@ function compile(source: string, loadPaths: string[]): string {
 /**
  * Reconstructs compiled CSS into a node's nested-`&` style object. The rule
  * matching the placeholder root exactly contributes its declarations as
- * top-level plain properties (so they inline under the `inline` strategy);
+ * top-level plain properties (so they inline under the `inline` placement);
  * every other placeholder-rooted rule becomes a nested-`&` key (so it routes
  * to a stylesheet). Rules with no placeholder reference (preamble output, e.g.
  * keyframes) are dropped - the preamble is compiled separately.
@@ -166,12 +274,16 @@ function reconstruct(nodes: CssNode[]): NestedStyleObject {
       // key (object keys are unique, and one combined block is equivalent).
       const existing = style[node.name];
       const inner: NestedSelectorBlock =
-        typeof existing === 'object' && existing !== null && !Array.isArray(existing)
+        typeof existing === 'object' &&
+        existing !== null &&
+        !Array.isArray(existing)
           ? (existing as NestedSelectorBlock)
           : {};
       for (const rule of node.nodes) {
         if (rule.type === 'rule' && referencesPlaceholder(rule.selector)) {
-          inner[relativize(rule.selector)] = declarationsToStyle(rule.declarations);
+          inner[relativize(rule.selector)] = declarationsToStyle(
+            rule.declarations
+          );
         }
       }
       if (Object.keys(inner).length > 0) {
@@ -342,9 +454,7 @@ function componentHasInclude(component: NormalizedComponent): boolean {
   return found;
 }
 
-function styleHasInclude(
-  style: NestedStyleObject | undefined
-): boolean {
+function styleHasInclude(style: NestedStyleObject | undefined): boolean {
   if (style === undefined) {
     return false;
   }

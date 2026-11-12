@@ -4,7 +4,9 @@ import type { Attributes, ExpressionBinding } from '@js-template-engine/types';
  * Returns true when an attribute value is a dynamic `{ $expression: ... }`
  * binding rather than a static value.
  */
-export function isExpressionBinding(value: unknown): value is ExpressionBinding {
+export function isExpressionBinding(
+  value: unknown
+): value is ExpressionBinding {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -38,7 +40,7 @@ export function wholeStyleExpression(value: unknown): string | undefined {
  * whose own enumerable properties are spread onto the element (or composed
  * component) ahead of the authored attributes, which override per key. Callers
  * emit the returned expressions through the target's spread syntax (React
- * `{...x}`, Vue `v-bind="x"`, Svelte `{...x}`); HTML mode ignores them.
+ * `{...x}`, Vue `v-bind="x"`, Svelte `{...x}`); the html target names them in a comment.
  */
 export function nodeSpreads(attributes: Attributes | undefined): string[] {
   const spread = attributes?.$spread;

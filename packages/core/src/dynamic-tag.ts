@@ -1,4 +1,8 @@
-import type { DynamicTag, ElementNode, TemplateNode } from '@js-template-engine/types';
+import type {
+  DynamicTag,
+  ElementNode,
+  TemplateNode,
+} from '@js-template-engine/types';
 
 /**
  * True when an element's `tag` is a dynamic tag (resolved from a runtime
@@ -10,7 +14,7 @@ export function isDynamicTag(tag: ElementNode['tag']): tag is DynamicTag {
 
 /**
  * The static tag a node resolves to for non-runtime purposes - the literal
- * tag itself, or a dynamic tag's `default`. It is the basis for the HTML-mode
+ * tag itself, or a dynamic tag's `default`. It is the basis for the html target's
  * preview, the void/children validation, and the passthrough typed prop
  * surface; the runtime tag (the expression) may differ.
  */
@@ -20,9 +24,8 @@ export function staticTagOf(tag: ElementNode['tag']): string {
 
 /**
  * Returns the dynamic-tag expression of the component's single root rendered
- * element, or `undefined` when the root is static or absent. Dynamic tags are
- * root-only (validated by `validateTemplate`), so renderers can trust a
- * returned expression belongs to the root element.
+ * element, or `undefined` when the root is static or absent. Elements below
+ * the root may carry dynamic tags of their own; this reads the root's only.
  */
 export function dynamicRootTagExpressionOf(
   children: readonly TemplateNode[]

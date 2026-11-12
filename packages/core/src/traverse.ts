@@ -43,3 +43,57 @@ export function visitElements(
     }
   }
 }
+
+/**
+ * Visits every node in document order with its node path, descending as
+ * {@link visitElements} does: element children (`<path>.children[i]`),
+ * projected named-slot content (`<path>.slots.<name>[i]`), fragment and
+ * iteration children, conditional branches
+ * (`<path>.conditions[j].children[i]`) and slot fallbacks
+ * (`<path>.fallback[i]`).
+ *
+ * @param nodes - The nodes to visit.
+ * @param path - The path of the array holding them (`children`, or `''` for
+ *   a node-array template).
+ * @param visitor - Called with each node and its path.
+ */
+export function visitNodes(
+  nodes: readonly TemplateNode[],
+  path: string,
+  visitor: (node: TemplateNode, path: string) => void
+): void {
+  nodes.forEach((node, index) => {
+    const nodePath = `${path}[${index}]`;
+    visitor(node, nodePath);
+    switch (node.type) {
+      case 'element':
+        if (node.children) {
+          visitNodes(node.children, `${nodePath}.children`, visitor);
+        }
+        for (const named of normalizeNamedSlots(node.slots)) {
+          visitNodes(named.content, `${nodePath}.slots.${named.name}`, visitor);
+        }
+        break;
+      case 'fragment':
+      case 'iteration':
+        visitNodes(node.children, `${nodePath}.children`, visitor);
+        break;
+      case 'slot':
+        if (node.fallback) {
+          visitNodes(node.fallback, `${nodePath}.fallback`, visitor);
+        }
+        break;
+      case 'conditional':
+        node.conditions.forEach((branch, branchIndex) => {
+          visitNodes(
+            branch.children,
+            `${nodePath}.conditions[${branchIndex}].children`,
+            visitor
+          );
+        });
+        break;
+      default:
+        break;
+    }
+  });
+}

@@ -1,5 +1,5 @@
 import type {
-  Attributes,
+  AttributeOverrides,
   ComponentExtensionOverride,
   EventDefinition,
 } from '@js-template-engine/types';
@@ -9,7 +9,8 @@ import type {
  * `extensions.react` on element nodes.
  *
  * `tag` replaces the node's element for the React render; `attributes` merges
- * into the node's attributes per key, the override winning; `events` replaces
+ * into the node's attributes per key, the override winning, and a
+ * `null` value removing the node's attribute of that name; `events` replaces
  * the node's event list. Resolution follows the template format's priority:
  * extension-specific override → generic concept → nothing.
  *
@@ -31,8 +32,34 @@ export interface ReactNodeOverrides {
    * scope.
    */
   tag?: string;
-  attributes?: Attributes;
+  /**
+   * Merges into the node's attributes per key, the override winning. A key
+   * set to `null` removes the node's attribute of that name in this target
+   * alone.
+   */
+  attributes?: AttributeOverrides;
   events?: EventDefinition[];
+}
+
+/**
+ * Component-level overrides for the React extension. Extends the shared
+ * component override with `client`, which marks the generated file as a
+ * client module (`'use client';` as its first statement) for frameworks with
+ * server components, such as the Next.js App Router - needed when the
+ * component hands a function to a client component, as a compound passing a
+ * render-prop child to a driver does.
+ *
+ * @example
+ * defineTemplate({
+ *   type: 'component',
+ *   name: 'Select',
+ *   extensions: { react: { client: true } },
+ *   children: [],
+ * });
+ */
+export interface ReactComponentOverride extends ComponentExtensionOverride {
+  /** Emit `'use client';` as the file's first statement. Defaults to `false`. */
+  client?: boolean;
 }
 
 declare module '@js-template-engine/types' {
@@ -40,6 +67,6 @@ declare module '@js-template-engine/types' {
     react?: ReactNodeOverrides;
   }
   interface ComponentExtensionOverrides {
-    react?: ComponentExtensionOverride;
+    react?: ReactComponentOverride;
   }
 }

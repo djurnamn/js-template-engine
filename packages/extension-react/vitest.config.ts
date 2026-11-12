@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
+    include: ['**/tests/**/*.test.ts', '**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -15,7 +15,7 @@ export default defineConfig({
         '**/types.ts',
         '**/index.ts',
         '**/dist/**',
-        '**/__tests__/**',
+        '**/tests/**',
       ],
     },
   },

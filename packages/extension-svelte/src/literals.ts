@@ -1,3 +1,4 @@
+import { isIdentifier } from '@js-template-engine/core/emitter';
 import type { JsonValue } from '@js-template-engine/types';
 
 /** Serializes text as a single-quoted JavaScript string literal. */
@@ -17,7 +18,11 @@ export function serializeJavaScriptValue(value: JsonValue): string {
   if (typeof value === 'string') {
     return quoteSingle(value);
   }
-  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return String(value);
   }
   if (Array.isArray(value)) {
@@ -25,14 +30,17 @@ export function serializeJavaScriptValue(value: JsonValue): string {
   }
   const entries = Object.entries(value)
     .filter((entry): entry is [string, JsonValue] => entry[1] !== undefined)
-    .map(([key, entryValue]) => `${objectKey(key)}: ${serializeJavaScriptValue(entryValue)}`);
+    .map(
+      ([key, entryValue]) =>
+        `${objectKey(key)}: ${serializeJavaScriptValue(entryValue)}`
+    );
   return entries.length === 0 ? '{}' : `{ ${entries.join(', ')} }`;
 }
 
-const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-
-function objectKey(key: string): string {
-  return IDENTIFIER.test(key) ? key : quoteSingle(key);
+/** A property name as code: bare when it is an identifier, quoted otherwise
+ *  (`'aria-pressed'`). */
+export function objectKey(key: string): string {
+  return isIdentifier(key) ? key : quoteSingle(key);
 }
 
 /**
@@ -48,9 +56,16 @@ export function escapeText(text: string): string {
     .replace(/\{/g, '&#123;');
 }
 
-/** Escapes a static value for a double-quoted attribute (`alt="..."`). */
+/**
+ * Escapes a static value for a double-quoted attribute (`alt="..."`). A
+ * static value is always literal, so `{` is escaped to `&#123;` - otherwise
+ * a brace in the value would be parsed as the start of a Svelte expression.
+ */
 export function escapeAttributeValue(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/\{/g, '&#123;');
 }
 
 /**

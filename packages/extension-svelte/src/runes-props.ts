@@ -3,6 +3,13 @@ import {
   normalizeNamedSlots,
   TemplateError,
 } from '@js-template-engine/core';
+import {
+  isBindableDefinition,
+  normalizeSlotName,
+  optionalPropType,
+  propAliases,
+  propDocumentation,
+} from '@js-template-engine/core/emitter';
 import type { NormalizedExposedBinding } from '@js-template-engine/core';
 import type {
   ExposedBinding,
@@ -11,7 +18,7 @@ import type {
   TemplateNode,
 } from '@js-template-engine/types';
 
-import { serializeJavaScriptValue } from './literals';
+import { objectKey, serializeJavaScriptValue } from './literals';
 
 /** A snippet prop synthesized from a slot, for the runes props surface. */
 export interface SnippetProp {
@@ -38,31 +45,22 @@ export interface SnippetProp {
 }
 
 /**
- * The rest-attribute surface a passthrough root types its consumer props
- * against: a static intrinsic tag indexes `SvelteHTMLElements`, while a
- * dynamic or discriminated root - whose element is only known at runtime -
- * falls back to `HTMLAttributes<HTMLElement>`.
+ * The consumer surface a passthrough root types: the attributes its rest
+ * admits and the element its `element` handle binds, each a TypeScript type
+ * expression. A static root indexes `SvelteHTMLElements` by its tag, a dynamic
+ * root by its default, and a discriminated root takes the union of its
+ * branches.
  */
-export type RunesPassthroughSurface =
-  | { kind: 'static'; tag: string }
-  | { kind: 'dynamic' };
-
-/**
- * Normalizes a slot name to a valid JavaScript identifier: kebab-case and
- * snake_case convert to camelCase (`navigation-menu` → `navigationMenu`),
- * and a leading digit is prefixed with an underscore (`123invalid` →
- * `_123invalid`).
- */
-export function normalizeSlotName(name: string): string {
-  const segments = name.split(/[^A-Za-z0-9$]+/).filter((segment) => segment !== '');
-  const camelCased = segments
-    .map((segment, index) =>
-      index === 0
-        ? segment
-        : `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`
-    )
-    .join('');
-  return /^\d/.test(camelCased) ? `_${camelCased}` : camelCased;
+export interface PassthroughSurfaceTypes {
+  /** The rest attributes, e.g. `SvelteHTMLElements['button']`. */
+  attributes: string;
+  /** The bound element, e.g. `HTMLElementTagNameMap['button']`. */
+  element: string;
+  /**
+   * A type declaration the attributes read, written before `Props`: the
+   * alias of a routed element's keys.
+   */
+  declaration?: string;
 }
 
 /**
@@ -79,7 +77,9 @@ export function normalizeSlotName(name: string): string {
  * component declares (a named-slot projection into a composed child, or the
  * `children` snippet of a `slotScope` consumer) receives an aliased
  * {@link SnippetProp.localName}, since the projected snippet declaration
- * would lexically shadow the prop inside its own body.
+ * would lexically shadow the prop inside its own body. The same holds for a
+ * local binding of the prop's name - an iteration's `item` or `index`, or a
+ * `slotScope` binding - which shadows the prop inside its loop or snippet.
  *
  * @param children - The component's template nodes.
  * @param declaredProps - The component's declared props.
@@ -94,7 +94,10 @@ export function collectSnippetProps(
   // The names of the snippet declarations the component's markup emits when
   // it fills a composed child's slots: `{#snippet <name>}` per projected
   // named slot, plus `{#snippet children}` for a `slotScope` consumer.
-  const projectedSnippetNames = new Set<string>();
+  // Also the local bindings the markup declares (iteration items and
+  // indexes, received slot-scope bindings): each shadows a snippet prop of
+  // the same name inside its loop or snippet.
+  const shadowingNames = new Set<string>();
 
   const registerSlot = (
     slotName: string | undefined,
@@ -135,13 +138,15 @@ export function collectSnippetProps(
       switch (node.type) {
         case 'element':
           if (node.slotScope !== undefined && node.slotScope.length > 0) {
-            projectedSnippetNames.add('children');
+            shadowingNames.add('children');
+            node.slotScope.forEach((name) => shadowingNames.add(name));
           }
           if (node.children) {
             visit(node.children, `${nodePath}.children`);
           }
           for (const named of normalizeNamedSlots(node.slots)) {
-            projectedSnippetNames.add(normalizeSlotName(named.name));
+            shadowingNames.add(normalizeSlotName(named.name));
+            named.slotScope.forEach((name) => shadowingNames.add(name));
             visit(named.content, `${nodePath}.slots.${named.name}`);
           }
           break;
@@ -157,6 +162,10 @@ export function collectSnippetProps(
           });
           break;
         case 'iteration':
+          shadowingNames.add(node.item);
+          if (node.index !== undefined) {
+            shadowingNames.add(node.index);
+          }
           visit(node.children, `${nodePath}.children`);
           break;
         case 'slot':
@@ -180,10 +189,10 @@ export function collectSnippetProps(
   const takenNames = new Set<string>([
     ...Object.keys(declaredProps),
     ...snippetProps.map((snippetProp) => snippetProp.propName),
-    ...projectedSnippetNames,
+    ...shadowingNames,
   ]);
   for (const snippetProp of snippetProps) {
-    if (!projectedSnippetNames.has(snippetProp.propName)) {
+    if (!shadowingNames.has(snippetProp.propName)) {
       continue;
     }
     let aliasCandidate = `${snippetProp.propName}Slot`;
@@ -216,23 +225,44 @@ export function snippetPropType(snippetProp: SnippetProp): string {
  * The `Props` member lines shared by the interface and the passthrough
  * intersection: declared props in authored order, snippet props in document
  * order, then the passthrough consumer surface (`class`, `style`, and the
- * bindable `element` DOM handle) when the component has one.
+ * bindable `element` DOM handle) when the component has one. Each optional
+ * member is typed `?: T | undefined` ({@link optionalPropType}), so a
+ * consumer compiling with `exactOptionalPropertyTypes` can pass `undefined`.
  */
 function propsMembers(
   declaredProps: Record<string, PropDefinition>,
   snippetProps: SnippetProp[],
-  passthrough: boolean
+  passthrough: PassthroughSurfaceTypes | undefined
 ): string[] {
   const members: string[] = [];
   for (const [name, definition] of Object.entries(declaredProps)) {
-    const optionalMarker = definition.required === true ? '' : '?';
-    members.push(`  ${name}${optionalMarker}: ${definition.type};`);
+    const required = definition.required === true;
+    members.push(
+      ...propDocumentation(
+        definition,
+        '  ',
+        definition.default === undefined
+          ? undefined
+          : serializeJavaScriptValue(definition.default as JsonValue)
+      )
+    );
+    members.push(
+      required
+        ? `  ${objectKey(name)}: ${definition.type};`
+        : `  ${objectKey(name)}?: ${optionalPropType(definition.type)};`
+    );
   }
   for (const snippetProp of snippetProps) {
-    members.push(`  ${snippetProp.propName}?: ${snippetPropType(snippetProp)};`);
+    members.push(
+      `  ${snippetProp.propName}?: ${snippetPropType(snippetProp)} | undefined;`
+    );
   }
-  if (passthrough) {
-    members.push('  class?: string;', '  style?: string;', '  element?: HTMLElement;');
+  if (passthrough !== undefined) {
+    members.push(
+      '  class?: string | undefined;',
+      '  style?: string | undefined;',
+      `  element?: ${optionalPropType(passthrough.element)};`
+    );
   }
   return members;
 }
@@ -247,19 +277,26 @@ function propsMembers(
  * @param declaredProps - The component's declared props, in authored order.
  * @param snippetProps - The snippet props synthesized from the slots.
  * @param passthrough - The passthrough rest surface, if the component has one.
+ * @param restAttributes - The type of a `rest` declaration's leftover
+ *   attributes, if the component declares one.
  */
 export function runesPropsDeclaration(
   declaredProps: Record<string, PropDefinition>,
   snippetProps: SnippetProp[],
-  passthrough?: RunesPassthroughSurface
+  passthrough?: PassthroughSurfaceTypes,
+  restAttributes?: string
 ): string | undefined {
-  const members = propsMembers(declaredProps, snippetProps, passthrough !== undefined);
+  const members = propsMembers(declaredProps, snippetProps, passthrough);
   if (passthrough !== undefined) {
-    const base =
-      passthrough.kind === 'static'
-        ? `SvelteHTMLElements['${passthrough.tag}']`
-        : 'HTMLAttributes<HTMLElement>';
-    return `type Props = ${base} & {\n${members.join('\n')}\n};`;
+    const props = `type Props = ${passthrough.attributes} & {\n${members.join('\n')}\n};`;
+    return passthrough.declaration === undefined
+      ? props
+      : `${passthrough.declaration}\n\n${props}`;
+  }
+  if (restAttributes !== undefined) {
+    return members.length === 0
+      ? `type Props = ${restAttributes};`
+      : `type Props = ${restAttributes} & {\n${members.join('\n')}\n};`;
   }
   if (members.length === 0) {
     return undefined;
@@ -268,7 +305,7 @@ export function runesPropsDeclaration(
 }
 
 /** How wide a single-line destructure may render before wrapping. */
-const MAX_WIDTH = 80;
+const MAXIMUM_WIDTH = 80;
 
 /**
  * The identifier the passthrough rest gathers into (`...restProperties`) -
@@ -288,25 +325,51 @@ export const REST_PROPERTIES_NAME = 'restProperties';
  * `className`, `style`, the `element` DOM handle made bindable with
  * `$bindable(undefined)` (so consumers may `bind:element`), and the
  * undeclared rest gathered into `...restProperties` for the spread. Returns
- * `undefined` when there is nothing to destructure.
+ * `undefined` when there is nothing to destructure. A two-way prop
+ * (`bindable` object) destructures as `$bindable()`, without a fallback. A
+ * prop whose name cannot be a local binding destructures under its alias
+ * (`'aria-pressed': ariaPressed = false`), from `aliases`.
  *
  * @param declaredProps - The component's declared props, in authored order.
  * @param snippetProps - The snippet props synthesized from the slots.
  * @param passthrough - Whether the component has a passthrough surface.
+ * @param rest - Whether the component declares `rest`, gathering the leftover
+ *   attributes into `...rest` for the author to place.
+ * @param aliases - The alias of each prop whose name is not bindable
+ *   ({@link propAliases} over the whole component).
  */
 export function runesPropsDestructure(
   declaredProps: Record<string, PropDefinition>,
   snippetProps: SnippetProp[],
-  passthrough: boolean
+  passthrough: boolean,
+  rest = false,
+  aliases: ReadonlyMap<string, string> = propAliases(Object.keys(declaredProps))
 ): string | undefined {
   const entries = Object.entries(declaredProps).map(([name, definition]) => {
-    if (definition.default !== undefined) {
-      return `${name} = ${serializeJavaScriptValue(definition.default as JsonValue)}`;
+    const value =
+      definition.default !== undefined
+        ? serializeJavaScriptValue(definition.default as JsonValue)
+        : undefined;
+    // A name that cannot be a local binding destructures under its alias.
+    const alias = aliases.get(name);
+    const binding = alias === undefined ? name : `${objectKey(name)}: ${alias}`;
+    // A bindable prop is declared to Svelte with `$bindable`, its default
+    // inside, so a consumer's `bind:` compiles and follows the component.
+    if (definition.bindable === true) {
+      return `${binding} = $bindable(${value ?? (definition.required === true ? '' : 'undefined')})`;
+    }
+    // A two-way prop takes no fallback: `undefined` leaves the value to the
+    // component, and Svelte rejects `bind:` to `undefined` on a prop with one.
+    if (isBindableDefinition(definition.bindable)) {
+      return `${binding} = $bindable()`;
+    }
+    if (value !== undefined) {
+      return `${binding} = ${value}`;
     }
     if (definition.required === true) {
-      return name;
+      return binding;
     }
-    return `${name} = undefined`;
+    return `${binding} = undefined`;
   });
   // A snippet prop shadowed by a same-named projected snippet destructures
   // under its alias (`icon: iconSlot`); the markup references the alias.
@@ -324,16 +387,18 @@ export function runesPropsDestructure(
       'element = $bindable(undefined)',
       `...${REST_PROPERTIES_NAME}`
     );
+  } else if (rest) {
+    entries.push('...rest');
   }
   if (entries.length === 0) {
     return undefined;
   }
 
   const singleLine = `let { ${entries.join(', ')} }: Props = $props();`;
-  if (singleLine.length <= MAX_WIDTH) {
+  if (singleLine.length <= MAXIMUM_WIDTH) {
     return singleLine;
   }
   // A rest element may not carry a trailing comma.
-  const trailingComma = passthrough ? '' : ',';
+  const trailingComma = passthrough || rest ? '' : ',';
   return `let {\n  ${entries.join(',\n  ')}${trailingComma}\n}: Props = $props();`;
 }

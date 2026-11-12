@@ -46,13 +46,13 @@ export interface NestedSelectorBlock {
  * the node.
  *
  * Top-level plain properties - CSS custom properties included - may carry
- * `$expression` values; these render through the target framework's dynamic
+ * `$expression` values; these render through the target's dynamic
  * style mechanism and never enter generated CSS. To make the entire style
  * dynamic, give the object a top-level `$expression` key (a string
  * expression evaluating to a plain object of property→value pairs). It may
  * **coexist** with static properties, `$include`/`@include`, nested
  * selectors, and per-property `$expression` values on the same node: static
- * and nested keys route to the stylesheet (or inline per strategy) as usual,
+ * and nested keys route to the stylesheet (or inline, under the `inline` placement) as usual,
  * while the whole-object expression renders through the dynamic mechanism.
  * Where both reach the same inline mechanism, the merge order is
  * whole-object first (the base layer), then authored static / per-property
@@ -70,7 +70,7 @@ export interface NestedSelectorBlock {
  * Includes are emitted in authored order, interleaved with sibling
  * declarations, so an include followed by an overriding declaration cascades
  * as written. Under `styling.language: 'scss'` they pass through for the
- * consumer's own sass build; under `'css'` (or the `inline` strategy) the
+ * consumer's own sass build; under `'css'` (or the `inline` placement) the
  * engine resolves them against `styling.loadPaths`.
  *
  * @example

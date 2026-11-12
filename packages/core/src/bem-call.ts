@@ -1,7 +1,7 @@
 /**
  * One conditionally-applied BEM modifier in a runtime `bem(...)` call: the
  * modifier name and the JavaScript condition gating it. The condition is
- * authored expression text - a framework target rewrites any named-slot
+ * authored expression text - a scripted target rewrites any named-slot
  * reference inside it to its own presence form before formatting the call.
  */
 export interface BemConditionalModifier {

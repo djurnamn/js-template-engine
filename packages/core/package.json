@@ -1,7 +1,7 @@
 {
   "name": "@js-template-engine/core",
-  "version": "2.2.1",
-  "description": "Template engine core: processes data-defined component templates into HTML, CSS, and JavaScript",
+  "version": "2.3.0",
+  "description": "Template engine core: processes data-defined component templates into HTML and CSS, and into React, Vue and Svelte through target extensions",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -9,6 +9,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
+    },
+    "./emitter": {
+      "types": "./dist/emitter.d.ts",
+      "import": "./dist/emitter.js",
+      "require": "./dist/emitter.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "emitter": [
+        "./dist/emitter.d.ts"
+      ]
     }
   },
   "files": [
@@ -21,11 +33,19 @@
     "clean": "rimraf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit -p tsconfig.type-check.json"
+    "typecheck": "tsc --noEmit -p tsconfig.type-check.json"
   },
   "dependencies": {
     "@js-template-engine/types": "workspace:^",
     "sass": "^1.101.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",

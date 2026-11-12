@@ -27,6 +27,10 @@
           "type": "string",
           "description": "The component name: `'Button'` → `Button.tsx` / `Button.vue` / ..."
         },
+        "description": {
+          "type": "string",
+          "description": "What the component is and when to reach for it, written as the generated component's doc comment in every scripted target, so a consumer's editor shows it on hover, and readable here by tooling such as a kit's docs or preview. Markdown is allowed."
+        },
         "props": {
           "type": "object",
           "additionalProperties": {
@@ -39,11 +43,32 @@
           "items": {
             "type": "string"
           },
-          "description": "Verbatim import statements."
+          "description": "Verbatim module-scope lines. Import statements keep their place; any other declaration (a constant, a counter, a context, an exported type) is emitted at module scope in every scripted target, so it runs once per module and its instances share it."
         },
         "script": {
           "type": "string",
           "description": "Framework-agnostic JS (handlers, utils)."
+        },
+        "derived": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Values the component computes from its props, written once: each name with the expression that computes it, in order. The template and the component script read each by its name in every target, and it follows what it reads: a `const` in React, a `computed` in Vue, a `$:` declaration in legacy Svelte and a `$derived` in Svelte runes. The html target names it in a comment, and an instance render evaluates it.\n\nAn expression reads props, two-way values (a bindable's `current`), declared `ids`, derived values declared before it and the declarations in `imports`, never a name only the component script declares. No script writes a derived value."
+        },
+        "ids": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/DeclaredId"
+              }
+            ]
+          },
+          "description": "Ids the component generates once per instance, for wiring such as `aria-controls`, `aria-labelledby` or a radio group's `name`: each name with the literal prefix the id starts with, or `{ prefix, prop }` to let a string prop the consumer gives replace it. The template, the component script and derived values read each by its name, like a prop, in every target. React takes it from `useId()`, Vue from `useId()`, Svelte runes from `$props.id()` and legacy Svelte from a counter every component on the page shares, each after the prefix. The html target and an instance render write `prefix-1`, `prefix-2` and so on, counted through the page they render."
         },
         "style": {
           "type": "string",
@@ -58,6 +83,24 @@
         "extensions": {
           "$ref": "#/definitions/ComponentExtensionOverrides",
           "description": "Component-level per-extension overrides."
+        },
+        "rest": {
+          "$ref": "#/definitions/RestDefinition",
+          "description": "Where the consumer's leftover attributes land, as one value named `rest` typed after `tag`. Not combined with a `passthrough` root."
+        },
+        "typeParameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TypeParameter"
+          },
+          "description": "The component's type parameters, in order, for a component generic over a type its consumer supplies - the item type of a list, say."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The components that make up this one as a compound, by name: the parts a consumer places inside it (`DialogTrigger`, `DialogContent`) or the modules it composes from (a hand-written driver). Rendering ignores the list; tooling reads it, so a kit's consumer command can place a part beside its compound and copy the compound whole. Each name is another component of the kit, and a part belongs to one compound."
         }
       },
       "required": [
@@ -65,8 +108,7 @@
         "name",
         "children"
       ],
-      "additionalProperties": false,
-      "description": "The optional root wrapper carrying component metadata. Validation rejects `component` nodes anywhere but the template root."
+      "additionalProperties": false
     },
     "PropDefinition": {
       "type": "object",
@@ -82,13 +124,45 @@
         "default": {
           "$ref": "#/definitions/JsonValue",
           "description": "A JSON-serializable default value."
+        },
+        "documentedDefault": {
+          "type": "string",
+          "description": "A default the component applies without declaring it, such as an absent value its conditionals treat as `'start'`: the code a consumer reads, as a string (`\"'start'\"`). Documentation only: it is written as the prop's `@defaultValue` exactly as a declared `default` is, and leaves the generated code as it would be without it. Not combined with `default`.",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "What the prop is for, written as a TSDoc comment on the generated prop in every target (with a `@defaultValue` from `default` or `documentedDefault`), so a consumer's editor shows it on hover, and readable here by tooling such as a kit's docs. Markdown is allowed."
+        },
+        "bindable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/BindableDefinition"
+            }
+          ],
+          "description": "The prop is two-way: a consumer may bind it and follow the component's changes. Defaults to `false`.\n\n`true` declares the binding only: Svelte in runes mode destructures the prop as `$bindable(<default>)`, so `bind:value` compiles; legacy Svelte binds every prop already, and React and Vue ignore the flag. The component's own scripts change the value.\n\nAn object (`BindableDefinition`) also has every scripted target generate the two-way plumbing, in one of two forms. The copy form (`current` and `setter`) keeps the controlled and uncontrolled value in the component: it reads the given value, or its own copy when the prop is not given, under `current`, and changes it through the generated `setter`. The relayed form (`given` and `report`) keeps no copy: the value's owner, such as a state machine or a native input, holds it, and the component forwards the given value as `given` and reports the owner's changes through `report`."
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "description": "A component prop definition.\n\nRendered as a generated props interface with destructured defaults in React, `defineProps` in Vue, `export let` declarations in Svelte, and plain consts in the HTML-mode script block."
+      "description": "A component prop definition.\n\nRendered as a generated props interface with destructured defaults in React, `defineProps` in Vue, and `export let` declarations in Svelte. HTML mode has no props: their values appear as `{{ expression }}` placeholders.\n\nA prop sets at most one of `default` and `documentedDefault`.",
+      "if": {
+        "required": [
+          "default"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "documentedDefault"
+          ]
+        }
+      }
     },
     "JsonValue": {
       "anyOf": [
@@ -118,6 +192,92 @@
         }
       ],
       "description": "A JSON-serializable value.\n\nTemplates are plain serializable data: anything expressible in the template types is expressible in JSON, so values that must survive serialization are constrained to this type."
+    },
+    "BindableDefinition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CopiedBindableDefinition"
+        },
+        {
+          "$ref": "#/definitions/RelayedBindableDefinition"
+        }
+      ],
+      "description": "The two-way value a component generates for a bindable prop, in one of two forms: the copy form (`CopiedBindableDefinition`), where the component keeps the value, or the relayed form (`RelayedBindableDefinition`), where the value's owner keeps it. Either way the template reads and changes the value by names that are the same text in every target, and a consumer's `v-model` (Vue) or `bind:` (Svelte) follows it."
+    },
+    "CopiedBindableDefinition": {
+      "type": "object",
+      "properties": {
+        "current": {
+          "type": "string",
+          "description": "The name the template's expressions and the component script read the value by: the given prop when it is not `undefined`, otherwise the component's own copy. An identifier no prop, slot or script takes.",
+          "minLength": 1
+        },
+        "setter": {
+          "type": "string",
+          "description": "The name of the function the component generates to change the value, called from handlers with the next value or an updater, `(current) => next`. An unchanged value (`Object.is`) is skipped.",
+          "minLength": 1
+        },
+        "defaultProp": {
+          "type": "string",
+          "description": "The declared prop whose value the component's own copy starts from when the prop is not given. Without it, the prop's own `default` seeds it.",
+          "minLength": 1
+        },
+        "changeProp": {
+          "type": "string",
+          "description": "The declared event prop, a function returning `void`, called with each new value in every target (before Vue's `update:` emit).",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "current",
+        "setter"
+      ],
+      "additionalProperties": false,
+      "description": "The copy form of a two-way value. The template reads the value under `current` and changes it only by calling `setter`, the same text in every target.\n\nWhen the consumer gives the prop (anything but `undefined`, `null` included), the component shows that value and only reports changes. When the prop is not given, the component keeps its own copy, starting from `defaultProp` (or the prop's own `default`). Every change calls `changeProp` with the new value, and a consumer's `v-model` (Vue) or `bind:` (Svelte) follows it."
+    },
+    "RelayedBindableDefinition": {
+      "type": "object",
+      "properties": {
+        "given": {
+          "type": "string",
+          "description": "The name the template's expressions and the component script read the value by, as the consumer gives it, which the template forwards to the value's owner. An identifier no prop, slot or script takes.",
+          "minLength": 1
+        },
+        "report": {
+          "type": "string",
+          "description": "The name of the function the component generates for the owner to report each new value through, called with the new value. The value is typed as `changeProp`'s first parameter when its type states one, and as the prop otherwise.",
+          "minLength": 1
+        },
+        "changeProp": {
+          "type": "string",
+          "description": "The declared event prop, a function returning `void`, called with each reported value in every target (before Vue's `update:` emit).",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "given",
+        "report"
+      ],
+      "additionalProperties": false,
+      "description": "The relayed form of a two-way value, for a value whose owner holds it: a state machine driver or a native input, which handles being controlled or uncontrolled itself. The component keeps no copy. The template forwards the value the consumer gives under `given` and hands the owner `report` to call with each change, the same text in every target. A relayed prop declares no `default` of its own: what the owner starts from when the prop is not given is an ordinary prop the template forwards to it.\n\nIn React, `given` is the prop. In Vue it is a `computed` reading `modelValue` first when `extensions.vue.model` names the prop. In Svelte it passes through a generated echo guard: `undefined` while the prop holds only values the component reported itself, then every value once the consumer gives one, so with nothing given and nothing bound the owner keeps its own state. `report` calls `changeProp` with the new value in every target; Vue then emits `update:<prop>` (and `update:modelValue` with a model), and Svelte assigns the prop first, so a consumer's `bind:` follows it. Every call passes through, an unchanged value included."
+    },
+    "DeclaredId": {
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "description": "The literal start of the generated id, such as `'field'`."
+        },
+        "prop": {
+          "type": "string",
+          "description": "A declared string prop whose value, when the consumer gives it, is used instead of the generated id. Left out or `undefined`, the generated id applies."
+        }
+      },
+      "required": [
+        "prefix"
+      ],
+      "additionalProperties": false,
+      "description": "A per-instance id in its object form: the literal `prefix` the generated id starts with and, optionally, the string prop whose value the consumer gives in its place."
     },
     "TemplateNode": {
       "anyOf": [
@@ -164,7 +324,7 @@
               "$ref": "#/definitions/DynamicTag"
             }
           ],
-          "description": "The tag name: `'div'`, `'button'`, `'svg'`, ... A `DynamicTag` resolves the tag from a runtime expression instead (root element only)."
+          "description": "The tag name: `'div'`, `'button'`, `'svg'`, ... A `DynamicTag` resolves the tag from a runtime expression instead."
         },
         "attributes": {
           "$ref": "#/definitions/Attributes",
@@ -199,18 +359,25 @@
           "items": {
             "type": "string"
           },
-          "description": "Names the runtime values a composed component exposes through its default scoped slot, bringing them into scope of this node's projected `children`. Valid only on a component-reference node (a capitalized tag); each entry is a binding identifier the composed component's default slot exposes (its `SlotNode.exposes` keys). The children may then reference those identifiers freely.\n\nPer target: React wraps the children as a function child (`{({ api }) => (...)}`), Vue emits `v-slot=\"{ api }\"`, Svelte emits `let:api`. HTML mode ignores it (a static preview has no consumer). Only the default slot is supported."
+          "description": "Names the runtime values a composed component exposes through its default scoped slot, bringing them into scope of this node's projected `children`. Valid only on a component-reference node (a capitalized tag); each entry is a binding identifier the composed component's default slot exposes (its `SlotNode.exposes` keys). The children may then reference those identifiers freely.\n\nPer target: React wraps the children as a function child (`{({ api }) => (...)}`), Vue emits `v-slot=\"{ api }\"`, Svelte emits `let:api`. The html target names it in the `<!-- component -->` comment. Only the default slot is supported."
         },
         "slots": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/NamedSlotContent"
           },
-          "description": "Content projected into a composed child's **named** slots, keyed by slot name (the child's  {@link  SlotNode.name } ); this node's `children` continue to fill the default slot. Valid only on a component-reference node (a capitalized tag). Each value is the projected content (an ordinary named slot), or a `{ content, slotScope? }` object whose `slotScope` names the bindings received from that named slot's exposed scope (a scoped named slot), brought into scope of `content`.\n\nPer target: React passes each as the slot's prop (`closeButton={...}`, a render prop `closeButton={({ row }) => ...}` when scoped); Vue emits `<template #closeButton>` (`#closeButton=\"{ row }\"` when scoped); Svelte emits `<svelte:fragment slot=\"closeButton\">` (`let:row` when scoped). HTML mode ignores it (a static preview has no slot consumer). The slot that receives it is a  {@link  SlotNode }  (a named, optionally scoped, slot)."
+          "description": "Content projected into a composed child's **named** slots, keyed by slot name (the child's  {@link  SlotNode.name } ); this node's `children` continue to fill the default slot. Valid only on a component-reference node (a capitalized tag). Each value is the projected content (an ordinary named slot), or a `{ content, slotScope? }` object whose `slotScope` names the bindings received from that named slot's exposed scope (a scoped named slot), brought into scope of `content`.\n\nPer target: React passes each as the slot's prop (`closeButton={...}`, a render prop `closeButton={({ row }) => ...}` when scoped); Vue emits `<template #closeButton>` (`#closeButton=\"{ row }\"` when scoped); Svelte emits `<svelte:fragment slot=\"closeButton\">` (`let:row` when scoped). HTML mode renders it inside the `<!-- component -->` comments, between `<!-- slot: closeButton -->` and `<!-- /slot -->`. The slot that receives it is a  {@link  SlotNode }  (a named, optionally scoped, slot)."
         },
         "passthrough": {
-          "type": "boolean",
-          "description": "Marks this element as the component's surface root: a consumer's undeclared props/attributes spread onto it, a consumer-supplied `className`/`class` and `style` merge into its class list and styles, and it exposes a DOM handle (React ref-as-prop, Vue `$el`, Svelte a bindable `element`). At most one element per component may set it, and it must be the component's single root rendered element with an intrinsic HTML tag."
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/PassthroughRouting"
+            }
+          ],
+          "description": "Marks this element as the component's surface root: a consumer's undeclared props/attributes spread onto it, a consumer-supplied `className`/`class` and `style` merge into its class list and styles, and it exposes a DOM handle (React ref-as-prop, Vue `$el`, Svelte a bindable `element`). At most one element per component may set it, and it must be the component's single root rendered element with an intrinsic HTML tag. Under a root conditional it may instead be the one element of each branch (a discriminated surface root), or the one element of an `if` with no `else` or an empty one, so the component renders nothing while the condition is false.\n\nOn one element below that root, an object instead routes the consumer attributes it names to this element rather than the root ( {@link  PassthroughRouting } ): a `<label>` root wrapping a native `<input>` sends `aria-*`, the event handlers and `required` to the input, while the class, style and DOM handle stay on the label (the handle can follow the attributes with `handle: 'routed'`)."
         }
       },
       "required": [
@@ -224,15 +391,15 @@
       "properties": {
         "$expression": {
           "type": "string",
-          "description": "The runtime tag expression, e.g. `'as'` - a JavaScript expression."
+          "description": "The runtime tag expression, e.g. `\"as ?? 'button'\"` - a JavaScript expression."
         },
         "default": {
           "type": "string",
-          "description": "The static fallback tag - preview, validation, and typing basis."
+          "description": "The static tag the html target renders and validation and typing use; never applied at runtime."
         },
         "componentValued": {
           "type": "boolean",
-          "description": "Set when the expression may resolve to a **component** value (rather than only an intrinsic tag string). A value-domain declaration for the emitters: React (`ElementType`) and Vue (`:is`) already accept both, but Svelte needs it - `<svelte:element>` renders string tags only, so a component-valued root emits a `typeof` branch (a `<svelte:element>` string arm and a component arm) instead. Absent, the root is treated as string-tag-valued."
+          "description": "Set when the expression may resolve to a **component** value (rather than only an intrinsic tag string). A value-domain declaration for the emitters: React (`ElementType`) and Vue (`:is`) already accept both at runtime, and React's generated types then accept a component for a polymorphic `as` prop. Svelte needs it - `<svelte:element>` renders string tags only, so a component-valued root emits a `typeof` branch (a `<svelte:element>` string arm and a component arm) instead. Allowed only on the component's single root rendered element. Absent, the tag is treated as string-tag-valued."
         }
       },
       "required": [
@@ -240,7 +407,7 @@
         "default"
       ],
       "additionalProperties": false,
-      "description": "A dynamic tag: the element's tag name is resolved from a runtime expression instead of a literal. `$expression` is an opaque JavaScript expression (the engine emits it verbatim, never parses it) yielding the runtime tag - an intrinsic tag string or a component identifier. `default` is a required static tag: the basis for the HTML-mode static preview, the void/children validation check, and - on a passthrough surface root - the typed prop surface. The engine never injects `default` as a runtime fallback; an author wanting one writes it into the expression. Allowed only on a component's single root rendered element."
+      "description": "A dynamic tag: the element's tag name is resolved from a runtime expression instead of a literal. `$expression` is an opaque JavaScript expression (the engine emits it verbatim, never parses it) yielding the runtime tag - an intrinsic tag string or a component identifier. `default` is a required static tag: the tag the html target renders (with a `<!-- tag: expression -->` comment before it), the void/children validation check, and - on a passthrough surface root - the typed prop surface. The engine never injects `default` as a runtime fallback; an author wanting one writes it into the expression. Allowed on any element; only the component's single root rendered element may be `componentValued`."
     },
     "Attributes": {
       "type": "object",
@@ -278,7 +445,7 @@
               }
             }
           ],
-          "description": "Object spread. Each  {@link  ExpressionBinding }  names a runtime object whose own enumerable properties are spread onto this element (or, on a component-reference node, its props): React `{...x}`, Vue `v-bind=\"x\"`, Svelte `{...x}`. An array spreads several objects in order. Spreads lead the node's attributes - authored attributes, classes, and styles follow and override per key (consumers add, they do not replace). Unlike the passthrough root's undeclared-rest spread, `$spread` targets a *named* object and is allowed on any element, not the root alone. HTML mode is inert (no runtime consumer)."
+          "description": "Object spread. Each  {@link  ExpressionBinding }  names a runtime object whose own enumerable properties are spread onto this element (or, on a component-reference node, its props): React `{...x}`, Vue `v-bind=\"x\"`, Svelte `{...x}`. An array spreads several objects in order. Spreads lead the node's attributes - authored attributes, classes, and styles follow and override per key (consumers add, they do not replace). Unlike the passthrough root's undeclared-rest spread, `$spread` targets a *named* object and is allowed on any element, not the root alone. The html target writes a `<!-- spread: x -->` comment before the element."
         }
       },
       "additionalProperties": {
@@ -376,7 +543,7 @@
           }
         ]
       },
-      "description": "A nested style object.\n\nAccepts plain CSS properties (camelCase or kebab-case), pseudo-selectors (`':hover'`), media queries (`'@media (max-width: 768px)'`), and parent-modifier selectors (`'.button--large &'`) as keys. Nested selectors always require a stylesheet and therefore force a class-based selector for the node.\n\nTop-level plain properties - CSS custom properties included - may carry `$expression` values; these render through the target framework's dynamic style mechanism and never enter generated CSS. To make the entire style dynamic, give the object a top-level `$expression` key (a string expression evaluating to a plain object of property→value pairs). It may\n**coexist** with static properties, `$include`/`@include`, nested selectors, and per-property `$expression` values on the same node: static and nested keys route to the stylesheet (or inline per strategy) as usual, while the whole-object expression renders through the dynamic mechanism. Where both reach the same inline mechanism, the merge order is whole-object first (the base layer), then authored static / per-property values, then any passthrough consumer `style` (later wins).\n\nAn `@include ...` at-rule key carries a Sass mixin include - the inverse of `$expression`: compile-time source (not runtime), legal in any block including nested selector blocks. Its value encodes whether a content block is passed:\n\n- `'@include name': true` (or `{}`) → `@include name;` (no content)\n- `'@include name': { ... }` → `@include name { ... }` (the object is the   content block)\n\nIncludes are emitted in authored order, interleaved with sibling declarations, so an include followed by an overriding declaration cascades as written. Under `styling.language: 'scss'` they pass through for the consumer's own sass build; under `'css'` (or the `inline` strategy) the engine resolves them against `styling.loadPaths`."
+      "description": "A nested style object.\n\nAccepts plain CSS properties (camelCase or kebab-case), pseudo-selectors (`':hover'`), media queries (`'@media (max-width: 768px)'`), and parent-modifier selectors (`'.button--large &'`) as keys. Nested selectors always require a stylesheet and therefore force a class-based selector for the node.\n\nTop-level plain properties - CSS custom properties included - may carry `$expression` values; these render through the target's dynamic style mechanism and never enter generated CSS. To make the entire style dynamic, give the object a top-level `$expression` key (a string expression evaluating to a plain object of property→value pairs). It may\n**coexist** with static properties, `$include`/`@include`, nested selectors, and per-property `$expression` values on the same node: static and nested keys route to the stylesheet (or inline, under the `inline` placement) as usual, while the whole-object expression renders through the dynamic mechanism. Where both reach the same inline mechanism, the merge order is whole-object first (the base layer), then authored static / per-property values, then any passthrough consumer `style` (later wins).\n\nAn `@include ...` at-rule key carries a Sass mixin include - the inverse of `$expression`: compile-time source (not runtime), legal in any block including nested selector blocks. Its value encodes whether a content block is passed:\n\n- `'@include name': true` (or `{}`) → `@include name;` (no content)\n- `'@include name': { ... }` → `@include name { ... }` (the object is the   content block)\n\nIncludes are emitted in authored order, interleaved with sibling declarations, so an include followed by an overriding declaration cascades as written. Under `styling.language: 'scss'` they pass through for the consumer's own sass build; under `'css'` (or the `inline` placement) the engine resolves them against `styling.loadPaths`."
     },
     "NestedSelectorBlock": {
       "type": "object",
@@ -461,7 +628,7 @@
         "attributes"
       ],
       "additionalProperties": false,
-      "description": "Condition-gated attributes.\n\nRenders as a generated class expression in React, `:class` object syntax in Vue, and `class:` directives in Svelte; HTML mode omits them from markup (warning emitted) but still generates CSS for the referenced classes.\n\n`class` and `style` are literal-only here - the condition is their dynamism; `$expression` values inside conditional attributes are a validation error."
+      "description": "Condition-gated attributes.\n\nRenders as a generated class expression in React, `:class` object syntax in Vue, and `class:` directives in Svelte; the html target writes each as a `<!-- if condition: class=\"...\" -->` comment before the element and still generates CSS for the referenced classes.\n\n`class` and `style` are literal-only here - the condition is their dynamism; `$expression` values inside conditional attributes are a validation error. A `style` renders as the stylesheet rule of the entry's first class, which the condition toggles, so an entry with a `style` needs a `class` beside it."
     },
     "EventDefinition": {
       "type": "object",
@@ -487,7 +654,7 @@
         "handler"
       ],
       "additionalProperties": false,
-      "description": "An event bound to an element.\n\nThe name is the generic DOM event name; framework extensions transform it into their own syntax (`onClick={...}`, `@click=\"...\"`, `on:click={...}`)."
+      "description": "An event bound to an element.\n\nThe name is the generic DOM event name; target extensions transform it into their own syntax (`onClick={...}`, `@click=\"...\"`, `on:click={...}`)."
     },
     "EventModifier": {
       "anyOf": [
@@ -519,7 +686,7 @@
           "$ref": "#/definitions/KeyEventModifier"
         }
       ],
-      "description": "An event modifier.\n\nModifiers map natively where the target framework supports them (Vue `@click.prevent`, Svelte `on:click|preventDefault`) and are wrapped in generated handler code where it doesn't (React, HTML mode). Key-guard modifiers map natively in Vue (`@keyup.enter`) and wrap the handler in a generated `event.key` guard everywhere else."
+      "description": "An event modifier.\n\nModifiers map natively where the target supports them (Vue `@click.prevent`, Svelte `on:click|preventDefault`) and are wrapped in generated handler code where it doesn't (React). The html target names them in the event's `<!-- on click (prevent): handler -->` comment. Key-guard modifiers map natively in Vue (`@keyup.enter`) and wrap the handler in a generated `event.key` guard everywhere else."
     },
     "KeyEventModifier": {
       "type": "string",
@@ -574,6 +741,31 @@
       ],
       "description": "Content a composing node projects into one of a composed child's named slots (see  {@link  ElementNode.slots } ).\n\nThe shorthand array form is the projected content (an ordinary named slot). The object form adds `slotScope` - binding names received from that named slot's exposed scope (a scoped named slot), brought into scope of `content`, the same mechanism as  {@link  ElementNode.slotScope }  for the default slot."
     },
+    "PassthroughRouting": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The consumer attributes this element receives instead of the root."
+        },
+        "handle": {
+          "type": "string",
+          "enum": [
+            "root",
+            "routed"
+          ],
+          "description": "Where the DOM handle lands: `'root'` (the default) keeps it on the passthrough root; `'routed'` moves it to this element, so a consumer's React `ref`, Vue `$el` (and Vue's `element`, typed after the tag) and Svelte `bind:element` reach the `<input>` a form library registers and `focus()` moves to. Not allowed on an element inside an iteration."
+        }
+      },
+      "required": [
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "description": "Routes some of the consumer's attributes from a passthrough root to one element below it: `passthrough: { attributes: ['aria-*', 'on*', 'required'] }`. The listed attributes the component does not declare land on this element, and everything else, `class`, `style` and `data-*` included, stays on the root, with the DOM handle unless `handle` moves it here. The element's own attributes win over the routed ones per key, as the root's do over the rest.\n\nEach entry is one of:\n\n- `'*'` - every attribute except `class`, `style` and `data-*`;\n- `'aria-*'` - every `aria-` attribute;\n- `'on*'` - every event handler (`onChange`, `onblur`);\n- an HTML attribute name in its HTML spelling, lowercase (`required`,   `tabindex`, `autocomplete`), matched in each target's spelling   (`tabIndex` in React).\n\nAllowed on one element per component, an intrinsic static tag, below a single static-tag passthrough root.\n\nWhere this element sets `aria-describedby`, `aria-labelledby`, `aria-controls`, `aria-owns` or `aria-details` itself and the list routes it, the consumer's value joins the element's own: the element's ids first, then the consumer's, each once."
+    },
     "TextNode": {
       "type": "object",
       "properties": {
@@ -626,6 +818,10 @@
           "items": {
             "$ref": "#/definitions/TemplateNode"
           }
+        },
+        "extensions": {
+          "$ref": "#/definitions/FragmentExtensionOverrides",
+          "description": "The wrapper each scripted target renders around the children, if any."
         }
       },
       "required": [
@@ -633,7 +829,39 @@
         "children"
       ],
       "additionalProperties": false,
-      "description": "Groups children without a wrapper element: React `<>...</>`, plain sibling output elsewhere."
+      "description": "Groups children without a wrapper element: React `<>...</>`, plain sibling output elsewhere. A target block in `extensions` naming a `tag` renders that element or component around the children in that target alone, for a wrapper only some targets need (React's context provider, Vue's `Teleport`)."
+    },
+    "FragmentExtensionOverrides": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/FragmentOverride"
+      },
+      "description": "A fragment's overrides keyed by target extension name: each a  {@link  FragmentOverride }  naming the wrapper that target renders."
+    },
+    "FragmentOverride": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "The element or component rendered around the fragment's children in this target. A capitalized name is a component reference."
+        },
+        "attributes": {
+          "$ref": "#/definitions/Attributes",
+          "description": "The wrapper's attributes, rendered verbatim in this target."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventDefinition"
+          },
+          "description": "The wrapper's events."
+        }
+      },
+      "required": [
+        "tag"
+      ],
+      "additionalProperties": false,
+      "description": "A fragment's override for one scripted target, carried under `extensions.<key>` on a fragment node: the element or component the fragment renders around its children in that target alone, for a wrapper one target needs and the others do not. Without one, a fragment renders its children alone, the HTML output included. A capitalized `tag` is a component reference, brought into scope by the component-level `imports` override. Any other key, an `attributes` key set to `null`, a `$spread` and a `style` are validation errors: a fragment has no attributes of its own to remove, and styling extensions give it no class, so a class goes in `attributes`. A void `tag` takes no children."
     },
     "SlotNode": {
       "type": "object",
@@ -644,7 +872,7 @@
         },
         "name": {
           "type": "string",
-          "description": "The slot name; omitted = default slot."
+          "description": "The slot name; omitted = default slot. A slot named `'default'` is a validation error - the default slot is the one without a name."
         },
         "fallback": {
           "type": "array",
@@ -659,13 +887,17 @@
             "$ref": "#/definitions/ExposedBinding"
           },
           "description": "Runtime values this slot exposes to its projected content, keyed by the scope binding name consumers see. Each value is the provider-scope expression (and, in the object form, an optional React type). Absent = an ordinary, non-scoped slot."
+        },
+        "scopeRequired": {
+          "type": "boolean",
+          "description": "Whether projected content must take this slot's scope: content that does not read the exposed values cannot work, as with a trigger that has to spread the props it is given. React types the slot prop as the render function alone (`trigger?: (scope) => ReactNode`), so plain content is a type error, and renders the fallback when no function is given. Svelte runes already types the snippet as a function of the scope; Vue and legacy Svelte cannot refuse slot content that ignores the scope, so there it is documentation. The html target is unaffected. Valid only on a slot with `exposes`."
         }
       },
       "required": [
         "type"
       ],
       "additionalProperties": false,
-      "description": "A content projection point.\n\nHTML mode renders `fallback` (slots have no consumer in static HTML); React uses the `{children}` / `{slots.<name>}` prop convention; Vue and Svelte render `<slot>` elements. Fallbacks must not contain slot nodes.\n\nA slot may expose runtime values to its projected content (`exposes`), making it a scoped slot: React turns the slot prop into a render prop (`children?: (scope) => ReactNode`), Vue binds them on the `<slot>` (`<slot :api=\"api\" />`), and Svelte binds them likewise (`<slot api={api} />`). A composing node receives them through  {@link  ElementNode.slotScope } ."
+      "description": "A content projection point.\n\nThe html target renders `fallback` between `<!-- slot -->` and `<!-- /slot -->` comments; React uses the `{children}` / `{slots.<name>}` prop convention; Vue and Svelte render `<slot>` elements. Fallbacks must not contain slot nodes.\n\nA slot may expose runtime values to its projected content (`exposes`), making it a scoped slot: React types the slot prop as a render function or plain content (`children?: ReactNode | ((scope) => ReactNode)`), calling a function with the scope and rendering anything else (only a function when the slot sets `scopeRequired`), Vue binds them on the `<slot>` (`<slot :api=\"api\" />`), and Svelte binds them likewise (`<slot api={api} />`). A composing node receives them through  {@link  ElementNode.slotScope } ."
     },
     "ExposedBinding": {
       "anyOf": [
@@ -688,7 +920,7 @@
           "additionalProperties": false
         }
       ],
-      "description": "One runtime value a slot exposes to its projected content (a scoped slot).\n\nThe shorthand string form is the provider-scope JavaScript expression, typed `any` in the generated React render-prop signature. The object form adds an optional TypeScript `type` for that React signature; the type flows to a React consumer through inference from the composed component's `children` type. `type` has no effect on Vue or Svelte (legacy `<slot>` scope is untyped) and is ignored in HTML mode."
+      "description": "One runtime value a slot exposes to its projected content (a scoped slot).\n\nThe shorthand string form is the provider-scope JavaScript expression, typed `any` in the generated React render-prop signature. The object form adds an optional TypeScript `type` for that React signature and for the Svelte runes snippet's (`Snippet<[{ row: Row }]>`); the type flows to a consumer through inference from the composed component's slot prop. `type` has no effect on Vue, legacy Svelte (whose `<slot>` scope is untyped) or the html target."
     },
     "ConditionalNode": {
       "type": "object",
@@ -740,7 +972,7 @@
         "children"
       ],
       "additionalProperties": false,
-      "description": "One branch of a conditional.\n\n`condition` is required except for `'else'`.\n\n`props` declares props scoped to this branch - used only when the conditional is a component's discriminated surface root (each branch a single `passthrough` element of a different intrinsic tag). The props assemble into a discriminated union: each branch contributes its element's typed surface plus these branch props (typically the discriminant as a literal type, e.g. `visual: { type: 'true' }`). Props shared across branches stay on the component (`ComponentNode.props`); a name that is content in one branch and a native attribute in another lives as a shared prop bound explicitly per branch, never as a branch prop."
+      "description": "One branch of a conditional.\n\n`condition` is required except for `'else'`.\n\n`props` declares props scoped to this branch - used only when the conditional is a component's discriminated surface root (each branch a single `passthrough` element of a different intrinsic tag). The props assemble into a discriminated union: each branch contributes its element's typed surface plus these branch props, typically the discriminant: a literal type (`visual: { type: 'true' }`), or for a branch picked by a prop's presence the prop it requires (`href: { type: 'string', required: true }`). Props shared across branches stay on the component (`ComponentNode.props`); a name that is content in one branch and a native attribute in another lives as a shared prop bound explicitly per branch, never as a branch prop."
     },
     "ConditionalStatement": {
       "type": "string",
@@ -760,7 +992,7 @@
         },
         "items": {
           "type": "string",
-          "description": "An expression evaluating to an iterable: `'props.users'`."
+          "description": "An expression evaluating to an iterable: `'users'`."
         },
         "item": {
           "type": "string",
@@ -788,12 +1020,52 @@
         "children"
       ],
       "additionalProperties": false,
-      "description": "A loop.\n\nRenders as `.map()` in React, `v-for` in Vue, `{#each}` in Svelte; HTML mode renders children once as a static sample wrapped in debug comments."
+      "description": "A loop.\n\nRenders as `.map()` in React, `v-for` in Vue, `{#each}` in Svelte; HTML mode renders children once as a sample between `<!-- for -->` comments naming the item, index and key."
     },
     "ComponentExtensionOverrides": {
       "type": "object",
       "additionalProperties": {},
       "description": "Component-level overrides keyed by extension name.\n\nEach value is at least a `ComponentExtensionOverride`; an extension may widen its own key through module augmentation to carry additional component-level settings (the Vue extension's `scoped` flag, for example), exactly as node-level overrides extend `ExtensionOverrides`."
+    },
+    "RestDefinition": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "The intrinsic tag whose attributes the leftover attributes are typed as."
+        }
+      },
+      "required": [
+        "tag"
+      ],
+      "additionalProperties": false,
+      "description": "Where a component's leftover attributes land: the attributes a consumer passes that are not declared props, gathered into one value named `rest`, typed as the attributes of `tag`. The author places it, with a `$spread` of `rest` on any node (inside a scoped slot included) or by passing it to a helper. It carries the consumer's `class` (`className` in React) and `style` unmerged, and in React its `ref`."
+    },
+    "TypeParameter": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "constraint": {
+              "type": "string"
+            },
+            "default": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A type parameter of a generic component: a name, or a name with a `constraint` and a `default`, each a TypeScript type written verbatim. Prop types, scoped-slot `exposes` types and the component's imports may reference it. Each scripted target emits its generic form; the html target ignores it."
     }
   }
 }

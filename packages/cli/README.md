@@ -1,12 +1,12 @@
 # js-template-engine
 
 The command-line interface for the JS Template Engine. Renders UI components
-defined as plain, typed data to vanilla HTML/CSS/JS or to React, Vue, and
-Svelte components - with styling methodologies (BEM, Tailwind) applied as
-extensions.
+defined as plain, typed data to React, Vue, and Svelte components or to
+annotated HTML and CSS - with styling methodologies (BEM, Tailwind) applied
+as extensions.
 
 ```bash
-npx js-template-engine render button.json --framework react
+npx js-template-engine render button.json --target react
 ```
 
 ## Installation
@@ -25,54 +25,60 @@ Renders a template file - or every template in a directory - and writes the
 generated files.
 
 ```bash
-# Vanilla HTML/CSS/JS (the default):
+# Annotated HTML and CSS (the default):
 js-template-engine render button.json
 
 # A React component with BEM classes:
-js-template-engine render button.json --framework react --styling bem
+js-template-engine render button.json --target react --styling bem
 
 # Every template in src/components, as Svelte components, into dist/svelte:
-js-template-engine render src/components --framework svelte --output-directory dist/svelte
+js-template-engine render src/components --target svelte --output-directory dist/svelte
 ```
 
 | Option | Default | |
 |---|---|---|
-| `--framework <name>` | - | `react`, `vue`, or `svelte`; omitted renders HTML |
+| `--target <name>` | `html` | `react`, `vue`, `svelte`, or `html` for annotated HTML and CSS |
 | `--styling <names>` | - | comma-separated styling extensions (`bem`, `tailwind`), applied in order |
 | `-o, --output-directory <path>` | `./output` | directory generated files are written to |
 | `-n, --component-name <name>` | filename | component name for templates that declare none |
-| `--styling-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
-| `--styling-language <language>` | `css` | `css`, or `scss` for nested output; react and HTML require `--styling-strategy separate-file` under `scss` |
-| `--stylesheet-link <mode>` | `component` | `component`, or `none` to emit the `separate-file` stylesheet and link it from nowhere - no import, no `<style src>` block, no `<link>`; requires `--styling-strategy separate-file` |
+| `--stylesheet-placement <placement>` | `in-file` | where the styles go: `inline` style attributes, `in-file` in the component, or `separate-file` in a stylesheet of their own |
+| `--styling-language <language>` | `css` | `css`, or `scss` for nested output; the react and html targets require `--stylesheet-placement separate-file` under `scss` |
+| `--stylesheet-link <mode>` | `component` | `component`, or `none` to emit the `separate-file` stylesheet and link it from nowhere - no import, no `<style src>` block, no `<link>`; requires `--stylesheet-placement separate-file` |
 | `--styling-layer <name>` | - | cascade layer emitted stylesheet rules are wrapped in; omitted emits them unlayered |
 | `--styling-layer-order <names>` | - | comma-separated layer order declared ahead of the wrapper, e.g. `kit.reset,kit.components` |
 | `--load-path <path>` | - | sass load-path directory for resolving `@use`/`@include` in component styles under `--styling-language css`; repeatable |
-| `--scripting-strategy <strategy>` | `in-file` | `inline`, `in-file`, or `separate-file` |
-| `--scripting-language <language>` | `javascript` | `javascript`, or `typescript` to type the generated prop consts; affects HTML mode only and requires `--scripting-strategy separate-file` (writing `<Name>.ts`) |
+| `--scripting-strategy <strategy>` | - | deprecated and has no effect: no output contains a script; prints a warning, removed in 3.0.0 |
+| `--scripting-language <language>` | - | deprecated and has no effect, like `--scripting-strategy` |
 | `--bem-element-separator <separator>` | `__` | separator between BEM block and element |
 | `--bem-modifier-separator <separator>` | `--` | separator before a BEM modifier |
-| `--bem-mode <mode>` | `literal` | `literal` emits BEM class strings; `runtime` emits `use-bem` `bem(...)` calls for framework targets (HTML keeps the literal classes) |
+| `--bem-mode <mode>` | `literal` | `literal` emits BEM class strings; `runtime` emits `use-bem` `bem(...)` calls for the react, vue and svelte targets (the html target keeps the literal classes) |
 | `--bem-import-source <package>` | `use-bem` | package the `use-bem` helper is imported from under `--bem-mode runtime` |
 | `--tailwind-output <output>` | `classes` | `classes` passes utilities through for Tailwind's build; `styles` converts them into the generated CSS |
+| `--tailwind-dark-selector <selector>` | - | with `--tailwind-output styles`, the selector `dark:` utilities follow instead of `prefers-color-scheme` (`':root[data-mode="dark"] &'`, `'.dark'`) |
 | `--tailwind-convert-styles` | off | convert each element's authored `style` into Tailwind utility classes |
 | `--svelte-mode <mode>` | `legacy` | `legacy` emits classic Svelte components; `runes` emits Svelte 5 runes components (`$props()`, snippets, event attributes) |
 
+`--framework` and `--styling-strategy` are deprecated aliases of `--target`
+and `--stylesheet-placement`: they print a warning and are removed in 3.0.0.
+
 Warnings are printed to stderr; written files are listed on stdout. When a
-template in a directory fails, the remaining templates still render and the
-command exits non-zero.
+template in a directory fails, each of its errors is printed on its own
+line, the remaining templates still render and the command exits non-zero.
 
 ### `validate <source>`
 
 Validates a template file - or every template in a directory - against the
-template format, without writing anything.
+template format, without writing anything. A template is checked for every
+target the CLI renders with, so a name the React, Vue or Svelte output
+declares itself cannot name a prop, slot or binding.
 
 ```bash
 js-template-engine validate src/components
 ```
 
 Each valid template is confirmed on stdout; each invalid one is reported on
-stderr with the path of the offending node. The command exits non-zero when
-any template is invalid.
+stderr, one line per violation with the path of the offending node. The
+command exits non-zero when any template is invalid.
 
 ## Template files
 
@@ -83,6 +89,7 @@ forms:
 - **`.ts`, `.js`, `.mjs`, `.cjs`** - a module whose default export is the
   template. TypeScript files are loaded directly; no build step is needed.
 
+<!-- example: cli-button -->
 ```ts
 // button.ts
 import { defineTemplate } from '@js-template-engine/types';
@@ -90,6 +97,7 @@ import { defineTemplate } from '@js-template-engine/types';
 export default defineTemplate({
   type: 'component',
   name: 'Button',
+  script: "function handleClick() {\n  console.log('clicked');\n}",
   children: [
     {
       type: 'element',
@@ -103,7 +111,7 @@ export default defineTemplate({
 ```
 
 ```bash
-js-template-engine render button.ts --framework vue
+js-template-engine render button.ts --target vue
 # wrote output/Button.vue
 ```
 
@@ -125,6 +133,7 @@ The CLI is a thin shell over `@js-template-engine/core`. For build scripts
 and tooling, use the engine directly - extensions are passed as objects, no
 name mapping involved:
 
+<!-- example: cli-process -->
 ```ts
 import { process } from '@js-template-engine/core';
 import { react } from '@js-template-engine/extension-react';
@@ -134,5 +143,5 @@ const result = process(template, { extensions: [react(), bem()] });
 // result.files → [{ path: 'Button.tsx', content: '...' }]
 ```
 
-Third-party extensions plug in through that API; the CLI's `--framework`
-and `--styling` flags cover the published extensions.
+The CLI's `--target` and `--styling` flags cover the published
+extensions.

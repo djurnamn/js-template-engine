@@ -1,3 +1,5 @@
+import type { Attributes } from './attributes';
+import type { EventDefinition } from './events';
 import type { PropDefinition } from './props';
 
 /**
@@ -22,6 +24,48 @@ import type { PropDefinition } from './props';
  */
 export interface ExtensionOverrides {
   [extensionKey: string]: unknown;
+}
+
+/**
+ * A fragment's override for one scripted target, carried under
+ * `extensions.<key>` on a fragment node: the element or component the
+ * fragment renders around its children in that target alone, for a wrapper
+ * one target needs and the others do not. Without one, a fragment renders
+ * its children alone, the HTML output included. A capitalized `tag` is a
+ * component reference, brought into scope by the component-level `imports`
+ * override. Any other key, an `attributes` key set to `null`, a `$spread`
+ * and a `style` are validation errors: a fragment has no attributes of its
+ * own to remove, and styling extensions give it no class, so a class goes in
+ * `attributes`. A void `tag` takes no children.
+ *
+ * @example
+ * // A compound root's context provider, in React alone.
+ * const node: FragmentNode = {
+ *   type: 'fragment',
+ *   extensions: {
+ *     react: { tag: 'FieldContext', attributes: { value: { $expression: 'id' } } },
+ *   },
+ *   children: [],
+ * };
+ */
+export interface FragmentOverride {
+  /**
+   * The element or component rendered around the fragment's children in
+   * this target. A capitalized name is a component reference.
+   */
+  tag: string;
+  /** The wrapper's attributes, rendered verbatim in this target. */
+  attributes?: Attributes;
+  /** The wrapper's events. */
+  events?: EventDefinition[];
+}
+
+/**
+ * A fragment's overrides keyed by target extension name: each a
+ * {@link FragmentOverride} naming the wrapper that target renders.
+ */
+export interface FragmentExtensionOverrides {
+  [extensionKey: string]: FragmentOverride;
 }
 
 /**
@@ -59,7 +103,8 @@ export interface ComponentExtensionOverride {
   /** Extension-specific script content. */
   script?: string;
   scriptStrategy?: OverrideStrategy;
-  /** Extension-specific verbatim import statements. */
+  /** Extension-specific verbatim module-scope lines: import statements and
+   *  declarations, placed as the component-level `imports` are. */
   imports?: string[];
   importsStrategy?: OverrideStrategy;
   /** Extension-specific component-level CSS. */

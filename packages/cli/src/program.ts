@@ -6,9 +6,9 @@ import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { renderCommand } from './commands/render';
 import { validateCommand } from './commands/validate';
-import { frameworkNames, stylingNames, type StylingName } from './extensions';
+import { stylingNames, targetNames, type StylingName } from './extensions';
 
-const outputStrategies = ['inline', 'in-file', 'separate-file'];
+const stylesheetPlacements = ['inline', 'in-file', 'separate-file'];
 const stylesheetLinks = ['component', 'none'];
 
 /**
@@ -86,9 +86,14 @@ export function createProgram(): Command {
     .argument('<source>', 'template file or directory of template files')
     .addOption(
       new Option(
-        '--framework <name>',
-        'framework to render with; omitted renders HTML'
-      ).choices(frameworkNames)
+        '--target <name>',
+        "target to render to; html is annotated HTML and CSS (default 'html')"
+      ).choices(targetNames)
+    )
+    .addOption(
+      new Option('--framework <name>', 'deprecated alias of --target')
+        .choices(targetNames.filter((name) => name !== 'html'))
+        .hideHelp()
     )
     .option(
       '--styling <names>',
@@ -106,9 +111,18 @@ export function createProgram(): Command {
       'component name for templates that declare none; defaults to the source filename in PascalCase'
     )
     .addOption(
-      new Option('--styling-strategy <strategy>', 'style output strategy')
-        .choices(outputStrategies)
-        .default('in-file')
+      new Option(
+        '--stylesheet-placement <placement>',
+        "where the component's styles go: inline style attributes, a style block in the component, or a stylesheet file of its own (default 'in-file')"
+      ).choices(stylesheetPlacements)
+    )
+    .addOption(
+      new Option(
+        '--styling-strategy <placement>',
+        'deprecated alias of --stylesheet-placement'
+      )
+        .choices(stylesheetPlacements)
+        .hideHelp()
     )
     .addOption(
       new Option('--styling-language <language>', 'stylesheet output language')
@@ -118,7 +132,7 @@ export function createProgram(): Command {
     .addOption(
       new Option(
         '--stylesheet-link <mode>',
-        "whether the component links the stylesheet emitted by --styling-strategy separate-file; 'none' emits it unlinked"
+        "whether the component links the stylesheet emitted by --stylesheet-placement separate-file; 'none' emits it unlinked"
       )
         .choices(stylesheetLinks)
         .default('component')
@@ -140,14 +154,16 @@ export function createProgram(): Command {
       [] as string[]
     )
     .addOption(
-      new Option('--scripting-strategy <strategy>', 'script output strategy')
-        .choices(outputStrategies)
-        .default('in-file')
+      new Option(
+        '--scripting-strategy <strategy>',
+        'deprecated, has no effect: no output contains a script'
+      ).choices(stylesheetPlacements)
     )
     .addOption(
-      new Option('--scripting-language <language>', 'script output language')
-        .choices(['javascript', 'typescript'])
-        .default('javascript')
+      new Option(
+        '--scripting-language <language>',
+        'deprecated, has no effect: no output contains a script'
+      ).choices(['javascript', 'typescript'])
     )
     .option(
       '--bem-element-separator <separator>',
@@ -160,7 +176,7 @@ export function createProgram(): Command {
     .addOption(
       new Option(
         '--bem-mode <mode>',
-        "how BEM classes are rendered: literal class strings, or use-bem bem(...) calls for framework targets (default 'literal')"
+        "how BEM classes are rendered: literal class strings, or use-bem bem(...) calls for the react, vue and svelte targets (default 'literal')"
       ).choices(['literal', 'runtime'])
     )
     .option(
@@ -172,6 +188,10 @@ export function createProgram(): Command {
         '--tailwind-output <output>',
         "what the Tailwind extension contributes: utility classes, or styles converted from them (default 'classes')"
       ).choices(['classes', 'styles'])
+    )
+    .option(
+      '--tailwind-dark-selector <selector>',
+      "with --tailwind-output styles, the selector dark: utilities follow instead of prefers-color-scheme, such as ':root[data-mode=\"dark\"] &' or '.dark'"
     )
     .option(
       '--tailwind-convert-styles',

@@ -1,12 +1,12 @@
 {
   "name": "js-template-engine",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "packageManager": "pnpm@10.9.0",
-  "description": "Define UI components once as typed data and render them to vanilla HTML/CSS/JS or React, Vue, and Svelte, with BEM and Tailwind styling as extensions.",
+  "description": "Define UI components once as typed data and render them to HTML and CSS or React, Vue, and Svelte, with BEM and Tailwind styling as extensions.",
   "scripts": {
     "build": "turbo run build",
     "build:watch": "turbo run build:watch",
@@ -16,11 +16,12 @@
     "test:coverage": "turbo run test:coverage",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "type-check": "turbo run type-check",
+    "typecheck": "turbo run typecheck",
+    "verify": "turbo run build typecheck test lint && pnpm format:check",
     "dev": "turbo run dev",
     "format": "prettier --write \"packages/*/src/**/*.{ts,js,json}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,js,json}\"",
-    "voice-lint": "node scripts/voice-lint.mjs",
+    "voice-lint": "djurnamn voice lint",
     "prepublishOnly": "pnpm test",
     "release": "./scripts/release.sh",
     "publish:npm": "./scripts/publish.sh"
@@ -51,8 +52,7 @@
   },
   "homepage": "https://github.com/djurnamn/js-template-engine",
   "engines": {
-    "node": ">=14.0.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=22"
   },
   "devDependencies": {
     "@types/node": "^20.17.46",

@@ -6,6 +6,7 @@
  * (`schema/template.schema.json`) for validating the JSON transport form.
  */
 export type {
+  AttributeOverrides,
   Attributes,
   AttributeValue,
   ClassEntry,
@@ -22,22 +23,35 @@ export type {
   ComponentExtensionOverride,
   ComponentExtensionOverrides,
   ExtensionOverrides,
+  FragmentExtensionOverrides,
+  FragmentOverride,
   OverrideStrategy,
 } from './extension-overrides';
 export type { JsonValue } from './json-value';
 export type {
   Extension,
+  ExtensionOverrideKeys,
   OutputFile,
   OutputStrategy,
+  OverrideValidationContext,
   ProcessingOptions,
   ProcessResult,
+  ReservedName,
+  ReservedNameContext,
   ScriptingOptions,
   StyleLayer,
   StylesheetLink,
+  StylesheetPlacement,
   StylingOptions,
+  TemplateViolation,
   Warning,
 } from './processing';
-export type { PropDefinition } from './props';
+export type {
+  BindableDefinition,
+  CopiedBindableDefinition,
+  PropDefinition,
+  RelayedBindableDefinition,
+} from './props';
 export type { NestedSelectorBlock, NestedStyleObject } from './styles';
 export type {
   CommentNode,
@@ -45,14 +59,18 @@ export type {
   ConditionalBranch,
   ConditionalNode,
   ConditionalStatement,
+  DeclaredId,
   DynamicTag,
   ElementNode,
   ExposedBinding,
   FragmentNode,
   IterationNode,
   NamedSlotContent,
+  PassthroughRouting,
+  RestDefinition,
   SlotNode,
   Template,
+  TypeParameter,
   TemplateNode,
   TextNode,
 } from './template-nodes';

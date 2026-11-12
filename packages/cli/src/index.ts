@@ -13,8 +13,10 @@ export {
   buildExtensions,
   frameworkNames,
   stylingNames,
+  targetNames,
   type FrameworkName,
   type StylingName,
+  type TargetName,
 } from './extensions';
 export { writeOutputFiles } from './output';
 export { createProgram, parseStylingList } from './program';

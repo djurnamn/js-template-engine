@@ -22,9 +22,10 @@ export type KeyEventModifier =
 /**
  * An event modifier.
  *
- * Modifiers map natively where the target framework supports them
+ * Modifiers map natively where the target supports them
  * (Vue `@click.prevent`, Svelte `on:click|preventDefault`) and are wrapped
- * in generated handler code where it doesn't (React, HTML mode). Key-guard
+ * in generated handler code where it doesn't (React). The html target names them in
+ * the event's `<!-- on click (prevent): handler -->` comment. Key-guard
  * modifiers map natively in Vue (`@keyup.enter`) and wrap the handler in a
  * generated `event.key` guard everywhere else.
  */
@@ -40,7 +41,7 @@ export type EventModifier =
 /**
  * An event bound to an element.
  *
- * The name is the generic DOM event name; framework extensions transform it
+ * The name is the generic DOM event name; target extensions transform it
  * into their own syntax (`onClick={...}`, `@click="..."`, `on:click={...}`).
  *
  * @example

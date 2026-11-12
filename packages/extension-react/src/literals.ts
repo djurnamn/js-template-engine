@@ -1,3 +1,4 @@
+import { isIdentifier } from '@js-template-engine/core/emitter';
 import type { JsonValue } from '@js-template-engine/types';
 
 /** Serializes text as a single-quoted JavaScript string literal. */
@@ -17,7 +18,11 @@ export function serializeJavaScriptValue(value: JsonValue): string {
   if (typeof value === 'string') {
     return quoteSingle(value);
   }
-  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return String(value);
   }
   if (Array.isArray(value)) {
@@ -31,10 +36,10 @@ export function serializeJavaScriptValue(value: JsonValue): string {
   return entries.length === 0 ? '{}' : `{ ${entries.join(', ')} }`;
 }
 
-const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-
-function objectKey(key: string): string {
-  return IDENTIFIER.test(key) ? key : quoteSingle(key);
+/** A property name as code: bare when it is an identifier, quoted otherwise
+ *  (`'aria-pressed'`). */
+export function objectKey(key: string): string {
+  return isIdentifier(key) ? key : quoteSingle(key);
 }
 
 /** Escapes static text for a JSX child position. */

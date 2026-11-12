@@ -26,9 +26,33 @@ export function resolveComponentOverrides(
   component: NormalizedComponent,
   extensionKey: string
 ): NormalizedComponent {
-  const override = component.extensions[extensionKey] as
-    | ComponentExtensionOverride
-    | undefined;
+  return applyComponentOverride(
+    component,
+    component.extensions[extensionKey] as ComponentExtensionOverride | undefined
+  );
+}
+
+/**
+ * Applies one component-level override block to a component, combining each
+ * field with the base value per its strategy as
+ * {@link resolveComponentOverrides} does. An extension with override blocks
+ * of its own beyond the shared one - the Svelte extension's per-mode blocks -
+ * applies each in turn on the component the previous one produced.
+ *
+ * @param component - The normalized component.
+ * @param override - The override block; `undefined` leaves the component
+ *   unchanged.
+ * @returns A component with the override applied.
+ *
+ * @example
+ * applyComponentOverride(resolveComponentOverrides(component, 'svelte'), {
+ *   script: 'const doubled = $derived(count * 2);',
+ * });
+ */
+export function applyComponentOverride(
+  component: NormalizedComponent,
+  override: ComponentExtensionOverride | undefined
+): NormalizedComponent {
   if (override === undefined) {
     return component;
   }

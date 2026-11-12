@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/extension-svelte",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Svelte extension for the JS Template Engine: renders data-defined component templates as Svelte components",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,10 +21,10 @@
     "clean": "rimraf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit -p tsconfig.type-check.json"
+    "typecheck": "tsc --noEmit -p tsconfig.type-check.json"
   },
   "dependencies": {
-    "@js-template-engine/core": "workspace:^",
+    "@js-template-engine/core": "workspace:*",
     "@js-template-engine/types": "workspace:^"
   },
   "repository": {

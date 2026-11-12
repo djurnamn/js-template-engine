@@ -13,7 +13,7 @@ import type { NestedStyleObject } from './styles';
  * const attributes: Attributes = {
  *   alt: 'Avatar',
  *   width: 48,
- *   src: { $expression: 'props.avatarUrl' },
+ *   src: { $expression: 'avatarUrl' },
  * };
  */
 export interface ExpressionBinding {
@@ -71,8 +71,8 @@ export interface Attributes {
    * the node's attributes - authored attributes, classes, and styles follow
    * and override per key (consumers add, they do not replace). Unlike the
    * passthrough root's undeclared-rest spread, `$spread` targets a *named* object
-   * and is allowed on any element, not the root alone. HTML mode is inert (no
-   * runtime consumer).
+   * and is allowed on any element, not the root alone. The html target writes a
+   * `<!-- spread: x -->` comment before the element.
    */
   $spread?: ExpressionBinding | ExpressionBinding[];
   [attribute: string]:
@@ -86,13 +86,15 @@ export interface Attributes {
  * Condition-gated attributes.
  *
  * Renders as a generated class expression in React, `:class` object syntax
- * in Vue, and `class:` directives in Svelte; HTML mode omits them from
- * markup (warning emitted) but still generates CSS for the referenced
- * classes.
+ * in Vue, and `class:` directives in Svelte; the html target writes each as a
+ * `<!-- if condition: class="..." -->` comment before the element and still
+ * generates CSS for the referenced classes.
  *
  * `class` and `style` are literal-only here - the condition is their
  * dynamism; `$expression` values inside conditional attributes are a
- * validation error.
+ * validation error. A `style` renders as the stylesheet rule of the entry's
+ * first class, which the condition toggles, so an entry with a `style`
+ * needs a `class` beside it.
  *
  * @example
  * const conditional: ConditionalAttributes = {
@@ -106,3 +108,22 @@ export interface ConditionalAttributes {
   /** The attributes applied when the condition holds. */
   attributes: Attributes;
 }
+
+/**
+ * The attribute map of a target extension's node override
+ * (`extensions.react.attributes` and its Vue and Svelte counterparts).
+ *
+ * Each key merges into the node's own attributes, the override winning. A
+ * key set to `null` removes the node's attribute of that name in that target
+ * alone, for an attribute one target spells differently or does not
+ * take.
+ *
+ * @example
+ * const attributes: AttributeOverrides = {
+ *   title: null,
+ *   'aria-label': { $expression: 'label' },
+ * };
+ */
+export type AttributeOverrides = {
+  [Key in keyof Attributes]?: Attributes[Key] | null;
+};

@@ -1,9 +1,10 @@
 # @js-template-engine/extension-bem
 
 The BEM styling extension. Contributes `block__element--modifier` classes to
-components defined as plain, typed data - alongside any framework extension,
-or on the engine's built-in HTML output.
+components defined as plain, typed data - alongside any target extension,
+or on the html target the engine renders itself.
 
+<!-- example: bem-process -->
 ```ts
 import { process } from '@js-template-engine/core';
 import { bem } from '@js-template-engine/extension-bem';
@@ -64,6 +65,7 @@ warning in `ProcessResult.warnings`.
 
 ## Options
 
+<!-- example: bem-separators -->
 ```ts
 bem({ elementSeparator: '__', modifierSeparator: '--' })
 ```
@@ -72,11 +74,12 @@ bem({ elementSeparator: '__', modifierSeparator: '--' })
 |---|---|---|
 | `elementSeparator` | `'__'` | Joins block and element. |
 | `modifierSeparator` | `'--'` | Joins base class and modifier. |
-| `mode` | `'literal'` | `'literal'` contributes BEM class strings. `'runtime'` renders them as `bem(...)` calls for framework targets (see below). |
+| `mode` | `'literal'` | `'literal'` contributes BEM class strings. `'runtime'` renders them as `bem(...)` calls for the scripted targets (see below). |
 | `importSource` | `'use-bem'` | The package the runtime helper is imported from in `'runtime'` mode. |
 
 ## Runtime mode
 
+<!-- example: bem-runtime -->
 ```ts
 bem({ mode: 'runtime' })
 ```
@@ -90,8 +93,8 @@ condition-gated modifier folds into the call's record argument; an
 out-of-vocabulary conditional class stays as ordinary conditional rendering.
 
 The literal classes are unchanged everywhere they are statically determinable:
-the generated stylesheet, selector targeting, and HTML mode all render the same
-class strings as `'literal'` mode - only the framework markup swaps them for
+the generated stylesheet, selector targeting, and the html target all render the same
+class strings as `'literal'` mode - only the React, Vue and Svelte markup swaps them for
 calls. A kit using runtime mode ships `use-bem` as a peer dependency; one
 block per component is required (a second declared block is an error).
 
@@ -100,6 +103,23 @@ block per component is required (a second declared block is an error).
 BEM classes are semantic: when a node has no static class, generated CSS
 (nested styles such as `':hover'` blocks) targets the node through its
 first BEM class instead of a generated `data-jte-node` attribute.
+
+Two nodes may share one BEM element, such as column and row headers that are
+both `table__header`. Given the same style, the rule is emitted once. Given
+different declarations for the same selector, both nodes carry the class,
+so each node's rule styles the other too, and the build warns, naming both nodes:
+style the class on one node, or give one of them a modifier. Declarations in
+another order count as the same rule.
+
+A rule only one node has warns too when it can also match the other node:
+`'&:first-child'` or `'&:hover'` on the row header gives
+`.table__header:first-child`, which can style the column header as well. Key
+such a rule on a modifier only that node carries
+(`'&.table__header--row': { '&:first-child': ... }`), and it matches that
+node alone, without a warning. The class styled inside `@media` on one of
+two nodes that both style it warns the same way. A warning names each node by its tag,
+classes and other attributes, such as `<th class="table__header"
+scope="row">`, and by its path in the template.
 
 Conditional modifiers have no dedicated concept - a condition-gated class
 belongs in the node's `conditionalAttributes`, which carries the condition
@@ -112,6 +132,7 @@ When you style a node's own modifier with a self-compound selector
 emission, so the rule keeps a hand-written modifier's specificity (`0,1,0`)
 instead of the doubled `0,2,0` compound:
 
+<!-- example: bem-style-collapse -->
 ```ts
 extensions: { bem: { block: 'card' } },
 attributes: {
@@ -135,11 +156,25 @@ a broken selector. Author the IR with the CSS-honest `&.block--modifier`
 spelling (never the Sass-only `&--modifier`, which is invalid in plain CSS
 nesting).
 
-## Combining with frameworks
+A comma-separated key is a selector list, and each selector in it collapses
+on its own. On a node whose class is `table__cell`,
+`'&.table__cell--numeric, &.table__header--numeric'` emits
+`.table__cell--numeric`: the node's own modifier collapses, and the
+modifier of another element of the block is dropped, since a `table__cell`
+node never carries it. So one style object can be spread on the cells and
+the headers, and each keeps its own modifier's rule. A node that can carry
+a class of the other element - one in its `class` or
+`conditionalAttributes`, a class expression, or a target's `attributes`
+override setting its class - keeps the selector, compound (`.table__cell.table__header--numeric`), as does any
+other selector outside the node's own vocabulary (`&.is-open`). An empty
+selector from a trailing comma is dropped.
 
-Pass `bem()` together with a framework extension to get the same classes in
+## Combining with a target
+
+Pass `bem()` together with a target extension to get the same classes in
 every target:
 
+<!-- example: bem-targets -->
 ```ts
 process(template, { extensions: [react(), bem()] });
 process(template, { extensions: [vue(), bem()] });

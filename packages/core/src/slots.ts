@@ -4,6 +4,11 @@ import type {
   TemplateNode,
 } from '@js-template-engine/types';
 
+import {
+  readExpressionIdentifiers,
+  tokenizeExpression,
+} from './expression-scope';
+
 /** One runtime value a scoped slot exposes, in normalized form. */
 export interface NormalizedExposedBinding {
   /** The scope binding name consumers see. */
@@ -128,15 +133,19 @@ export function collectNamedSlotNames(nodes: TemplateNode[]): Set<string> {
  * that slot's per-target presence form, leaving the rest of the expression
  * verbatim. A bare slot name (`'icon'`), a negation (`'!icon'`), and a
  * compound expression (`'icon && size > 2'`) all resolve their slot
- * references; each framework target supplies its own presence form via
+ * references; each scripted target supplies its own presence form via
  * `toPresence` (React `props.<propName>`, Vue `$slots.<name>`, Svelte
  * `$$slots.<name>`).
  *
- * The expression is tokenized rather than pattern-matched so that two false
- * positives are avoided: a member-access tail (`'foo.icon'` - the `icon` after
- * a `.`) and an identifier inside a string literal (`"'icon'"`) are left
- * untouched. A token the tokenizer cannot confidently classify as a free
- * identifier is likewise left verbatim. The default (unnamed) slot is not
+ * Only a free reference is rewritten. The expression is tokenized and read
+ * for scope, so a member-access tail (`'foo.icon'`), an identifier inside a
+ * string literal (`"'icon'"`), an object literal key (`{ icon: 1 }`) and a
+ * name the expression binds itself are left untouched: an arrow or `function`
+ * parameter (plain, destructured, defaulted or rest) inside that function, a
+ * `catch` binding, and a `const`, `let`, `var`, `function` or `class`
+ * declaration inside its block (`options.find((icon) => icon.ready)` reads the
+ * parameter). A shorthand property keeps its key (`{ icon }` becomes
+ * `{ icon: $$slots.icon }`). The default (unnamed) slot is not
  * identifier-addressable and so is never matched.
  *
  * @param expression - The condition or attribute expression, if any.
@@ -158,71 +167,71 @@ export function rewriteSlotReferences(
     return expression;
   }
 
-  let result = '';
-  let index = 0;
-  // The last non-whitespace character emitted from the source, used to detect
-  // a member-access tail (`foo.icon`, `foo?.icon`) regardless of spacing.
-  let lastSignificant = '';
-  const { length } = expression;
-
-  while (index < length) {
-    const char = expression[index];
-
-    // String literals copy verbatim (honoring escapes); their contents are
-    // never rewritten.
-    if (char === "'" || char === '"' || char === '`') {
-      const quote = char;
-      result += char;
-      index += 1;
-      while (index < length) {
-        const inner = expression[index];
-        result += inner;
-        index += 1;
-        if (inner === '\\' && index < length) {
-          result += expression[index];
-          index += 1;
-          continue;
-        }
-        if (inner === quote) {
-          break;
-        }
+  const tokens = tokenizeExpression(expression);
+  const readings = readExpressionIdentifiers(tokens);
+  return tokens
+    .map((token, index) => {
+      const reading = readings.get(index);
+      if (
+        reading === undefined ||
+        !reading.free ||
+        !namedSlots.has(token.text)
+      ) {
+        return token.text;
       }
-      lastSignificant = quote;
-      continue;
-    }
+      const presence = toPresence(token.text);
+      return reading.shorthandProperty
+        ? `${token.text}: ${presence}`
+        : presence;
+    })
+    .join('');
+}
 
-    // Identifiers rewrite when they name a declared slot and are not a
-    // member-access tail.
-    if (isIdentifierStart(char)) {
-      let identifier = char;
-      index += 1;
-      while (index < length && isIdentifierPart(expression[index])) {
-        identifier += expression[index];
-        index += 1;
-      }
-      const isMemberAccess = lastSignificant === '.';
-      result +=
-        !isMemberAccess && namedSlots.has(identifier)
-          ? toPresence(identifier)
-          : identifier;
-      lastSignificant = identifier[identifier.length - 1];
-      continue;
-    }
+/**
+ * The slot-reference scope of a scripted target's render context: the named
+ * slots a free identifier in an expression resolves to (see
+ * {@link rewriteSlotReferences}).
+ */
+export interface SlotReferenceScope {
+  namedSlots: ReadonlySet<string>;
+}
 
-    result += char;
-    if (!/\s/.test(char)) {
-      lastSignificant = char;
-    }
-    index += 1;
+/**
+ * Renders a subtree in which some local bindings shadow named slots of the
+ * same name: an iteration's `item` and `index`, or the bindings a
+ * `slotScope` receives. While `render` runs, `scope.namedSlots` leaves those
+ * names out, so an expression inside the subtree reads the local binding
+ * (`option.label`) rather than the slot; the slots are restored afterwards,
+ * so the same name outside the subtree still resolves to the slot.
+ *
+ * @param scope - The render context whose `namedSlots` is narrowed.
+ * @param names - The local binding names the subtree declares.
+ * @param render - Renders the subtree.
+ * @returns What `render` returns.
+ *
+ * @example
+ * withShadowedSlotNames(context, [node.item, node.index], () =>
+ *   renderChildren(node.children, context)
+ * );
+ */
+export function withShadowedSlotNames<Result>(
+  scope: SlotReferenceScope,
+  names: ReadonlyArray<string | undefined>,
+  render: () => Result
+): Result {
+  const shadowed = names.filter(
+    (name): name is string => name !== undefined && scope.namedSlots.has(name)
+  );
+  if (shadowed.length === 0) {
+    return render();
   }
-
-  return result;
-}
-
-function isIdentifierStart(char: string): boolean {
-  return /[A-Za-z_$]/.test(char);
-}
-
-function isIdentifierPart(char: string): boolean {
-  return /[A-Za-z0-9_$]/.test(char);
+  const enclosing = scope.namedSlots;
+  scope.namedSlots = new Set(
+    [...enclosing].filter((name) => !shadowed.includes(name))
+  );
+  try {
+    return render();
+  } finally {
+    scope.namedSlots = enclosing;
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * Converts an authored nested style object into Tailwind utility classes - 
+ * Converts an authored nested style object into Tailwind utility classes -
  * the inverse of `convert.ts`. Each plain declaration becomes its canonical
  * named utility when the value lands on the Tailwind v4 default theme, an
  * arbitrary value (`p-[3px]`) when it does not, or an arbitrary property
@@ -15,8 +15,14 @@
  * instead.
  */
 
-import { isExpressionBinding, toKebabCaseProperty } from '@js-template-engine/core';
-import type { NestedSelectorBlock, NestedStyleObject } from '@js-template-engine/types';
+import {
+  isExpressionBinding,
+  toKebabCaseProperty,
+} from '@js-template-engine/core';
+import type {
+  NestedSelectorBlock,
+  NestedStyleObject,
+} from '@js-template-engine/types';
 
 import {
   BREAKPOINTS,
@@ -30,12 +36,19 @@ import {
   SPACING_UNIT_REM,
   TRACKING,
 } from './default-theme';
+import { addWhitespaceAroundMathOperators } from './data-types';
+import { keptSegment } from './parse';
 import {
+  drawsBoxShadow,
   resolveBaseUtility,
   SIZING_KEYWORDS,
   STATIC_UTILITIES,
 } from './utilities';
-import type { ConversionFail } from './variants';
+import {
+  darkSelectorKey,
+  type ConversionFail,
+  type VariantOptions,
+} from './variants';
 
 /** The result of converting one element's authored style. */
 export interface StyleConversion {
@@ -49,12 +62,21 @@ type DeclarationValue = string | number;
 
 /**
  * Converts a top-level authored style object into utility classes, keeping
- * any per-property `$expression` values as the remaining style.
+ * any per-property `$expression` values as the remaining style. Given
+ * `options.darkSelector`, a nested key spelling that selector as `dark:`
+ * composes it (`:where(:root:is(.dark)) &` for `.dark`) becomes `dark:`, and
+ * the `prefers-color-scheme` media query no longer does.
  */
 export function convertStyleToUtilities(
   style: NestedStyleObject,
-  fail: ConversionFail
+  fail: ConversionFail,
+  options: VariantOptions = {}
 ): StyleConversion {
+  // A bare key without `&` is the element's own compound, never the root's.
+  const darkKeys =
+    options.darkSelector === undefined
+      ? undefined
+      : new Set([darkSelectorKey(options.darkSelector)]);
   const classes: string[] = [];
   const remaining: NestedStyleObject = {};
   let hasRemaining = false;
@@ -86,7 +108,7 @@ export function convertStyleToUtilities(
       continue;
     }
     if (isSelectorBlock(value)) {
-      classes.push(...convertNested(key, value, '', fail));
+      classes.push(...convertNested(key, value, '', fail, darkKeys));
       continue;
     }
     classes.push(declarationUtility(key, value, '', fail));
@@ -96,7 +118,9 @@ export function convertStyleToUtilities(
 }
 
 function isSelectorBlock(value: unknown): value is NestedSelectorBlock {
-  return typeof value === 'object' && value !== null && !isExpressionBinding(value);
+  return (
+    typeof value === 'object' && value !== null && !isExpressionBinding(value)
+  );
 }
 
 /** Converts a nested selector block, prefixing its utilities with variants. */
@@ -104,9 +128,10 @@ function convertNested(
   selectorKey: string,
   block: NestedSelectorBlock,
   prefix: string,
-  fail: ConversionFail
+  fail: ConversionFail,
+  darkKeys: ReadonlySet<string> | undefined
 ): string[] {
-  const { variant, inner } = invertSelector(selectorKey, block, fail);
+  const { variant, inner } = invertSelector(selectorKey, block, fail, darkKeys);
   const nextPrefix = `${prefix}${variant}:`;
   const classes: string[] = [];
   for (const [key, value] of Object.entries(inner)) {
@@ -120,7 +145,7 @@ function convertNested(
       continue;
     }
     if (isSelectorBlock(value)) {
-      classes.push(...convertNested(key, value, nextPrefix, fail));
+      classes.push(...convertNested(key, value, nextPrefix, fail, darkKeys));
     } else {
       classes.push(declarationUtility(key, value, nextPrefix, fail));
     }
@@ -161,6 +186,8 @@ const REVERSE_PSEUDO_CLASS: Record<string, string> = {
   ':optional': 'optional',
   ':valid': 'valid',
   ':invalid': 'invalid',
+  ':user-valid': 'user-valid',
+  ':user-invalid': 'user-invalid',
   ':read-only': 'read-only',
   ':placeholder-shown': 'placeholder-shown',
 };
@@ -192,15 +219,29 @@ const REVERSE_BREAKPOINTS: Record<string, string> = Object.fromEntries(
 function invertSelector(
   key: string,
   block: NestedSelectorBlock,
-  fail: ConversionFail
+  fail: ConversionFail,
+  darkKeys: ReadonlySet<string> | undefined
 ): { variant: string; inner: NestedSelectorBlock } {
+  // A dark selector stands for `dark:` in place of the media query.
+  if (darkKeys !== undefined) {
+    if (darkKeys.has(key)) {
+      return { variant: 'dark', inner: block };
+    }
+    if (REVERSE_AT_RULE[key] === 'dark') {
+      failSelector(key, fail);
+    }
+  }
   // The v4 hover form: `@media (hover: hover) { :hover { ... } }` is one `hover`.
   if (key === '@media (hover: hover)') {
     const innerKeys = Object.keys(block).filter(
       (innerKey) => block[innerKey] !== undefined
     );
     const hover = block[':hover'];
-    if (innerKeys.length === 1 && innerKeys[0] === ':hover' && isSelectorBlock(hover)) {
+    if (
+      innerKeys.length === 1 &&
+      innerKeys[0] === ':hover' &&
+      isSelectorBlock(hover)
+    ) {
       return { variant: 'hover', inner: hover };
     }
     failSelector(key, fail);
@@ -251,16 +292,25 @@ function declarationUtility(
     }
   }
 
+  const encoded = encodeArbitrary(value);
   const root = ARBITRARY_VALUE_ROOTS[kebab];
-  if (root !== undefined) {
-    const token = `${root}-[${encodeArbitrary(value)}]`;
+  if (root !== undefined && encoded !== undefined) {
+    const token = `${root}-[${encoded}]`;
     if (roundTrips(token, kebab, value)) {
       return finish(token);
     }
+    // A value whose type the utility cannot infer, such as a `var()`
+    // reference, takes the utility's fallback property; the type hint
+    // naming this property picks it instead.
+    const typeHint = ARBITRARY_TYPE_HINTS[kebab];
+    const hintedToken = `${root}-[${typeHint}:${encoded}]`;
+    if (typeHint !== undefined && roundTrips(hintedToken, kebab, value)) {
+      return finish(hintedToken);
+    }
   }
 
-  const propertyToken = `[${kebab}:${encodeArbitrary(value)}]`;
-  if (roundTrips(propertyToken, kebab, value)) {
+  const propertyToken = `[${kebab}:${encoded}]`;
+  if (encoded !== undefined && roundTrips(propertyToken, kebab, value)) {
     return finish(propertyToken);
   }
 
@@ -276,9 +326,31 @@ function stripImportant(value: string): { value: string; important: boolean } {
     : { value: match[1].trim(), important: true };
 }
 
-/** Encodes a CSS value for an arbitrary bracket: literal `_` escaped, spaces to `_`. */
-function encodeArbitrary(value: string): string {
-  return value.replace(/_/g, '\\_').replace(/ /g, '_');
+/**
+ * Encodes a CSS value for an arbitrary bracket, the inverse of
+ * `decodeArbitraryValue`: spaces become `_` and a literal `_` is escaped,
+ * except inside a `url()` and a `var()`'s property name, which are kept as
+ * written. A `url()` holding a space has no bracket form.
+ */
+function encodeArbitrary(value: string): string | undefined {
+  let encoded = '';
+  let index = 0;
+  while (index < value.length) {
+    const segment = keptSegment(value, index);
+    if (segment !== undefined) {
+      const text = value.slice(index, segment.end);
+      if (/\s/.test(text)) {
+        return undefined;
+      }
+      encoded += text;
+      index = segment.end;
+      continue;
+    }
+    const character = value[index];
+    encoded += character === '_' ? '\\_' : character === ' ' ? '_' : character;
+    index += 1;
+  }
+  return encoded;
 }
 
 const throwingFail: ConversionFail = (message) => {
@@ -296,11 +368,22 @@ function roundTrips(token: string, kebab: string, value: string): boolean {
   if (resolved.important) {
     return false;
   }
+  // A shadow utility composes `box-shadow` from `--tw-shadow`, drawing the
+  // authored shadow on a node that sets no ring.
+  if (kebab === 'box-shadow' && drawsBoxShadow(resolved.declarations, value)) {
+    return true;
+  }
   const entries = Object.entries(resolved.declarations);
   if (entries.length !== 1) {
     return false;
   }
-  return toKebabCaseProperty(entries[0][0]) === kebab && entries[0][1] === value;
+  // The forward conversion spaces math operators as Tailwind does, which
+  // a value written without that spacing round-trips to.
+  return (
+    toKebabCaseProperty(entries[0][0]) === kebab &&
+    (entries[0][1] === value ||
+      entries[0][1] === addWhitespaceAroundMathOperators(value))
+  );
 }
 
 // --- Named-candidate generation -------------------------------------------
@@ -353,15 +436,7 @@ const SPACING_ROOTS: Record<string, string> = {
 };
 
 /** Spacing roots whose negative scale form (`-mt-2`) is meaningful. */
-const NEGATIVE_SPACING = new Set([
-  'm',
-  'mx',
-  'my',
-  'mt',
-  'mr',
-  'mb',
-  'ml',
-]);
+const NEGATIVE_SPACING = new Set(['m', 'mx', 'my', 'mt', 'mr', 'mb', 'ml']);
 
 const SIZING_ROOTS: Record<string, string> = {
   width: 'w',
@@ -410,8 +485,22 @@ const BORDER_WIDTH_ROOTS: Record<string, string> = {
   'border-block-width': 'border-y',
 };
 
+/** The type hint each multi-type arbitrary-value property is written with. */
+const ARBITRARY_TYPE_HINTS: Record<string, string> = {
+  ...Object.fromEntries(
+    Object.keys(COLOR_ROOTS).map((property) => [property, 'color'])
+  ),
+  ...Object.fromEntries(
+    Object.keys(BORDER_WIDTH_ROOTS).map((property) => [property, 'length'])
+  ),
+  'font-size': 'length',
+};
+
 /** Named enum families: property → { value → utility suffix }, joined to a root. */
-const NAMED_FAMILIES: Record<string, { root: string; values: Record<string, string> }> = {
+const NAMED_FAMILIES: Record<
+  string,
+  { root: string; values: Record<string, string> }
+> = {
   'justify-content': {
     root: 'justify',
     values: {
@@ -461,7 +550,12 @@ const NAMED_FAMILIES: Record<string, { root: string; values: Record<string, stri
   },
   'justify-items': {
     root: 'justify-items',
-    values: { start: 'start', end: 'end', center: 'center', stretch: 'stretch' },
+    values: {
+      start: 'start',
+      end: 'end',
+      center: 'center',
+      stretch: 'stretch',
+    },
   },
   'justify-self': {
     root: 'justify-self',
@@ -473,35 +567,75 @@ const NAMED_FAMILIES: Record<string, { root: string; values: Record<string, stri
       stretch: 'stretch',
     },
   },
-  overflow: { root: 'overflow', values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']) },
-  'overflow-x': { root: 'overflow-x', values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']) },
-  'overflow-y': { root: 'overflow-y', values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']) },
+  overflow: {
+    root: 'overflow',
+    values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']),
+  },
+  'overflow-x': {
+    root: 'overflow-x',
+    values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']),
+  },
+  'overflow-y': {
+    root: 'overflow-y',
+    values: identityValues(['auto', 'hidden', 'clip', 'visible', 'scroll']),
+  },
   'white-space': {
     root: 'whitespace',
-    values: identityValues(['normal', 'nowrap', 'pre', 'pre-line', 'pre-wrap', 'break-spaces']),
+    values: identityValues([
+      'normal',
+      'nowrap',
+      'pre',
+      'pre-line',
+      'pre-wrap',
+      'break-spaces',
+    ]),
   },
-  'list-style-type': { root: 'list', values: identityValues(['none', 'disc', 'decimal']) },
-  'pointer-events': { root: 'pointer-events', values: identityValues(['none', 'auto']) },
-  'object-fit': { root: 'object', values: identityValues(['contain', 'cover', 'fill', 'none', 'scale-down']) },
+  'list-style-type': {
+    root: 'list',
+    values: identityValues(['none', 'disc', 'decimal']),
+  },
+  'pointer-events': {
+    root: 'pointer-events',
+    values: identityValues(['none', 'auto']),
+  },
+  'object-fit': {
+    root: 'object',
+    values: identityValues(['contain', 'cover', 'fill', 'none', 'scale-down']),
+  },
   'transition-timing-function': {
     root: 'ease',
-    values: Object.fromEntries(Object.entries(EASINGS).map(([name, value]) => [value, name])),
+    values: Object.fromEntries(
+      Object.entries(EASINGS).map(([name, value]) => [value, name])
+    ),
   },
   'font-weight': {
     root: 'font',
-    values: Object.fromEntries(Object.entries(FONT_WEIGHTS).map(([name, value]) => [value, name])),
+    values: Object.fromEntries(
+      Object.entries(FONT_WEIGHTS).map(([name, value]) => [value, name])
+    ),
   },
   'font-family': {
     root: 'font',
-    values: Object.fromEntries(Object.entries(FONT_FAMILIES).map(([name, value]) => [value, name])),
+    values: Object.fromEntries(
+      Object.entries(FONT_FAMILIES).map(([name, value]) => [value, name])
+    ),
   },
   'letter-spacing': {
     root: 'tracking',
-    values: Object.fromEntries(Object.entries(TRACKING).map(([name, value]) => [value, name])),
+    values: Object.fromEntries(
+      Object.entries(TRACKING).map(([name, value]) => [value, name])
+    ),
   },
 };
 
-const BORDER_STYLES = new Set(['solid', 'dashed', 'dotted', 'double', 'hidden', 'none']);
+const BORDER_STYLES = new Set([
+  'solid',
+  'dashed',
+  'dotted',
+  'double',
+  'hidden',
+  'none',
+]);
 
 /** Integer-valued roots: property → { root, named overrides, negatives allowed }. */
 const INTEGER_ROOTS: Record<
@@ -509,7 +643,11 @@ const INTEGER_ROOTS: Record<
   { root: string; named?: Record<string, string>; negative?: boolean }
 > = {
   'z-index': { root: 'z', named: { auto: 'auto' }, negative: true },
-  order: { root: 'order', named: { '-9999': 'first', '9999': 'last', '0': 'none' }, negative: true },
+  order: {
+    root: 'order',
+    named: { '-9999': 'first', '9999': 'last', '0': 'none' },
+    negative: true,
+  },
   'flex-grow': { root: 'grow', named: { '1': '' } },
   'flex-shrink': { root: 'shrink', named: { '1': '' } },
   'grid-column-start': { root: 'col-start', named: { auto: 'auto' } },
@@ -611,7 +749,9 @@ function namedCandidates(kebab: string, value: string): string[] {
   }
 
   if (kebab === 'box-shadow') {
-    if (value === '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)') {
+    if (
+      value === '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)'
+    ) {
       out.push('shadow');
     }
     const named = reverseLookup(SHADOWS, value);
@@ -630,7 +770,9 @@ function namedCandidates(kebab: string, value: string): string[] {
   if (kebab === 'transition-duration' || kebab === 'transition-delay') {
     const milliseconds = value.match(/^(\d+(?:\.\d+)?)ms$/);
     if (milliseconds !== null) {
-      out.push(`${kebab === 'transition-duration' ? 'duration' : 'delay'}-${milliseconds[1]}`);
+      out.push(
+        `${kebab === 'transition-duration' ? 'duration' : 'delay'}-${milliseconds[1]}`
+      );
     }
   }
 
@@ -659,7 +801,12 @@ function pushSpacing(
   out.push(negative ? `-${root}-${suffix}` : `${root}-${suffix}`);
 }
 
-function pushSizing(out: string[], root: string, kebab: string, value: string): void {
+function pushSizing(
+  out: string[],
+  root: string,
+  kebab: string,
+  value: string
+): void {
   const keyword = reverseLookup(SIZING_KEYWORDS, value);
   if (keyword !== undefined) {
     out.push(`${root}-${keyword}`);
@@ -668,13 +815,25 @@ function pushSizing(out: string[], root: string, kebab: string, value: string): 
   if (fraction !== null) {
     out.push(`${root}-${fraction[1]}/${fraction[2]}`);
   }
-  const allowNegative = ['inset', 'inset-x', 'inset-y', 'top', 'right', 'bottom', 'left'].includes(root);
+  const allowNegative = [
+    'inset',
+    'inset-x',
+    'inset-y',
+    'top',
+    'right',
+    'bottom',
+    'left',
+  ].includes(root);
   pushSpacing(out, root, value, allowNegative);
 }
 
 function pushInteger(
   out: string[],
-  { root, named, negative }: { root: string; named?: Record<string, string>; negative?: boolean },
+  {
+    root,
+    named,
+    negative,
+  }: { root: string; named?: Record<string, string>; negative?: boolean },
   value: string
 ): void {
   if (named !== undefined && named[value] !== undefined) {
@@ -713,7 +872,9 @@ function colorSuffix(value: string): string | undefined {
   if (direct !== undefined) {
     return direct;
   }
-  const mix = value.match(/^color-mix\(in oklab, (.+) (\d+(?:\.\d+)?)%, transparent\)$/);
+  const mix = value.match(
+    /^color-mix\(in oklab, (.+) (\d+(?:\.\d+)?)%, transparent\)$/
+  );
   if (mix !== null) {
     const name = REVERSE_COLORS.get(mix[1]);
     if (name !== undefined) {

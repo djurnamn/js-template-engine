@@ -63,6 +63,23 @@ playwright-report/
 # Test-scaffolded kits
 packages/scaffold-ui-kit/.test-build-*/
 packages/integration-tests/.kit-e2e/
+packages/integration-tests/.stylesheet-link-add/
+packages/integration-tests/.add-sass-packages/
+packages/integration-tests/.add-consumer-workflow/
+packages/integration-tests/.add-kit-packages/
+packages/integration-tests/.add-layer-order/
 
 # React compile-check scratch output
 packages/integration-tests/.compile-check/
+# Vue type-check scratch output
+packages/integration-tests/.vue-type-check-*/
+# Documentation example gate scratch output
+packages/integration-tests/.documentation-examples-*/
+# Vue DOM-property render scratch output
+packages/integration-tests/.vue-dom-property-*/
+# Vue props-destructure render scratch output
+packages/integration-tests/.vue-props-destructure-*/
+# Module-scope imports render scratch output
+packages/integration-tests/.vue-imports-module-scope-*/
+packages/integration-tests/.svelte-imports-module-scope-*/
+packages/preview/tests/browser/.kit/

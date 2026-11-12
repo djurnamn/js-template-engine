@@ -1,9 +1,9 @@
 /**
- * A `class` `$expression` part is emitted by the React and Svelte extensions
- * inside a presence guard - `(<expression> ? ' ' + <expression> : '')` - so a
- * falsy runtime value contributes nothing to the class string. The expression
- * is embedded there twice: as the ternary condition and as the right operand
- * of a `' ' +` concatenation. In the concatenation slot `+` binds tighter than
+ * A `class` `$expression` part embedded in a presence guard -
+ * `(<expression> ? ' ' + <expression> : '')`, so that a falsy runtime value
+ * contributes nothing to the class string - appears there twice: as the
+ * ternary condition and as the right operand of a `' ' +` concatenation.
+ * In the concatenation slot `+` binds tighter than
  * every logical operator and the ternary, so an expression whose top level
  * carries `&&`, `||`, `??`, or `?:` reassociates and miscompiles - e.g.
  * `' ' + variant && 'active'` parses as `(' ' + variant) && 'active'` and drops
@@ -12,8 +12,8 @@
  *
  * A bare identifier, member chain, call, string literal, or `+` concatenation
  * (the common `'Block--' + variant` modifier form) already binds at least as
- * tightly as the surrounding `+`, so it is emitted verbatim - no parentheses,
- * no golden churn.
+ * tightly as the surrounding `+`, so it is emitted verbatim, without
+ * parentheses.
  *
  * @param expression - The class `$expression` source, as authored.
  * @returns The expression trimmed, wrapped in parentheses only when its top
@@ -22,6 +22,9 @@
  * parenthesizeClassExpression("'Block--' + variant"); // "'Block--' + variant"
  * parenthesizeClassExpression("active ? 'on' : 'off'"); // "(active ? 'on' : 'off')"
  * parenthesizeClassExpression("variant || 'default'"); // "(variant || 'default')"
+ *
+ * @deprecated No target embeds class expressions this way any
+ * more; it is removed in 3.0.0.
  */
 export function parenthesizeClassExpression(expression: string): string {
   const trimmed = expression.trim();

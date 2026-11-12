@@ -7,7 +7,7 @@ import type {
 } from '@js-template-engine/types';
 
 import { isExpressionBinding } from './expression-binding';
-import { mergeStyleObjects } from './merge-styles';
+import { layerStyleObjects, mergeStyleObjects } from './merge-styles';
 import { normalizeNamedSlots } from './slots';
 import {
   classExpressions,
@@ -17,7 +17,11 @@ import {
   type CollapseVocabulary,
   type NormalizedComponent,
 } from './normalize';
-import { TemplateError } from './TemplateError';
+import {
+  TemplateError,
+  throwTemplateErrors,
+  type TemplateErrorDetail,
+} from './TemplateError';
 
 /**
  * What a styling extension sees when contributing to one element.
@@ -27,6 +31,14 @@ export interface StylingContext {
   readonly ancestorElements: readonly ElementNode[];
   /** Records a non-fatal notice on the processing result. */
   warn(message: string): void;
+  /**
+   * Records a processing error carrying the element's node path and lets
+   * styling carry on, so one run reports every such error: processing
+   * fails once every element has been visited, with all of them in its
+   * message. Always present on the contexts core passes; optional so a
+   * context built by hand, in a test, need not supply it.
+   */
+  error?(message: string): void;
   /** Throws a processing error carrying the element's node path. */
   fail(message: string): never;
 }
@@ -69,6 +81,25 @@ export interface StylingExtension extends Extension {
     context: StylingContext
   ): NestedStyleObject | undefined;
   /**
+   * Returns CSS this extension adds once to the component's stylesheet,
+   * given every style it contributed to the component's elements through
+   * {@link contributeStyles}, in document order - top-level rules its
+   * contributed styles rely on, such as `@property` registrations. The CSS
+   * is emitted after the component's rules, outside any cascade layer, and
+   * is left out under the `inline` placement. Only at-rules that hold no
+   * selectors (`@property`, `@font-face`, `@keyframes`) are safe in every
+   * target: a selector would bypass the targeting rules and be rescoped by
+   * Svelte or Vue's scoped CSS. Returns `undefined`, or an empty string, to
+   * add nothing.
+   *
+   * @example
+   * contributeComponentCss: (styles) =>
+   *   styles.length > 0 ? '@property --x { syntax: "*"; inherits: false; }' : undefined
+   */
+  contributeComponentCss?(
+    contributedStyles: readonly NestedStyleObject[]
+  ): string | undefined;
+  /**
    * Converts the element's authored `style` into classes this extension
    * contributes, returning those classes and the style that remains (the
    * portion that could not be expressed as classes - e.g. per-property
@@ -83,7 +114,9 @@ export interface StylingExtension extends Extension {
   convertStyleToClasses?(
     element: ElementNode,
     context: StylingContext
-  ): { classes: readonly string[]; remainingStyle?: NestedStyleObject } | undefined;
+  ):
+    | { classes: readonly string[]; remainingStyle?: NestedStyleObject }
+    | undefined;
   /**
    * Returns the element's collapsible BEM vocabulary - its effective base
    * class and modifier separator - letting the stylesheet serializers
@@ -99,10 +132,10 @@ export interface StylingExtension extends Extension {
   ): CollapseVocabulary | undefined;
   /**
    * When present, the extension renders its classes as runtime helper calls
-   * (e.g. `bem('icon', { large: true })`) for framework targets instead of
+   * (e.g. `bem('icon', { large: true })`) for scripted targets instead of
    * literal strings. The literal classes still flow through
-   * `contributeClasses` unchanged, so HTML mode and stylesheet targeting are
-   * unaffected - runtime emission is framework-target-only.
+   * `contributeClasses` unchanged, so the html target and stylesheet targeting are
+   * unaffected - runtime emission is scripted-target-only.
    */
   readonly runtime?: StylingRuntime;
 }
@@ -154,6 +187,10 @@ export interface StylingApplication {
  * extension order - and whose `selectorClasses` map records each element's
  * selector-eligible classes (static and semantic-extension classes) for
  * CSS targeting. The input template nodes are never mutated.
+ *
+ * Errors an extension records through `context.error` are thrown together
+ * as one `TemplateError` once every element has been visited, or with the
+ * error of a later `context.fail`.
  */
 export function applyStylingExtensions(
   component: NormalizedComponent,
@@ -166,14 +203,19 @@ export function applyStylingExtensions(
 
   const children = structuredClone(component.children);
   const selectorClasses = new Map<ElementNode, readonly string[]>();
-  const collapseVocabulary = new Map<ElementNode, readonly CollapseVocabulary[]>();
+  const collapseVocabulary = new Map<
+    ElementNode,
+    readonly CollapseVocabulary[]
+  >();
   const warnings: Warning[] = [];
+  const errors: TemplateErrorDetail[] = [];
 
   const runtimeExtension = stylingExtensions.find(
     (extension) => extension.runtime !== undefined
   );
   const bemRuntimeCalls = new Map<ElementNode, BemRuntimeCall>();
   let componentBlock: string | undefined;
+  const contributedStyles = new Map<StylingExtension, NestedStyleObject[]>();
 
   function applyToElement(
     element: ElementNode,
@@ -188,8 +230,14 @@ export function applyStylingExtensions(
       warn(message) {
         warnings.push({ message, nodePath });
       },
+      error(message) {
+        errors.push({ message, nodePath });
+      },
       fail(message) {
-        throw new TemplateError(message, nodePath);
+        if (errors.length === 0) {
+          throw new TemplateError(message, nodePath);
+        }
+        throwTemplateErrors([...errors, { message, nodePath }], 'styling');
       },
     };
 
@@ -219,6 +267,10 @@ export function applyStylingExtensions(
       }
       const style = extension.contributeStyles?.(element, context);
       if (style !== undefined && Object.keys(style).length > 0) {
+        contributedStyles.set(extension, [
+          ...(contributedStyles.get(extension) ?? []),
+          style,
+        ]);
         contributedStyle =
           contributedStyle === undefined
             ? style
@@ -247,22 +299,23 @@ export function applyStylingExtensions(
       bemRuntimeCalls.set(element, runtimeCall);
     }
     if (contributed.length > 0) {
-      // Expression entries render after every literal class source.
+      // Expression entries render after every literal class source. The
+      // class leads the attributes, where hand-written markup puts it, unless
+      // the author placed a literal class elsewhere, which keeps its place.
       const expressions = classExpressions(element.attributes?.class);
-      element.attributes = {
-        ...element.attributes,
-        class: [
-          ...normalizeClassList([...staticClasses, ...contributed]),
-          ...expressions.map((expression) => ({ $expression: expression })),
-        ],
-      };
+      const classes = [
+        ...normalizeClassList([...staticClasses, ...contributed]),
+        ...expressions.map((expression) => ({ $expression: expression })),
+      ];
+      element.attributes = { class: classes, ...element.attributes };
+      element.attributes.class = classes;
     }
 
     if (contributedStyle !== undefined) {
       const authoredStyle = element.attributes?.style;
       // A *pure* whole-object expression has no static object to merge
       // contributed styles into. A mixed node (whole-object expression beside
-      // static / nested keys) does: `mergeStyleObjects` carries the
+      // static / nested keys) does: `layerStyleObjects` carries the
       // `$expression` key through untouched while resolving the static part.
       if (
         authoredStyle !== undefined &&
@@ -280,7 +333,7 @@ export function applyStylingExtensions(
         style:
           authoredStyle === undefined
             ? contributedStyle
-            : mergeStyleObjects(contributedStyle, authoredStyle),
+            : layerStyleObjects(contributedStyle, authoredStyle),
       };
     }
   }
@@ -302,11 +355,10 @@ export function applyStylingExtensions(
             ]);
           }
           for (const named of normalizeNamedSlots(node.slots)) {
-            applyToNodes(
-              named.content,
-              `${nodePath}.slots.${named.name}`,
-              [...ancestorElements, node]
-            );
+            applyToNodes(named.content, `${nodePath}.slots.${named.name}`, [
+              ...ancestorElements,
+              node,
+            ]);
           }
           break;
         case 'fragment':
@@ -340,26 +392,39 @@ export function applyStylingExtensions(
   }
 
   applyToNodes(children, 'children', []);
+  if (errors.length > 0) {
+    throwTemplateErrors(errors, 'styling');
+  }
 
-  const component_: NormalizedComponent = {
+  const contributedCss = stylingExtensions
+    .map((extension) =>
+      extension.contributeComponentCss?.(contributedStyles.get(extension) ?? [])
+    )
+    .filter((css): css is string => css !== undefined && css.trim() !== '')
+    .map((css) => css.trim());
+
+  const normalizedComponent: NormalizedComponent = {
     ...component,
     children,
     selectorClasses,
     collapseVocabulary,
+    ...(contributedCss.length > 0
+      ? { contributedCss: contributedCss.join('\n\n') }
+      : {}),
   };
   if (
     runtimeExtension?.runtime !== undefined &&
     componentBlock !== undefined &&
     bemRuntimeCalls.size > 0
   ) {
-    component_.bemRuntime = {
+    normalizedComponent.bemRuntime = {
       block: componentBlock,
       elementSeparator: runtimeExtension.runtime.elementSeparator,
       modifierSeparator: runtimeExtension.runtime.modifierSeparator,
       importSource: runtimeExtension.runtime.importSource,
     };
-    component_.bemRuntimeCalls = bemRuntimeCalls;
+    normalizedComponent.bemRuntimeCalls = bemRuntimeCalls;
   }
 
-  return { component: component_, warnings };
+  return { component: normalizedComponent, warnings };
 }

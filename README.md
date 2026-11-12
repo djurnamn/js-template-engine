@@ -1,9 +1,10 @@
 # JS Template Engine
 
-Define UI components *once*, as typed data, and render them to vanilla
-HTML/CSS/JS or to React, Vue, and Svelte components, with styling
+Define UI components *once*, as typed data, and render them to React, Vue,
+and Svelte components or to annotated HTML and CSS, with styling
 methodologies (BEM, Tailwind) applied as pluggable extensions.
 
+<!-- example: readme-button -->
 ```ts
 // button.ts
 import { defineTemplate } from '@js-template-engine/types';
@@ -15,6 +16,7 @@ export default defineTemplate({
     label: { type: 'string', required: true },
     variant: { type: "'primary' | 'secondary'", default: 'primary' },
   },
+  script: "function handleClick() {\n  console.log('clicked');\n}",
   children: [
     {
       type: 'element',
@@ -34,22 +36,26 @@ export default defineTemplate({
 ```
 
 ```bash
-npx js-template-engine render button.ts                    # → Button.html
-npx js-template-engine render button.ts --framework react  # → Button.tsx
-npx js-template-engine render button.ts --framework vue    # → Button.vue
-npx js-template-engine render button.ts --framework svelte # → Button.svelte
+npx js-template-engine render button.ts                 # → Button.html
+npx js-template-engine render button.ts --target react  # → Button.tsx
+npx js-template-engine render button.ts --target vue    # → Button.vue
+npx js-template-engine render button.ts --target svelte # → Button.svelte
 ```
 
 The React output, for a taste:
 
 ```tsx
-interface ButtonProps {
+export interface ButtonProps {
   label: string;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | undefined;
 }
 
 export function Button(props: ButtonProps) {
   const { label, variant = 'primary' } = props;
+
+  function handleClick() {
+    console.log('clicked');
+  }
 
   return (
     <button
@@ -73,8 +79,8 @@ dialect. This engine takes the opposite approach:
 |---|---|---|
 | Authoring surface | Code (a static JSX subset) | **Data** (typed TS objects / JSON) |
 | Intermediate format | Internal, not an authoring format | The data **is** the format |
-| Styling | Out of scope | First-class: BEM, Tailwind, output strategies |
-| Default output | Framework targets | **Vanilla HTML/CSS/JS, zero extensions required** |
+| Styling | Out of scope | First-class: BEM, Tailwind, stylesheet placement |
+| Default output | Framework components | **Annotated HTML and CSS, zero extensions required** |
 
 Because templates are plain serializable data, any program can assemble,
 merge, validate, and transform them - a generator, a CMS, a design tool, or
@@ -88,7 +94,7 @@ framework.
 | Package | Purpose |
 |---|---|
 | [`js-template-engine`](packages/cli) | The CLI: `render` and `validate` |
-| [`@js-template-engine/core`](packages/core) | The engine: validation, HTML/CSS/JS output, extension contract |
+| [`@js-template-engine/core`](packages/core) | The engine: validation, HTML and CSS output, extension contract |
 | [`@js-template-engine/types`](packages/types) | The template format: TypeScript types + JSON Schema |
 | [`@js-template-engine/extension-react`](packages/extension-react) | React function components (`.tsx`) |
 | [`@js-template-engine/extension-vue`](packages/extension-vue) | Vue single-file components (`.vue`) |
@@ -98,12 +104,13 @@ framework.
 
 ## How it works
 
-**HTML-first.** `process(template)` produces working HTML, CSS, and
-JavaScript with no extensions involved, a zero-dependency rendering that
-doubles as the semantic baseline every framework target follows.
+**HTML-first.** `process(template)` produces annotated HTML and CSS with no
+extensions involved, a zero-dependency rendering that doubles as the semantic
+baseline every other target follows.
 
 **Extensions are passed directly.** No registry, no string keys, no magic:
 
+<!-- example: readme-process -->
 ```ts
 import { process } from '@js-template-engine/core';
 import { react } from '@js-template-engine/extension-react';
@@ -113,27 +120,31 @@ const result = process(template, { extensions: [react(), bem()] });
 // result.files → [{ path: 'Button.tsx', content: '...' }]
 ```
 
-The core has zero framework knowledge; framework support lives entirely in
-extensions, and third-party extensions plug in through the same interface.
+The core has zero framework knowledge; React, Vue and Svelte support lives
+entirely in target extensions. The target and styling extensions are the
+project's own: the interface they implement is not yet a stable public
+surface for extensions written elsewhere.
 
 **Concepts live on nodes.** Events, conditions, iterations, slots, and
 styling are embedded in the template nodes themselves. Eight node types
 cover the whole format. Dynamic values are JavaScript expressions carried
-as opaque strings; the engine emits them into the target syntax and never
-evaluates them.
+as opaque strings; the engine emits them into the target syntax. The html rendering
+evaluates only an expression that reads declared `ids` alone, and
+`renderInstance` evaluates them all.
 
-**Unified output strategies.** Styles and scripts share one vocabulary -
-`inline`, `in-file`, `separate-file` - so the same template can produce a
-single self-contained file or separate `.css`/`.js` artifacts.
+**Stylesheet placement.** One option - `inline`, `in-file`,
+`separate-file` - decides where a component's styles go, so the same template
+can produce a single self-contained file or a component with its `.css`
+beside it.
 
 ## Quick start
 
 ```bash
 # Render a template from the command line:
-npx js-template-engine render button.ts --framework react --styling bem
+npx js-template-engine render button.ts --target react --styling bem
 ```
 
-The **[getting-started guide](docs/getting-started.md)** walks through the
+The **[getting-started guide](documentation/getting-started.md)** walks through the
 template format - props, expressions, conditionals, iteration, slots,
 events, styles - and every render target.
 

@@ -5,5 +5,10 @@
  * `process(template, { extensions: [react()] })`.
  */
 export { react, type ReactExtension } from './react-extension';
-export { normalizeSlotName } from './props';
-export type { ReactNodeOverrides } from './overrides';
+/**
+ * @deprecated Import `normalizeSlotName` from
+ * `@js-template-engine/core/emitter`; removed in 3.0.0.
+ */
+export { normalizeSlotName } from '@js-template-engine/core/emitter';
+export { attributeName, REACT_ATTRIBUTE_NAMES } from './attribute-names';
+export type { ReactComponentOverride, ReactNodeOverrides } from './overrides';

@@ -7,6 +7,7 @@ import {
   type StylingExtension,
   type StylingRuntime,
 } from '@js-template-engine/core';
+import { joinConditions } from '@js-template-engine/core/emitter';
 import type { ElementNode } from '@js-template-engine/types';
 
 import type { BemNodeOverrides } from './overrides';
@@ -20,7 +21,7 @@ export interface BemOptions {
   /**
    * How BEM classes are rendered. `'literal'` (default) emits class name
    * strings. `'runtime'` emits `bem(...)` calls - `createBem`/`useBem` from
-   * {@link importSource} - for framework targets, while HTML mode and the
+   * {@link importSource} - for scripted targets, while HTML mode and the
    * stylesheet keep the identical literal classes.
    */
   mode?: 'literal' | 'runtime';
@@ -78,7 +79,8 @@ export function bem(options: BemOptions = {}): BemExtension {
     if (override === undefined) {
       return undefined;
     }
-    const block = nonEmpty(override.block) ?? inheritedBlock(context.ancestorElements);
+    const block =
+      nonEmpty(override.block) ?? inheritedBlock(context.ancestorElements);
     const elementName = nonEmpty(override.element);
     if (block === undefined) {
       const hasModifiers = (override.modifiers ?? []).some(
@@ -98,7 +100,7 @@ export function bem(options: BemOptions = {}): BemExtension {
 
   /**
    * Runtime-mode binding: per-element `bem(...)` calls plus the constants the
-   * framework targets need to emit the helper import and setup line. The
+   * scripted targets need to emit the helper import and setup line. The
    * literal classes are unaffected (`contributeClasses` still runs), so HTML
    * mode and stylesheet targeting see the same output as literal mode.
    */
@@ -106,7 +108,10 @@ export function bem(options: BemOptions = {}): BemExtension {
     importSource,
     elementSeparator,
     modifierSeparator,
-    call(element: ElementNode, context: StylingContext): BemRuntimeCall | undefined {
+    call(
+      element: ElementNode,
+      context: StylingContext
+    ): BemRuntimeCall | undefined {
       const override = element.extensions?.bem;
       if (override === undefined) {
         return undefined;
@@ -127,21 +132,44 @@ export function bem(options: BemOptions = {}): BemExtension {
 
       // Fold a conditional class that parses as `{base}{separator}{modifier}`
       // into the call's record argument; out-of-vocabulary conditional classes
-      // are left for ordinary conditional rendering.
-      const foldedModifiers: BemConditionalModifier[] = [];
-      const foldedConditionalClasses: string[] = [];
+      // are left for ordinary conditional rendering. A modifier already
+      // static needs no condition, and one repeated across conditional
+      // entries is one record key whose conditions are joined, so it applies
+      // whenever any of them holds.
       const prefix = `${base}${modifierSeparator}`;
+      const conditionsByModifier = new Map<string, string[]>();
+      const foldedConditionalClasses: string[] = [];
       for (const conditional of element.conditionalAttributes ?? []) {
-        for (const className of normalizeClassList(conditional.attributes.class)) {
-          if (className.startsWith(prefix) && className.length > prefix.length) {
-            foldedModifiers.push({
-              modifier: className.slice(prefix.length),
-              condition: conditional.condition,
-            });
+        for (const className of normalizeClassList(
+          conditional.attributes.class
+        )) {
+          if (
+            !className.startsWith(prefix) ||
+            className.length <= prefix.length
+          ) {
+            continue;
+          }
+          const modifier = className.slice(prefix.length);
+          if (!foldedConditionalClasses.includes(className)) {
             foldedConditionalClasses.push(className);
+          }
+          if (staticModifiers.includes(modifier)) {
+            continue;
+          }
+          const conditions = conditionsByModifier.get(modifier);
+          if (conditions === undefined) {
+            conditionsByModifier.set(modifier, [conditional.condition]);
+          } else if (!conditions.includes(conditional.condition)) {
+            conditions.push(conditional.condition);
           }
         }
       }
+      const foldedModifiers: BemConditionalModifier[] = [
+        ...conditionsByModifier,
+      ].map(([modifier, conditions]) => ({
+        modifier,
+        condition: joinConditions(conditions),
+      }));
 
       return {
         block,
@@ -163,6 +191,7 @@ export function bem(options: BemOptions = {}): BemExtension {
   return {
     key: 'bem',
     kind: 'styling',
+    overrideKeys: { node: ['block', 'element', 'modifiers'] },
     classKind: 'semantic',
     ...(mode === 'runtime' ? { runtime } : {}),
     contributeClasses(
@@ -178,7 +207,9 @@ export function bem(options: BemOptions = {}): BemExtension {
       );
       return [
         base,
-        ...modifiers.map((modifier) => `${base}${modifierSeparator}${modifier}`),
+        ...modifiers.map(
+          (modifier) => `${base}${modifierSeparator}${modifier}`
+        ),
       ];
     },
     collapseVocabulary(
@@ -186,11 +217,69 @@ export function bem(options: BemOptions = {}): BemExtension {
       context: StylingContext
     ): CollapseVocabulary | undefined {
       const base = effectiveBase(element, context, false);
-      return base === undefined
-        ? undefined
+      if (base === undefined) {
+        return undefined;
+      }
+      const block =
+        nonEmpty(element.extensions?.bem?.block) ??
+        inheritedBlock(context.ancestorElements);
+      return block !== undefined &&
+        carriesOnlyOwnElement(
+          element,
+          `${block}${elementSeparator}`,
+          base,
+          modifierSeparator
+        )
+        ? { baseClass: base, modifierSeparator, block, elementSeparator }
         : { baseClass: base, modifierSeparator };
     },
   };
+}
+
+/**
+ * Whether a node surely carries no class of another element of its block:
+ * its literal classes, unconditional and conditional, name no element of
+ * the block but its own base, no class of it is an expression, and no
+ * per-target `attributes` override sets its `class` or `className`, whose
+ * values nothing here reads.
+ */
+function carriesOnlyOwnElement(
+  element: ElementNode,
+  elementPrefix: string,
+  base: string,
+  modifierSeparator: string
+): boolean {
+  const overrides = Object.values(element.extensions ?? {}) as unknown[];
+  const overridesClass = overrides.some((override) => {
+    const attributes = (override as { attributes?: unknown } | null)
+      ?.attributes;
+    return (
+      typeof attributes === 'object' &&
+      attributes !== null &&
+      ('class' in attributes || 'className' in attributes)
+    );
+  });
+  const classValue = element.attributes?.class;
+  const hasExpression = (
+    Array.isArray(classValue) ? classValue : [classValue]
+  ).some((entry) => typeof entry === 'object' && entry !== null);
+  if (overridesClass || hasExpression) {
+    return false;
+  }
+  const classValues = [
+    element.attributes?.class,
+    ...(element.conditionalAttributes ?? []).map(
+      (conditional) => conditional.attributes.class
+    ),
+  ];
+  return classValues
+    .flatMap((value) => normalizeClassList(value))
+    .every(
+      (className) =>
+        !className.startsWith(elementPrefix) ||
+        className === base ||
+        className.startsWith(`${base}${modifierSeparator}`)
+    );
 }
 
 /** Returns the nearest ancestor element's declared block, if any. */
