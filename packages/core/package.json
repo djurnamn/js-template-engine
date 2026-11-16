@@ -1,6 +1,6 @@
 {
   "name": "@js-template-engine/core",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Template engine core: processes data-defined component templates into HTML and CSS, and into React, Vue and Svelte through target extensions",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

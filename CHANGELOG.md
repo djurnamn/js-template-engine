@@ -5,6 +5,14 @@ All notable changes to JS Template Engine are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-11-15
+
+A patch release with no change to what a template renders. The notes on
+deprecated names in the packages' types say 3.0.0 as the version that
+removes each one, and the notes for 2.3.0 below are corrected: entries that
+described a fix to something first released in 2.3.0 are folded into the
+entry that adds it.
+
 ## [2.3.0] - 2026-11-12
 
 A minor release. A template that rendered on 2.2.1 renders on 2.3.0 unless
@@ -52,14 +60,17 @@ each has its entry under Changed or Fixed. Read them before upgrading:
 - Svelte output needs Svelte 5 or later in both modes. A legacy component whose
   root tag may vary and that handles an event with a key guard types the
   event parameter in its markup, which Svelte 4 does not compile.
-- A node that spreads `rest` and handles an event now runs the consumer's
-  handler as well as its own in React and Svelte runes mode.
 - An expression no longer reads a named slot where a parameter or local
   variable of the same name shadows it, and no longer rewrites an object
   key named like a slot.
 - A generated `data-jte-node` value carries the component's name
   (`StatGrid-0` where it was `0`); CSS of your own that matched the old value
   needs the new one.
+- A legacy Svelte prop named `default` is now a processing error that points
+  to runes mode.
+- Vue marks the option a select's `value` matches as `selected`, where it
+  wrote the value as an attribute of the `<select>`, and on a `multiple`
+  select bound to a list binds each option's `selected` from the list.
 - A prop, slot or loop variable named after a binding the generated
   component declares itself, such as `bem`, or `props` in a build with
   React, is now a validation error.
@@ -90,8 +101,8 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   a repeated rule or a compound selector it had.
 - React's in-file stylesheet constant is `componentStyles`, where it was
   `styles`.
-- A consumer's `style` wins over the style of a node spreading `rest`, and
-  over a passthrough root's own declarations, in every target.
+- A consumer's `style` wins over a passthrough root's own declarations in
+  Svelte and the html target, as it did in React and Vue.
 - Line breaks the generated code adds for reading no longer render as a
   space between siblings in Svelte and the html target; only authored text
   puts a space between siblings. Text there can lose a space it showed
@@ -157,13 +168,14 @@ each has its entry under Changed or Fixed. Read them before upgrading:
 ### Added
 
 - **A two-way prop relayed to its owner.** A prop's `bindable` object takes
-  a second form, `{ given, report, changeProp }`, for a value whose owner
+  a second form, `{ given, report, changeProp? }`, for a value whose owner
   holds it - a state-machine driver or a native input, which handles being
   controlled or uncontrolled itself - beside the copy form
   `{ current, setter }`, which is unchanged. The component keeps no copy:
   the template forwards the value the consumer gives under `given` and
   hands the owner `report`, the same text in every target, and `report`
-  calls `changeProp` with each new value, every call passing through. React
+  calls `changeProp`, optional here as in the copy form, with each new
+  value, every call passing through. React
   reads the prop, with no state, hook or `'use client'`; Vue reads it as a
   `computed`, `modelValue` first when `extensions.vue.model` names the
   prop, and emits `update:<prop>` (and `update:modelValue`) after the
@@ -625,7 +637,10 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   is left out with a warning rather than written as `undefined-description`.
   A prop the referenced component types as a function alone (optional or
   nullable allowed), such as an `onRemove` callback, does nothing at rest,
-  so one it cannot evaluate is left out without a warning.
+  so one it cannot evaluate is left out without a warning. A call into a
+  value a hand-written component exposes to its content, such as a driver's
+  `api.getTriggerProps()`, has no result at rest by design and is left out
+  without a warning too.
   The declarations on a template's own `imports` lines, such as a helper or a
   constant, run before its expressions, their TypeScript types erased with
   the `typescript` package where it is installed; one that can't run at
@@ -668,9 +683,41 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   `Omit<ComponentPropsWithRef<tag>, ...>` and gathers `...rest` (the `ref`
   rides in it); Vue sets `inheritAttrs: false` with `const rest = useAttrs()`;
   Svelte runes gathers `...rest`, and legacy mode declares
-  `$: rest = $$restProps`. There is no handle, and `class` and `style` are not
-  merged. `rest` excludes `passthrough`, and the name is reserved against
-  props, slots, slot scopes and iteration bindings.
+  `$: rest = $$restProps`. There is no handle. `rest` excludes `passthrough`,
+  and the name is reserved against props, slots, slot scopes and iteration
+  bindings.
+
+  A node that spreads `rest` and handles an event runs the consumer's
+  handler as well as its own, the consumer's first (see "A consumer's
+  handler runs first" under Changed).
+
+  The consumer's `style` wins over the node's own in every target, property
+  by property. Vue binds the node's own `:class` and `:style` before
+  `v-bind="rest"`, so the node's class comes first and the consumer's style
+  wins. A React style override that reads `rest.style` gets the node's
+  expression-valued properties ahead of it,
+  `{ '--stack-gap': gap, ...rest.style }`. In Svelte, where a consumer's
+  `style` is a string, each `style:` directive takes the consumer's value
+  when the consumer's style declares the property, and a style override
+  reads `rest.style` alone or in an array, `[{ gap }, rest.style]`, which
+  keeps the node's own declarations under the consumer's. The html target
+  and `renderInstance` merge the consumer's style after the node's own.
+
+  React and Svelte do not merge an authored class or style with the
+  consumer's, so a spread of exactly `rest` onto a node whose own class or
+  style would replace the consumer's warns there; Vue merges the two and
+  never warns. A node is not warned about when its class override for the
+  target reads the consumer's class (`rest.className` in React, `rest.class`
+  in Svelte, or a call of `consumerClass(rest)` or
+  `mergeRootProps(..., rest)`; no other helper call is inspected), or when
+  its style override reads `rest.style` (`{ ...rest.style }` and
+  `Object.assign(..., rest.style)` both count in React). A static style the
+  stylesheet carries is not warned about either, since it leaves the element
+  with no `style` attribute, nor is an expression-valued property in Svelte,
+  a `style:` directive that keeps the consumer's style. A Svelte style
+  override that spreads `rest.style` or passes it to `Object.assign` is
+  warned about, naming the array form, since the consumer's style is a
+  string there.
 - **A component can be generic.** `typeParameters: ['Item']` (or
   `{ name, constraint, default }`) declares type parameters that prop types
   and scoped-slot types may reference, so a list's item type is the
@@ -799,12 +846,16 @@ each has its entry under Changed or Fixed. Read them before upgrading:
 
 - **Legacy Svelte passes a root's events to the component it renders as
   props.** On a root whose tag may be a component, the component branch
-  writes the template's events as composed `on*` props
-  (`onclick={composeEventHandlers($$restProps.onclick, toggle)}`) instead of
-  `on:` directives. The component you pass must spread its rest props onto an
-  element, as a passthrough component does, or declare the `on*` prop. A
-  Svelte 4 style component that forwards `on:click` without either received
-  the event before and doesn't now. A legacy consumer passes its own handler
+  wrote the template's events as `on:` directives, which a component only
+  receives when it forwards them, so `<PopoverTrigger as={Button}>` never
+  ran its click handler. It now writes them as `on*` props composed with
+  the consumer's handlers
+  (`onclick={composeEventHandlers($$restProps.onclick, toggle)}`), as runes
+  mode does: the consumer's handler runs first, and `event.preventDefault()`
+  in it skips the template's. The component you pass must spread its rest
+  props onto an element, as a passthrough component does, or declare the
+  `on*` prop. A Svelte 4 style component that forwards `on:click` without
+  either received the event before and doesn't now. A legacy consumer passes its own handler
   as a prop too, `onclick={...}`, to have it run first: `on:click` on the
   component reaches neither branch.
 - **A consumer's handler runs first, and can cancel the template's.** Where a
@@ -935,12 +986,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   ``declare module 'react' { interface CSSProperties { [key: `--${string}`]:
   string | number | undefined } }``, or type the object the same way the
   component does.
-- **A spread of exactly `rest` onto a node with its own class or style warns**
-  in React and Svelte, where the authored class or style would replace the
-  consumer's; Vue merges the two and never warns. A node whose class override
-  for the target reads the consumer's class (`rest.className` in React,
-  `rest.class` in Svelte), or whose style override reads `rest.style`, keeps
-  it and is not warned about either. A helper call is not inspected.
 - **A discriminated surface root's discriminant is validated.** Each `if` and
   `else-if` condition is declared in branch `props`, never among the shared
   props, and is a literal discriminant (the bare prop name, typed as truthy
@@ -1121,9 +1166,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   `indeterminate` no longer adds `?? false` after a comparison, a negation, a
   boolean literal or a `Boolean(...)` call, which TypeScript reports as an
   unreachable right operand.
-- **The rest-class warning recognizes `consumerClass(rest)`** and
-  `mergeRootProps(..., rest)` in a class override, and suggests `consumerClass`
-  first.
 - **The `unwrap` warning names what to write instead:** a fragment with a
   per-target `tag`.
 - **A selector holding Sass interpolation warns when no Sass compile reads
@@ -1246,37 +1288,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   function and an unset handler does nothing. A handler that takes fewer
   arguments than the listener, such as `() => void`, still type-checks.
 
-- **A consumer's `style` wins over the style of a node spreading `rest` in
-  every target.** A node's expression-valued properties, such as
-  `'--stack-gap': { $expression: 'gap' }`, beat the consumer's style: in
-  React they replaced a consumer's `--stack-gap` that a style override
-  merged in, in Svelte their `style:` directives outranked it, and the html target
-  wrote them after it. A React style override whose expression reads
-  `rest.style` beside such properties now gets the consumer's style last,
-  `{ '--stack-gap': gap, ...rest.style }`, and reads it once: an object
-  literal such as `{ ...styles, ...rest.style }` keeps its other members
-  ahead of the properties, `{ ...styles, '--stack-gap': gap, ...rest.style }`. Each Svelte `style:` directive
-  takes the consumer's value when the consumer's style declares the
-  property, as on a passthrough root, a Svelte override's static inline
-  declarations come before its expression carrying `rest.style`, and
-  `renderInstance` merges the consumer's style after the node's own.
-- **The warning about a `rest` node's own style fires only for a style that
-  replaces the consumer's.** A static style the stylesheet carries leaves
-  the element with no `style` attribute, and in Svelte an expression-valued
-  property is a `style:` directive that keeps the consumer's style, yet both
-  were warned about. The class check reads the target's class override as
-  the style check reads its style override, so an override class that
-  leaves out the consumer's is warned about too. A node's class and style
-  warnings now come in the same build, so fixing one no longer reveals the
-  other.
-- **A Svelte style override that hands `rest.style` on as a string is not
-  warned about.** The warning about a spread or `Object.assign` breaking the
-  consumer's style string fired whenever `Object.assign` and `rest.style`
-  appeared in the same expression. It now fires for a spread of
-  `rest.style` or for `rest.style` passed to `Object.assign` as an argument
-  of its own, cast with `as` or `satisfies`, in parentheses or as either arm
-  of a conditional included, and not for one inside an array entry or a
-  parser call.
 - **A generated setter's locals never shadow a declared prop.** A second
   two-way prop's setter declared `const value`, hiding a `value` prop beside
   it, which a `no-shadow` lint rule rejects. Each name is now chosen on its
@@ -1306,14 +1317,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   no prop for, on an HTML or SVG element, now emits a warning naming the event
   and the tag instead of rendering silently, as does a capture binding React
   attaches but doesn't type.
-- **Legacy Svelte runs a template's event when a root that may be a component
-  renders one.** On a `componentValued` root, the component branch wrote the
-  template's events as `on:` directives, which a component only receives when
-  it forwards them, so `<PopoverTrigger as={Button}>` never ran its click
-  handler. The component branch now passes them as event props composed with
-  the consumer's handlers (`onclick={composeEventHandlers($$restProps.onclick,
-  toggle)}`), as runes mode does. The consumer's handler runs first, and
-  `event.preventDefault()` in it skips the template's.
 - **A consumer's `style` wins over a passthrough root's own declarations in
   Svelte and the html target, as in React and Vue.** Svelte wrote the root's
   expression-valued style properties as `style:` directives, which outrank
@@ -1324,22 +1327,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   color}`, so styles set on the element by an action stay in place when a
   prop changes. `renderInstance` put the consumer's style first; it now
   merges it after the root's own.
-- **A consumer's `style` wins over the style of a Vue node spreading
-  `rest`.** The node's own `:style` and `:class` bound after `v-bind="rest"`,
-  so its declarations replaced the consumer's. They now bind before it: the
-  node's own class still comes first, and the consumer's style wins per
-  property.
-- **A Svelte style override can read `rest.style`.** A consumer's `style` is
-  a string in Svelte, and the generated style serializer read it as an
-  object, writing `0: c; 1: o; ...`. The serializer now passes a string
-  through and serializes an array entry by entry, so `rest.style` works
-  alone, and `[{ gap }, rest.style]` keeps the node's own declarations under
-  the consumer's. A Svelte override that spreads `rest.style` or passes it
-  to `Object.assign` is now warned about, naming the array form.
-- **`{ ...rest.style }` in a React style override counts as reading the
-  consumer's style.** A node spreading `rest` with a style of its own still
-  warned when its override spread `rest.style` into the object; only
-  `Object.assign(..., rest.style)` silenced it.
 - **The HTML comment on a passthrough root that routes attributes names what
   stays on it.** Under a `'*'` routing it said the consumer's other
   attributes apply on the root, when only class, style and `data-*` do. It
@@ -1427,12 +1414,6 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   meaning inside its own scope, and the slot is read everywhere else. An
   object key named like a slot stays a key, and a shorthand property
   (`{ option }`) keeps its key.
-- **An event beside a `rest` spread keeps the consumer's handler.** A node
-  that spreads `rest` and handles `click` replaced the consumer's `onClick` in
-  React and Svelte runes mode. The template's handler and the consumer's now
-  both run, the consumer's first, through the same `composeEventHandlers`
-  helper a passthrough root uses. Vue, which already ran both, runs them in
-  the same order (see "A consumer's handler runs first").
 - **A Vue script can declare a name a prop has.** A script declaring `const
   value = computed(...)` beside a `value` prop failed vue-tsc, because the
   props destructure declared `value` as well. The prop is now left out of
@@ -1575,6 +1556,10 @@ each has its entry under Changed or Fixed. Read them before upgrading:
   or textarea's `defaultValue` as `value`, keeping the default beside it so
   a form reset still returns to it, and a bound `checked` or `value` beside
   the default reads it when unset (`checked={checked ?? defaultChecked}`).
+  A bound default with no `value` or `checked` authored beside it is written
+  once, so a later change to the default leaves a user's edit in place, as
+  React, Vue and the html target do, and a form reset then returns to the
+  new default.
 - **A select's `defaultValue` preselects its option in Svelte and Vue.** A
   select has no default-value property, so the value was written as an
   attribute that selects nothing. The option it matches is now marked

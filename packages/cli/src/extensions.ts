@@ -25,13 +25,13 @@ export type StylingName = (typeof stylingNames)[number];
 
 /**
  * @deprecated Use `targetNames` instead. `frameworkNames` is kept as an alias
- * until the next major version.
+ * until 3.0.0.
  */
 export const frameworkNames = ['react', 'vue', 'svelte'] as const;
 
 /**
  * @deprecated Use `TargetName` instead. `FrameworkName` is kept as an alias
- * until the next major version.
+ * until 3.0.0.
  */
 export type FrameworkName = Exclude<TargetName, 'html'>;
 

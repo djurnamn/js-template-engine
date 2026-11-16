@@ -15,7 +15,7 @@ export interface ResolvedStylingOptions {
   placement: StylesheetPlacement;
   /**
    * @deprecated Use `placement` instead, which holds the same value.
-   * `outputStrategy` is kept as an alias until the next major version.
+   * `outputStrategy` is kept as an alias until 3.0.0.
    */
   outputStrategy: StylesheetPlacement;
   /**
@@ -65,8 +65,8 @@ export interface ResolvedProcessingOptions {
  */
 export interface TargetExtension extends Extension {
   /**
-   * `'target'`. `'framework'` is accepted as well and kept until the next
-   * major version, so an extension that declares it keeps working.
+   * `'target'`. `'framework'` is accepted as well and kept until 3.0.0, so
+   * an extension that declares it keeps working.
    */
   readonly kind: 'target' | 'framework';
   /**
@@ -77,7 +77,7 @@ export interface TargetExtension extends Extension {
   /**
    * @deprecated Use `unsupportedPlacements` instead; its `styling` list is
    * read when `unsupportedPlacements` is absent. `unsupportedStrategies` is
-   * kept as an alias until the next major version.
+   * kept as an alias until 3.0.0.
    */
   readonly unsupportedStrategies?: {
     styling?: StylesheetPlacement[];
@@ -171,7 +171,7 @@ export function isTargetExtension(
 
 /**
  * @deprecated Use `isTargetExtension` instead. `isFrameworkExtension` is kept
- * as an alias until the next major version.
+ * as an alias until 3.0.0.
  */
 export function isFrameworkExtension(
   extension: Extension

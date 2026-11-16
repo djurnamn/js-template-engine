@@ -1076,8 +1076,8 @@ URL is resolved even without load paths.
 npx js-template-engine render button.ts --styling-language css --load-path src/styles
 ```
 
-(An earlier `$include` key holds the same Sass `@include` source and still
-works, but emits a deprecation warning; prefer `@include` at-rule keys.)
+(A `$include` key holds the same Sass `@include` source and is deprecated:
+it works, with a deprecation warning; prefer `@include` at-rule keys.)
 
 ## Rendering to React, Vue, and Svelte
 
@@ -1655,7 +1655,7 @@ npx scaffold-ui-kit my-ui-kit
 ```
 
 The kit's tests come from `@scaffold-ui-kit/testing`, which renders each
-component in every target and compares the markup, type-checks what the build
+component in React, Vue and Svelte and compares the markup, type-checks what the build
 wrote and sweeps the preview with axe and the keyboard. Templates that use Sass
 modifier helpers and hand-written drivers built on Zag take
 `@scaffold-ui-kit/helpers`.
@@ -1687,7 +1687,7 @@ The same table, from Svelte's words:
 |---|---|
 | `export let`, `$props()` | `props` |
 | `$bindable()`, `bind:value` on a component | a prop with `bindable`: one state, every target's idiom |
-| `bind:value` on an element | `value` and a `change` event, or a prop with `bindable` |
+| `bind:value` on an element | `value` and an `input` event, or a prop with `bindable` |
 | `$state` for a value that isn't a prop | a per-target `script` override, with `$state` in its `runes` block |
 | `$derived` | `derived` |
 | `$effect`, lifecycle functions | a per-target `script` override |

@@ -211,7 +211,7 @@ export interface StylingOptions {
   placement?: StylesheetPlacement;
   /**
    * @deprecated Use `placement` instead. `outputStrategy` is kept as an
-   * alias until the next major version; passing it adds a deprecation
+   * alias until 3.0.0; passing it adds a deprecation
    * warning, and passing both with different values is a processing error.
    */
   outputStrategy?: StylesheetPlacement;

@@ -46,7 +46,7 @@ export interface CollapseVocabulary {
  * extension supplies it (`StylingExtension.runtime`).
  */
 export interface BemRuntimeBinding {
-  /** The component's single BEM block, e.g. `'DjuiBadge'`. */
+  /** The component's single BEM block, e.g. `'AcmeBadge'`. */
   block: string;
   /** The element separator the helper must be configured with. */
   elementSeparator: string;

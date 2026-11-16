@@ -25,7 +25,7 @@ export interface RenderCommandOptions {
   target?: TargetName;
   /**
    * @deprecated Use `target` instead. `framework` is kept as an alias until
-   * the next major version.
+   * 3.0.0.
    */
   framework?: FrameworkName;
   styling: StylingName[];
@@ -35,7 +35,7 @@ export interface RenderCommandOptions {
   stylesheetPlacement?: StylesheetPlacement;
   /**
    * @deprecated Use `stylesheetPlacement` instead. `stylingStrategy` is kept
-   * as an alias until the next major version.
+   * as an alias until 3.0.0.
    */
   stylingStrategy?: StylesheetPlacement;
   stylingLanguage: 'css' | 'scss';
